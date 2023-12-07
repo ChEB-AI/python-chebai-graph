@@ -1,0 +1,27 @@
+[project]
+name = "chebai-graph"
+description = "GNNs for ChEB-AI"
+version = "0.0.0"
+authors = [
+    { name = "Martin Glauer", email = "martin.glauer@ovgu.de" }
+]
+dependencies = [
+    "torch_geometric",
+    "torch-scatter",
+    "torch-sparse",
+    "torch-cluster",
+]
+
+[project.optional-dependencies]
+dev = [
+    "tox",
+    "pre-commit",
+    "black"
+]
+
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = ["flit_core >=3.2,<4"]
+
+[project.entry-points.'chebai.plugins']
+models = 'chebai_graph.models'

@@ -1,5 +1,6 @@
 import logging
 import sys
+import typing
 
 from torch import nn
 from torch_geometric import nn as tgnn
@@ -7,16 +8,20 @@ from torch_scatter import scatter_add, scatter_max, scatter_mean
 import torch
 import torch.nn.functional as F
 
-from chebai.models.base import JCIBaseNet
+from chebai.models.base import ChebaiBaseNet
 
 logging.getLogger("pysmiles").setLevel(logging.CRITICAL)
 
 
-class JCIGraphNet(JCIBaseNet):
+class JCIGraphNet(ChebaiBaseNet):
     NAME = "GNN"
 
-    def __init__(self, in_length, hidden_length, num_classes, **kwargs):
-        super().__init__(num_classes, **kwargs)
+    def __init__(self, config: typing.Dict, **kwargs):
+        super().__init__(**kwargs)
+
+        in_length = config["in_length"]
+        hidden_length = config["hidden_length"]
+
         self.embedding = torch.nn.Embedding(800, in_length)
 
         self.conv1 = tgnn.GraphConv(in_length, in_length)
@@ -28,7 +33,7 @@ class JCIGraphNet(JCIBaseNet):
             nn.ELU(),
             nn.Linear(hidden_length, hidden_length),
             nn.ELU(),
-            nn.Linear(hidden_length, num_classes),
+            nn.Linear(hidden_length, 854),
         )
 
         self.dropout = nn.Dropout(0.1)
@@ -44,7 +49,7 @@ class JCIGraphNet(JCIBaseNet):
         return self.output_net(a)
 
 
-class JCIGraphAttentionNet(JCIBaseNet):
+class JCIGraphAttentionNet(ChebaiBaseNet):
     NAME = "AGNN"
 
     def __init__(self, **kwargs):

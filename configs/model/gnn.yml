@@ -1,0 +1,7 @@
+class_path: chebai_graph.models.graph.JCIGraphNet
+init_args:
+  optimizer_kwargs:
+    lr: 1e-4
+  config:
+    in_length: 256
+    hidden_length: 512
