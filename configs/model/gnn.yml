@@ -5,3 +5,4 @@ init_args:
   config:
     in_length: 256
     hidden_length: 512
+    dropout_rate: 0.1

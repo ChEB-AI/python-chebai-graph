@@ -7,6 +7,7 @@ from torch_geometric import nn as tgnn
 from torch_scatter import scatter_add, scatter_max, scatter_mean
 import torch
 import torch.nn.functional as F
+from torch_geometric.data import Data as GraphData
 
 from chebai.models.base import ChebaiBaseNet
 
@@ -21,6 +22,7 @@ class JCIGraphNet(ChebaiBaseNet):
 
         in_length = config["in_length"]
         hidden_length = config["hidden_length"]
+        dropout_rate = config["dropout_rate"]
 
         self.embedding = torch.nn.Embedding(800, in_length)
 
@@ -33,19 +35,23 @@ class JCIGraphNet(ChebaiBaseNet):
             nn.ELU(),
             nn.Linear(hidden_length, hidden_length),
             nn.ELU(),
-            nn.Linear(hidden_length, 854),
+            nn.Linear(hidden_length, self.out_dim),
         )
 
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(dropout_rate)
 
-    def forward(self, x):
-        a = self.embedding(x.x)
+
+    def forward(self, batch):
+        # TODO look into data, use edge attributes
+        graph_data = batch["features"][0]
+        assert isinstance(graph_data, GraphData)
+        a = self.embedding(graph_data.x)
         a = self.dropout(a)
-        a = F.elu(self.conv1(a, x.edge_index.long()))
-        a = F.elu(self.conv2(a, x.edge_index.long()))
-        a = F.elu(self.conv3(a, x.edge_index.long()))
+        a = F.elu(self.conv1(a, graph_data.edge_index.long()))
+        a = F.elu(self.conv2(a, graph_data.edge_index.long()))
+        a = F.elu(self.conv3(a, graph_data.edge_index.long()))
         a = self.dropout(a)
-        a = scatter_add(a, x.batch, dim=0)
+        a = scatter_add(a, graph_data.batch, dim=0)
         return self.output_net(a)
 
 
