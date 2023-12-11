@@ -27,8 +27,8 @@ class GraphCollater(collate.RaggedCollater):
         # add empty edge_attr to avoid problems during collate (only relevant for molecules without edges)
         for mdata in merged_data:
             for i, store in enumerate(mdata.stores):
-                if 'edge_attr' not in store:
-                    store['edge_attr'] = torch.tensor([])
+                if "edge_attr" not in store:
+                    store["edge_attr"] = torch.tensor([])
         x = graph_collate(
             GraphData,
             merged_data,
@@ -98,7 +98,6 @@ class GraphReader(dr.ChemDataReader):
 
 
 class XYGraphData(XYData):
-
     def __len__(self):
         return len(self.y)
 

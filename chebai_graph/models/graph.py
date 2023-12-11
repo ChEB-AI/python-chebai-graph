@@ -40,7 +40,6 @@ class JCIGraphNet(ChebaiBaseNet):
 
         self.dropout = nn.Dropout(dropout_rate)
 
-
     def forward(self, batch):
         # TODO look into data, use edge attributes
         graph_data = batch["features"][0]
