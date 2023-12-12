@@ -1,0 +1,8 @@
+class_path: chebai_graph.models.graph.JCIGraphAttentionNet
+init_args:
+  optimizer_kwargs:
+    lr: 1e-4
+  config:
+    in_length: 256
+    hidden_length: 512
+    dropout_rate: 0.1
