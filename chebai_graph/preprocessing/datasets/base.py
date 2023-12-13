@@ -1,4 +1,4 @@
-from typing import Tuple, Mapping
+from typing import Tuple, Mapping, Optional
 
 import networkx as nx
 import os
@@ -6,7 +6,6 @@ import pysmiles as ps
 
 import torch
 from torch_geometric.data import Data as GraphData
-from torch_geometric.data.data import BaseData
 from torch_geometric.data.collate import collate as graph_collate
 from torch_geometric.utils import from_networkx
 
@@ -29,12 +28,26 @@ class GraphCollater(collate.RaggedCollater):
             for i, store in enumerate(mdata.stores):
                 if "edge_attr" not in store:
                     store["edge_attr"] = torch.tensor([])
+        for attr in merged_data[0].keys():
+            for data in merged_data:
+                for store in data.stores:
+                    # Im not sure why the following conversion is needed, but it solves this error:
+                    # packages/torch_geometric/data/collate.py", line 177, in _collate
+                    #     value = torch.cat(values, dim=cat_dim or 0, out=out)
+                    # RuntimeError: torch.cat(): input types can't be cast to the desired output type Long
+                    if isinstance(torch.tensor, store[attr]):
+                        store[attr] = store[attr].to(dtype=torch.float32)
+                    else:
+                        store[attr] = torch.tensor(store[attr], dtype=torch.float32)
+                    # print(f'attr: {attr}, store[attr].dtype: {store[attr].dtype}')
+
         x = graph_collate(
             GraphData,
             merged_data,
             follow_batch=["x", "edge_attr", "edge_index", "label"],
         )
         y = self.process_label_rows(y)
+        x[0].x = x[0].x.to(dtype=torch.int64)
         # x is a Tuple[BaseData, Mapping, Mapping]
         return XYGraphData(
             x,
@@ -57,7 +70,7 @@ class GraphReader(dr.ChemDataReader):
     def name(cls):
         return "graph"
 
-    def _read_data(self, raw_data) -> GraphData:
+    def _read_data(self, raw_data) -> Optional[GraphData]:
         # raw_data is a SMILES string
         try:
             mol = ps.read_smiles(raw_data)

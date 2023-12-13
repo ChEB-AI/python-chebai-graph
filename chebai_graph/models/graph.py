@@ -28,7 +28,10 @@ class JCIGraphNet(ChebaiBaseNet):
 
         self.conv1 = tgnn.GraphConv(in_length, in_length)
         self.conv2 = tgnn.GraphConv(in_length, in_length)
-        self.conv3 = tgnn.GraphConv(in_length, hidden_length)
+        self.conv3 = tgnn.GraphConv(in_length, in_length)
+        self.conv4 = tgnn.GraphConv(in_length, in_length)
+        self.conv5 = tgnn.GraphConv(in_length, in_length)
+        self.conv6 = tgnn.GraphConv(in_length, hidden_length)
 
         self.output_net = nn.Sequential(
             nn.Linear(hidden_length, hidden_length),
@@ -49,6 +52,9 @@ class JCIGraphNet(ChebaiBaseNet):
         a = F.elu(self.conv1(a, graph_data.edge_index.long()))
         a = F.elu(self.conv2(a, graph_data.edge_index.long()))
         a = F.elu(self.conv3(a, graph_data.edge_index.long()))
+        a = F.elu(self.conv4(a, graph_data.edge_index.long()))
+        a = F.elu(self.conv5(a, graph_data.edge_index.long()))
+        a = F.elu(self.conv6(a, graph_data.edge_index.long()))
         a = self.dropout(a)
         a = scatter_add(a, graph_data.batch, dim=0)
         return self.output_net(a)
