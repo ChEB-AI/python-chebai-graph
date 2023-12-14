@@ -35,7 +35,7 @@ class GraphCollater(collate.RaggedCollater):
                     # packages/torch_geometric/data/collate.py", line 177, in _collate
                     #     value = torch.cat(values, dim=cat_dim or 0, out=out)
                     # RuntimeError: torch.cat(): input types can't be cast to the desired output type Long
-                    if isinstance(torch.tensor, store[attr]):
+                    if isinstance(store[attr], torch.Tensor):
                         store[attr] = store[attr].to(dtype=torch.float32)
                     else:
                         store[attr] = torch.tensor(store[attr], dtype=torch.float32)
