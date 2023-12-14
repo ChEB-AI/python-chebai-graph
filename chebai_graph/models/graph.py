@@ -23,15 +23,14 @@ class JCIGraphNet(ChebaiBaseNet):
         in_length = config["in_length"]
         hidden_length = config["hidden_length"]
         dropout_rate = config["dropout_rate"]
+        self.n_layers = config["n_layers"] if "n_layers" in config else 3
 
         self.embedding = torch.nn.Embedding(800, in_length)
 
-        self.conv1 = tgnn.GraphConv(in_length, in_length)
-        self.conv2 = tgnn.GraphConv(in_length, in_length)
-        self.conv3 = tgnn.GraphConv(in_length, in_length)
-        self.conv4 = tgnn.GraphConv(in_length, in_length)
-        self.conv5 = tgnn.GraphConv(in_length, in_length)
-        self.conv6 = tgnn.GraphConv(in_length, hidden_length)
+        self.convs = []
+        for _ in range(self.n_layers - 1):
+            self.convs.append(tgnn.GraphConv(in_length, in_length))
+        self.final_conv = tgnn.GraphConv(in_length, hidden_length)
 
         self.output_net = nn.Sequential(
             nn.Linear(hidden_length, hidden_length),
@@ -49,12 +48,10 @@ class JCIGraphNet(ChebaiBaseNet):
         assert isinstance(graph_data, GraphData)
         a = self.embedding(graph_data.x)
         a = self.dropout(a)
-        a = F.elu(self.conv1(a, graph_data.edge_index.long()))
-        a = F.elu(self.conv2(a, graph_data.edge_index.long()))
-        a = F.elu(self.conv3(a, graph_data.edge_index.long()))
-        a = F.elu(self.conv4(a, graph_data.edge_index.long()))
-        a = F.elu(self.conv5(a, graph_data.edge_index.long()))
-        a = F.elu(self.conv6(a, graph_data.edge_index.long()))
+
+        for conv in self.convs:
+            a = F.elu(conv(a, graph_data.edge_index.long()))
+        a = F.elu(self.final_conv(a, graph_data.edge_index.long()))
         a = self.dropout(a)
         a = scatter_add(a, graph_data.batch, dim=0)
         return self.output_net(a)
