@@ -109,10 +109,10 @@ class JCIGraphAttentionNet(ChebaiBaseNet):
         a = self.dropout(a)
         a = torch.cat([a, torch.rand((*a.shape[:-1], 10)).to(self.device)], dim=1)
         for i, layer in enumerate(self.convs):
-            a = self.activation(layer(a, graph_data.long()))
+            a = self.activation(layer(a, graph_data.edge_index.long()))
             if i == 0:
                 a = self.dropout(a)
-        a = self.activation(self.final_conv(a))
+        a = self.activation(self.final_conv(a, graph_data.edge_index.long()))
 
         a = self.dropout(a)
         a = scatter_mean(a, graph_data.batch, dim=0)
