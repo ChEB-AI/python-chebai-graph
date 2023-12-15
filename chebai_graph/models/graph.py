@@ -23,22 +23,24 @@ class JCIGraphNet(ChebaiBaseNet):
         in_length = config["in_length"]
         hidden_length = config["hidden_length"]
         dropout_rate = config["dropout_rate"]
-        self.n_layers = config["n_layers"] if "n_layers" in config else 3
+        self.n_conv_layers = config["n_conv_layers"] if "n_conv_layers" in config else 3
+        self.n_linear_layers = (
+            config["n_linear_layers"] if "n_linear_layers" in config else 3
+        )
 
         self.embedding = torch.nn.Embedding(800, in_length)
 
         self.convs = []
-        for _ in range(self.n_layers - 1):
+        for _ in range(self.n_conv_layers):
             self.convs.append(tgnn.GraphConv(in_length, in_length))
         self.final_conv = tgnn.GraphConv(in_length, hidden_length)
 
-        self.output_net = nn.Sequential(
-            nn.Linear(hidden_length, hidden_length),
-            nn.ELU(),
-            nn.Linear(hidden_length, hidden_length),
-            nn.ELU(),
-            nn.Linear(hidden_length, self.out_dim),
-        )
+        self.activation = F.elu
+
+        self.linear_layers = []
+        for _ in range(self.n_linear_layers):
+            self.linear_layers.append(nn.Linear(hidden_length, hidden_length))
+        self.final_layer = nn.Linear(hidden_length, self.out_dim)
 
         self.dropout = nn.Dropout(dropout_rate)
 
@@ -50,11 +52,15 @@ class JCIGraphNet(ChebaiBaseNet):
         a = self.dropout(a)
 
         for conv in self.convs:
-            a = F.elu(conv(a, graph_data.edge_index.long()))
-        a = F.elu(self.final_conv(a, graph_data.edge_index.long()))
+            a = self.activation(conv(a, graph_data.edge_index.long()))
+        a = self.activation(self.final_conv(a, graph_data.edge_index.long()))
         a = self.dropout(a)
         a = scatter_add(a, graph_data.batch, dim=0)
-        return self.output_net(a)
+
+        for lin in self.linear_layers:
+            a = self.activation(lin(a))
+        a = self.final_layer(a)
+        return a
 
 
 class JCIGraphAttentionNet(ChebaiBaseNet):
@@ -66,37 +72,34 @@ class JCIGraphAttentionNet(ChebaiBaseNet):
         in_length = config["in_length"]
         hidden_length = config["hidden_length"]
         dropout_rate = config["dropout_rate"]
+        self.n_conv_layers = config["n_conv_layers"] if "n_conv_layers" in config else 5
+        n_heads = config["n_heads"] if "n_heads" in config else 5
+        self.n_lin_layers = (
+            config["n_linear_layers"] if "n_linear_layers" in config else 3
+        )
 
         self.embedding = torch.nn.Embedding(800, in_length)
         self.edge_embedding = torch.nn.Embedding(4, in_length)
         in_length = in_length + 10
-        self.conv1 = tgnn.GATConv(
-            in_length,
-            in_length,
-            5,
-            concat=False,
-            dropout=dropout_rate,
-            add_self_loops=True,
+
+        self.convs = []
+        for _ in range(self.n_conv_layers - 1):
+            self.convs.append(
+                tgnn.GATConv(
+                    in_length, in_length, n_heads, concat=False, add_self_loops=True
+                )
+            )
+        self.final_conv = tgnn.GATConv(
+            in_length, hidden_length, n_heads, concat=False, add_self_loops=True
         )
-        self.conv2 = tgnn.GATConv(
-            in_length, in_length, 5, concat=False, add_self_loops=True
-        )
-        self.conv3 = tgnn.GATConv(
-            in_length, in_length, 5, concat=False, add_self_loops=True
-        )
-        self.conv4 = tgnn.GATConv(
-            in_length, in_length, 5, concat=False, add_self_loops=True
-        )
-        self.conv5 = tgnn.GATConv(
-            in_length, in_length, 5, concat=False, add_self_loops=True
-        )
-        self.output_net = nn.Sequential(
-            nn.Linear(in_length, hidden_length),
-            nn.LeakyReLU(),
-            nn.Linear(hidden_length, hidden_length),
-            nn.LeakyReLU(),
-            nn.Linear(hidden_length, self.out_dim),
-        )
+
+        self.activation = F.leaky_relu
+
+        self.linear_layers = []
+        for _ in range(self.n_lin_layers - 1):
+            self.linear_layers.append(nn.Linear(hidden_length, hidden_length))
+        self.final_layer = nn.Linear(hidden_length, self.out_dim)
+
         self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, batch):
@@ -105,12 +108,15 @@ class JCIGraphAttentionNet(ChebaiBaseNet):
         a = self.embedding(graph_data.x)
         a = self.dropout(a)
         a = torch.cat([a, torch.rand((*a.shape[:-1], 10)).to(self.device)], dim=1)
-        a = F.leaky_relu(self.conv1(a, graph_data.edge_index.long()))
-        a = F.leaky_relu(self.conv2(a, graph_data.edge_index.long()))
-        a = F.leaky_relu(self.conv3(a, graph_data.edge_index.long()))
-        a = F.leaky_relu(self.conv4(a, graph_data.edge_index.long()))
-        a = F.leaky_relu(self.conv5(a, graph_data.edge_index.long()))
+        for i, layer in enumerate(self.convs):
+            a = self.activation(layer(a, graph_data.long()))
+            if i == 0:
+                a = self.dropout(a)
+        a = self.activation(self.final_conv(a))
+
         a = self.dropout(a)
         a = scatter_mean(a, graph_data.batch, dim=0)
-        a = self.output_net(a)
+        for i, layer in enumerate(self.linear_layers):
+            a = self.activation(self.layer(a))
+        a = self.final_layer(a)
         return a

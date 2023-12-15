@@ -6,3 +6,6 @@ init_args:
     in_length: 256
     hidden_length: 512
     dropout_rate: 0.1
+    n_conv_layers: 5
+    n_linear_layers: 3
+    n_heads: 5
