@@ -1,4 +1,4 @@
-class_path: chebai_graph.models.graph.JCIGraphNet
+class_path: chebai_graph.models.graph.ResGatedGraphConvNet
 init_args:
   optimizer_kwargs:
     lr: 1e-4

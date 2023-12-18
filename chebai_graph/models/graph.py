@@ -31,7 +31,11 @@ class JCIGraphNet(ChebaiBaseNet):
         self.embedding = torch.nn.Embedding(800, in_length)
 
         self.convs = torch.nn.ModuleList([])
-        for _ in range(self.n_conv_layers):
+        for i in range(self.n_conv_layers):
+            if i == 0:
+                self.convs.append(
+                    tgnn.GraphConv(in_length, in_length, dropout=dropout_rate)
+                )
             self.convs.append(tgnn.GraphConv(in_length, in_length))
         self.final_conv = tgnn.GraphConv(in_length, hidden_length)
 
@@ -45,15 +49,54 @@ class JCIGraphNet(ChebaiBaseNet):
         self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, batch):
-        # TODO look into data, use edge attributes
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
-        a = self.embedding(graph_data.x)
-        a = self.dropout(a)
+        a = graph_data.x
+        a = self.embedding(a)
 
         for conv in self.convs:
             a = self.activation(conv(a, graph_data.edge_index.long()))
         a = self.activation(self.final_conv(a, graph_data.edge_index.long()))
+        a = self.dropout(a)
+        a = scatter_add(a, graph_data.batch, dim=0)
+
+        for lin in self.linear_layers:
+            a = self.activation(lin(a))
+        a = self.final_layer(a)
+        return a
+
+
+class ResGatedGraphConvNet(JCIGraphNet):
+    """GNN that supports edge attributes"""
+
+    def __init__(self, config: typing.Dict, **kwargs):
+        super().__init__(config, kwargs)
+        # replace with ResGatedGraphConvs
+        self.convs = torch.nn.ModuleList([])
+        for i in range(self.n_conv_layers):
+            if i == 0:
+                self.convs.append(
+                    tgnn.ResGatedGraphConv(in_length, in_length, dropout=dropout_rate)
+                )
+            self.convs.append(tgnn.ResGatedGraphConv(in_length, in_length))
+        self.final_conv = tgnn.ResGatedGraphConv(in_length, hidden_length)
+
+    def forward(self, batch):
+        graph_data = batch["features"][0]
+        assert isinstance(graph_data, GraphData)
+        a = graph_data.x
+        a = self.embedding(a)
+
+        for conv in self.convs:
+            assert isinstance(conv, tgnn.ResGatedGraphConv)
+            a = self.activation(
+                conv(a, graph_data.edge_index.long(), edge_attr=graph_data.edge_attr)
+            )
+        a = self.activation(
+            self.final_conv(
+                a, graph_data.edge_index.long(), edge_attr=graph_data.edge_attr
+            )
+        )
         a = self.dropout(a)
         a = scatter_add(a, graph_data.batch, dim=0)
 
