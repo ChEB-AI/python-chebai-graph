@@ -30,14 +30,14 @@ class JCIGraphNet(ChebaiBaseNet):
 
         self.embedding = torch.nn.Embedding(800, in_length)
 
-        self.convs = []
+        self.convs = torch.nn.ModuleList([])
         for _ in range(self.n_conv_layers):
             self.convs.append(tgnn.GraphConv(in_length, in_length))
         self.final_conv = tgnn.GraphConv(in_length, hidden_length)
 
         self.activation = F.elu
 
-        self.linear_layers = []
+        self.linear_layers = torch.nn.ModuleList([])
         for _ in range(self.n_linear_layers):
             self.linear_layers.append(nn.Linear(hidden_length, hidden_length))
         self.final_layer = nn.Linear(hidden_length, self.out_dim)
@@ -82,20 +82,19 @@ class JCIGraphAttentionNet(ChebaiBaseNet):
         self.edge_embedding = torch.nn.Embedding(4, in_length)
         in_length = in_length + 10
 
-        self.convs = []
+        self.convs = torch.nn.ModuleList([])
         for _ in range(self.n_conv_layers - 1):
-            self.convs.append(
-                tgnn.GATConv(
-                    in_length, in_length, n_heads, concat=False, add_self_loops=True
-                )
+            layer = tgnn.GATConv(
+                in_length, in_length, n_heads, concat=False, add_self_loops=True
             )
+            self.convs.append(layer)
         self.final_conv = tgnn.GATConv(
             in_length, hidden_length, n_heads, concat=False, add_self_loops=True
         )
 
         self.activation = F.leaky_relu
 
-        self.linear_layers = []
+        self.linear_layers = torch.nn.ModuleList([])
         for _ in range(self.n_lin_layers - 1):
             self.linear_layers.append(nn.Linear(hidden_length, hidden_length))
         self.final_layer = nn.Linear(hidden_length, self.out_dim)
@@ -105,18 +104,21 @@ class JCIGraphAttentionNet(ChebaiBaseNet):
     def forward(self, batch):
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
+        edge_index = graph_data.edge_index.long().to(self.device)
         a = self.embedding(graph_data.x)
         a = self.dropout(a)
         a = torch.cat([a, torch.rand((*a.shape[:-1], 10)).to(self.device)], dim=1)
+
         for i, layer in enumerate(self.convs):
-            a = self.activation(layer(a, graph_data.edge_index.long()))
+            assert isinstance(layer, tgnn.GATConv)
+            a = self.activation(layer(a, edge_index))
             if i == 0:
                 a = self.dropout(a)
-        a = self.activation(self.final_conv(a, graph_data.edge_index.long()))
+        a = self.activation(self.final_conv(a, edge_index))
 
         a = self.dropout(a)
         a = scatter_mean(a, graph_data.batch, dim=0)
         for i, layer in enumerate(self.linear_layers):
-            a = self.activation(self.layer(a))
+            a = self.activation(layer(a))
         a = self.final_layer(a)
         return a
