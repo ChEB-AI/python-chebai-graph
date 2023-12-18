@@ -69,6 +69,8 @@ class JCIGraphNet(ChebaiBaseNet):
 class ResGatedGraphConvNet(JCIGraphNet):
     """GNN that supports edge attributes"""
 
+    NAME = "ResGatedGraphConvNet"
+
     def __init__(self, config: typing.Dict, **kwargs):
         super().__init__(config, kwargs)
         # replace with ResGatedGraphConvs
