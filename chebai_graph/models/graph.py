@@ -1,10 +1,9 @@
 import logging
-import sys
 import typing
 
 from torch import nn
 from torch_geometric import nn as tgnn
-from torch_scatter import scatter_add, scatter_max, scatter_mean
+from torch_scatter import scatter_add, scatter_mean
 import torch
 import torch.nn.functional as F
 from torch_geometric.data import Data as GraphData
@@ -20,33 +19,35 @@ class JCIGraphNet(ChebaiBaseNet):
     def __init__(self, config: typing.Dict, **kwargs):
         super().__init__(**kwargs)
 
-        in_length = config["in_length"]
-        hidden_length = config["hidden_length"]
-        dropout_rate = config["dropout_rate"]
+        self.in_length = config["in_length"]
+        self.hidden_length = config["hidden_length"]
+        self.dropout_rate = config["dropout_rate"]
         self.n_conv_layers = config["n_conv_layers"] if "n_conv_layers" in config else 3
         self.n_linear_layers = (
             config["n_linear_layers"] if "n_linear_layers" in config else 3
         )
 
-        self.embedding = torch.nn.Embedding(800, in_length)
+        self.embedding = torch.nn.Embedding(800, self.in_length)
 
         self.convs = torch.nn.ModuleList([])
         for i in range(self.n_conv_layers):
             if i == 0:
                 self.convs.append(
-                    tgnn.GraphConv(in_length, in_length, dropout=dropout_rate)
+                    tgnn.GraphConv(
+                        self.in_length, self.in_length, dropout=self.dropout_rate
+                    )
                 )
-            self.convs.append(tgnn.GraphConv(in_length, in_length))
-        self.final_conv = tgnn.GraphConv(in_length, hidden_length)
+            self.convs.append(tgnn.GraphConv(self.in_length, self.in_length))
+        self.final_conv = tgnn.GraphConv(self.in_length, self.hidden_length)
 
         self.activation = F.elu
 
         self.linear_layers = torch.nn.ModuleList([])
         for _ in range(self.n_linear_layers):
-            self.linear_layers.append(nn.Linear(hidden_length, hidden_length))
-        self.final_layer = nn.Linear(hidden_length, self.out_dim)
+            self.linear_layers.append(nn.Linear(self.hidden_length, self.hidden_length))
+        self.final_layer = nn.Linear(self.hidden_length, self.out_dim)
 
-        self.dropout = nn.Dropout(dropout_rate)
+        self.dropout = nn.Dropout(self.dropout_rate)
 
     def forward(self, batch):
         graph_data = batch["features"][0]
@@ -72,25 +73,42 @@ class ResGatedGraphConvNet(JCIGraphNet):
     NAME = "ResGatedGraphConvNet"
 
     def __init__(self, config: typing.Dict, **kwargs):
-        super().__init__(config, kwargs)
+        super().__init__(config, **kwargs)
+        # todo: replace by argument linking
+        self.n_atom_properties = config["n_atom_properties"]
+        self.n_bond_properties = config["n_bond_properties"]
         # replace with ResGatedGraphConvs
         self.convs = torch.nn.ModuleList([])
         for i in range(self.n_conv_layers):
             if i == 0:
                 self.convs.append(
-                    tgnn.ResGatedGraphConv(in_length, in_length, dropout=dropout_rate)
+                    tgnn.ResGatedGraphConv(
+                        self.n_atom_properties,
+                        self.in_length,
+                        dropout=self.dropout_rate,
+                        edge_dim=self.n_bond_properties,
+                    )
                 )
-            self.convs.append(tgnn.ResGatedGraphConv(in_length, in_length))
-        self.final_conv = tgnn.ResGatedGraphConv(in_length, hidden_length)
+            self.convs.append(
+                tgnn.ResGatedGraphConv(
+                    self.in_length, self.in_length, edge_dim=self.n_bond_properties
+                )
+            )
+        self.final_conv = tgnn.ResGatedGraphConv(
+            self.in_length, self.hidden_length, edge_dim=self.n_bond_properties
+        )
 
     def forward(self, batch):
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
-        a = graph_data.x
-        a = self.embedding(a)
+        a = graph_data.x.float()
+        # a = self.embedding(a)
 
         for conv in self.convs:
             assert isinstance(conv, tgnn.ResGatedGraphConv)
+            print(
+                f"a: {a.shape}, conv.lin_key: {conv.lin_key.weight.shape}, edge_attr: {graph_data.edge_attr.shape}, edge_index: {graph_data.edge_index.shape}"
+            )
             a = self.activation(
                 conv(a, graph_data.edge_index.long(), edge_attr=graph_data.edge_attr)
             )

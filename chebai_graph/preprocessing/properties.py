@@ -109,4 +109,4 @@ class BondType(BondPropertyIndexEncoded):
 
 class BondInRing(BondPropertyIndexEncoded):
     def get_bond_property_value(self, bond: Chem.rdchem.Bond):
-        return bond.IsInRingSize()
+        return bond.IsInRing()

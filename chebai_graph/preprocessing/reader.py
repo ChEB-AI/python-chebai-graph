@@ -20,7 +20,7 @@ class GraphPropertyReader(dr.ChemDataReader):
     COLLATER = GraphCollater
 
     def _resolve_property(
-        self, property: str | properties.MolecularProperty
+        self, property  #: str | properties.MolecularProperty
     ) -> properties.MolecularProperty:
         # split class_path into module-part and class name
         if isinstance(property, properties.MolecularProperty):
@@ -37,8 +37,8 @@ class GraphPropertyReader(dr.ChemDataReader):
 
     def __init__(
         self,
-        atom_properties: Optional[List[str | properties.AtomProperty]],
-        bond_properties: Optional[List[str | properties.BondProperty]],
+        atom_properties,  #: Optional[List[str | properties.AtomProperty]],
+        bond_properties,  #: Optional[List[str | properties.BondProperty]],
         *args,
         **kwargs,
     ):
