@@ -106,9 +106,6 @@ class ResGatedGraphConvNet(JCIGraphNet):
 
         for conv in self.convs:
             assert isinstance(conv, tgnn.ResGatedGraphConv)
-            print(
-                f"a: {a.shape}, conv.lin_key: {conv.lin_key.weight.shape}, edge_attr: {graph_data.edge_attr.shape}, edge_index: {graph_data.edge_index.shape}"
-            )
             a = self.activation(
                 conv(a, graph_data.edge_index.long(), edge_attr=graph_data.edge_attr)
             )
