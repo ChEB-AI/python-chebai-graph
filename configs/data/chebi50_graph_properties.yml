@@ -1,12 +1,11 @@
 class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphProperties
 init_args:
-  reader_kwargs:
-    atom_properties:
+  atom_properties:
       - chebai_graph.preprocessing.properties.AtomType
       - chebai_graph.preprocessing.properties.NumAtomBonds
       - chebai_graph.preprocessing.properties.FormalCharge
       - chebai_graph.preprocessing.properties.Aromaticity
-    bond_properties:
+  bond_properties:
       - chebai_graph.preprocessing.properties.BondType
       - chebai_graph.preprocessing.properties.BondInRing
       - chebai_graph.preprocessing.properties.Aromaticity
