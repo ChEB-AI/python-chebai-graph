@@ -1,4 +1,5 @@
 from typing import Tuple, Mapping, Optional
+from collections import defaultdict
 
 
 import torch
@@ -33,7 +34,6 @@ class GraphCollater(collate.RaggedCollater):
                         store[attr] = store[attr].to(dtype=torch.float32)
                     else:
                         store[attr] = torch.tensor(store[attr], dtype=torch.float32)
-                    # print(f'attr: {attr}, store[attr].dtype: {store[attr].dtype}')
 
         x = graph_collate(
             GeomData,

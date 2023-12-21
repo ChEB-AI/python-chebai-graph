@@ -144,7 +144,9 @@ class ChEBI50GraphProperties(ChEBIOver50):
 
         print(
             f"Finished setting up properties."
-            f"If you train a model with these properties and encodings, "
+            f"\nEncoding lengths are: {[(prop.name, prop.encoder.get_encoding_length()) for prop in self.atom_properties]}"
+            f"{[(prop.name, prop.encoder.get_encoding_length()) for prop in self.bond_properties]}"
+            f"\nIf you train a model with these properties and encodings, "
             f"use n_atom_properties: {sum([prop.encoder.get_encoding_length() for prop in self.atom_properties])} "
             f"and n_bond_properties: {sum([prop.encoder.get_encoding_length() for prop in self.bond_properties])}"
         )
@@ -217,7 +219,12 @@ class ChEBI50GraphProperties(ChEBIOver50):
         base_data = torch.load(os.path.join(self.processed_dir, base_filename))
         base_df = pd.DataFrame(base_data)
         for property in self.atom_properties:
+            assert isinstance(property, AtomProperty)
             property_data = torch.load(self.get_atom_property_path(property))
+            property.encoder.set_encoding_length(
+                property_data[0][property.name].shape[1]
+            )
+
             property_df = pd.DataFrame(property_data)
             property_df.rename(
                 columns={property.name: f"atom_{property.name}"}, inplace=True
@@ -227,7 +234,12 @@ class ChEBI50GraphProperties(ChEBIOver50):
                 lambda row: self._merge_atom_prop_into_base(row, property), axis=1
             )
         for property in self.bond_properties:
+            assert isinstance(property, BondProperty)
             property_data = torch.load(self.get_bond_property_path(property))
+            property.encoder.set_encoding_length(
+                property_data[0][property.name].shape[1]
+            )
+
             property_df = pd.DataFrame(property_data)
             property_df.rename(
                 columns={property.name: f"bond_{property.name}"}, inplace=True

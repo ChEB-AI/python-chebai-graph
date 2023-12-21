@@ -7,13 +7,17 @@ from typing import Optional
 class PropertyEncoder(abc.ABC):
     def __init__(self, property, **kwargs):
         self.property = property
+        self._encoding_length = 1
 
     @property
     def name(self):
         return ""
 
     def get_encoding_length(self) -> int:
-        return 1
+        return self._encoding_length
+
+    def set_encoding_length(self, encoding_length: int) -> None:
+        self._encoding_length = encoding_length
 
     def encode(self, value):
         raise NotImplementedError
@@ -80,10 +84,10 @@ class OneHotEncoder(IndexEncoder):
 
     def __init__(self, property, n_labels: Optional[int] = None, **kwargs):
         super().__init__(property, **kwargs)
-        self.n_labels = n_labels
+        self._encoding_length = n_labels
 
     def get_encoding_length(self) -> int:
-        return self.n_labels or len(self.cache)
+        return self._encoding_length or len(self.cache)
 
     @property
     def name(self):
