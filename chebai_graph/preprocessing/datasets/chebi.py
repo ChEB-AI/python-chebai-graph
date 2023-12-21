@@ -221,9 +221,10 @@ class ChEBI50GraphProperties(ChEBIOver50):
         for property in self.atom_properties:
             assert isinstance(property, AtomProperty)
             property_data = torch.load(self.get_atom_property_path(property))
-            property.encoder.set_encoding_length(
-                property_data[0][property.name].shape[1]
-            )
+            if len(property_data[0][property.name].shape) > 1:
+                property.encoder.set_encoding_length(
+                    property_data[0][property.name].shape[1]
+                )
 
             property_df = pd.DataFrame(property_data)
             property_df.rename(
@@ -236,9 +237,10 @@ class ChEBI50GraphProperties(ChEBIOver50):
         for property in self.bond_properties:
             assert isinstance(property, BondProperty)
             property_data = torch.load(self.get_bond_property_path(property))
-            property.encoder.set_encoding_length(
-                property_data[0][property.name].shape[1]
-            )
+            if len(property_data[0][property.name].shape) > 1:
+                property.encoder.set_encoding_length(
+                    property_data[0][property.name].shape[1]
+                )
 
             property_df = pd.DataFrame(property_data)
             property_df.rename(
