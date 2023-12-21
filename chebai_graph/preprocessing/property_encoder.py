@@ -1,16 +1,25 @@
 import abc
 import os
+import torch
+from typing import Optional
 
 
 class PropertyEncoder(abc.ABC):
     def __init__(self, property, **kwargs):
         self.property = property
 
+    @property
+    def name(self):
+        return ""
+
     def get_encoding_length(self) -> int:
         return 1
 
     def encode(self, value):
         raise NotImplementedError
+
+    def on_start(self, **kwargs):
+        pass
 
     def on_finish(self):
         return
@@ -30,6 +39,10 @@ class IndexEncoder(PropertyEncoder):
             self.cache = [x.strip() for x in pk]
         self.index_length_start = len(self.cache)
         self.offset = 0
+
+    @property
+    def name(self):
+        return "index"
 
     @property
     def index_path(self):
@@ -59,4 +72,61 @@ class IndexEncoder(PropertyEncoder):
         """Returns a unique number for each token, automatically adds new tokens to the cache."""
         if not str(token) in self.cache:
             self.cache.append(str(token))
-        return self.cache.index(str(token)) + self.offset
+        return torch.tensor([self.cache.index(str(token)) + self.offset])
+
+
+class OneHotEncoder(IndexEncoder):
+    """Returns one-hot encoding of the value (position in one-hot vector is defined by index)."""
+
+    def __init__(self, property, n_labels: Optional[int] = None, **kwargs):
+        super().__init__(property, **kwargs)
+        self.n_labels = n_labels
+
+    def get_encoding_length(self) -> int:
+        return self.n_labels or len(self.cache)
+
+    @property
+    def name(self):
+        return f"one_hot"
+
+    def on_start(self, property_values):
+        """To get correct number of classes during encoding, cache unique tokens beforehand"""
+        unique_tokens = list(
+            dict.fromkeys(
+                [
+                    v
+                    for vs in property_values
+                    if vs is not None
+                    for v in vs
+                    if v is not None
+                ]
+            )
+        )
+        self.tokens_dict = {}
+        for token in unique_tokens:
+            self.tokens_dict[token] = super().encode(token)
+
+    def encode(self, token):
+        return torch.nn.functional.one_hot(
+            self.tokens_dict[token], num_classes=self.get_encoding_length()
+        )
+
+
+class AsIsEncoder(PropertyEncoder):
+    """Returns the input value as it is, useful e.g. for float values."""
+
+    @property
+    def name(self):
+        return "asis"
+
+    def encode(self, token):
+        return torch.tensor([token])
+
+
+class BoolEncoder(PropertyEncoder):
+    @property
+    def name(self):
+        return "bool"
+
+    def encode(self, token: bool):
+        return torch.tensor([1 if token else 0])

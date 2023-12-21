@@ -38,18 +38,14 @@ class GraphPropertyReader(dr.ChemDataReader):
             return self.mol_object_buffer[smiles]
 
         mol = Chem.MolFromSmiles(smiles)
-        if not isinstance(mol, Chem.rdchem.Mol):
+        if mol is None:
+            rank_zero_warn(f"RDKit failed to at parsing {smiles} (returned None)")
+            self.failed_counter += 1
+        else:
             try:
-                rank_zero_warn(f"Rdkit failed to sanitize {smiles}")
-                mol = Chem.MolFromSmiles(smiles, sanitize=False)
+                Chem.SanitizeMol(mol)
             except Exception as e:
-                rank_zero_warn(f"Rdkit failed without sanitizing for {smiles}")
-                self.failed_counter += 1
-                mol = None
-            if mol is None:
-                rank_zero_warn(
-                    f"RDKit failed to without sanitizing for {smiles} (returned None)"
-                )
+                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}")
                 self.failed_counter += 1
         self.mol_object_buffer[smiles] = mol
         return mol
@@ -75,21 +71,21 @@ class GraphPropertyReader(dr.ChemDataReader):
         rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
         self.mol_object_buffer = {}
 
-    def read_atom_property(self, smiles: str, property: properties.AtomProperty):
+    def read_atom_property(
+        self, smiles: str, property: properties.AtomProperty
+    ) -> Optional[List]:
         mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
-        return torch.tensor(
-            [property.get_atom_property_value(atom) for atom in mol.GetAtoms()]
-        )
+        return [property.get_atom_property_value(atom) for atom in mol.GetAtoms()]
 
-    def read_bond_property(self, smiles: str, property: properties.BondProperty):
+    def read_bond_property(
+        self, smiles: str, property: properties.BondProperty
+    ) -> Optional[List]:
         mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
-        return torch.tensor(
-            [property.get_bond_property_value(bond) for bond in mol.GetBonds()]
-        )
+        return [property.get_bond_property_value(bond) for bond in mol.GetBonds()]
 
 
 class GraphReader(dr.ChemDataReader):

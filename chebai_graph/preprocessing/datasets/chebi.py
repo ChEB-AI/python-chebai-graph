@@ -1,7 +1,6 @@
 from chebai.preprocessing.datasets.chebi import ChEBIOver50
 
 from chebai_graph.preprocessing.reader import GraphReader, GraphPropertyReader
-from chebai_graph.preprocessing.property_encoder import IndexEncoder
 from chebai_graph.preprocessing.properties import (
     AtomProperty,
     BondProperty,
@@ -49,14 +48,31 @@ class ChEBI50GraphProperties(ChEBIOver50):
         # atom_properties and bond_properties are given as lists containing class_paths
         if atom_properties is not None:
             atom_properties = [_resolve_property(prop) for prop in atom_properties]
+            atom_properties = sorted(
+                atom_properties, key=lambda prop: self.get_atom_property_path(prop)
+            )
         else:
             atom_properties = []
         if bond_properties is not None:
             bond_properties = [_resolve_property(prop) for prop in bond_properties]
+            bond_properties = sorted(
+                bond_properties, key=lambda prop: self.get_bond_property_path(prop)
+            )
         else:
-            atom_properties = []
+            bond_properties = []
         self.atom_properties = atom_properties
         self.bond_properties = bond_properties
+        assert isinstance(self.atom_properties, list) and all(
+            isinstance(p, AtomProperty) for p in self.atom_properties
+        )
+        assert isinstance(self.bond_properties, list) and all(
+            isinstance(p, BondProperty) for p in self.bond_properties
+        )
+        print(
+            f"Data module uses (in this order): "
+            f'\n\tAtom properties: {", ".join([str(p) for p in atom_properties])} '
+            f'\n\tBond properties: {",".join([str(p) for p in bond_properties])}'
+        )
 
     def _setup_properties(self):
         raw_data = []
@@ -71,8 +87,8 @@ class ChEBI50GraphProperties(ChEBIOver50):
 
         # use vectorized version of encode function, apply only if value is present
         enc_if_not_none = (
-            lambda f, v: torch.tensor(f(v.numpy()))
-            if v is not None and len(v) > 0
+            lambda encode, value: [encode(atom_v) for atom_v in value]
+            if value is not None and len(value) > 0
             else None
         )
 
@@ -85,16 +101,15 @@ class ChEBI50GraphProperties(ChEBIOver50):
                     self.reader.read_atom_property(feat, property)
                     for feat in tqdm.tqdm(features)
                 ]
-                enc_vec = np.vectorize(property.encoder.encode)
-                encoded_values = torch.cat(
-                    [
-                        enc_if_not_none(enc_vec, value)
-                        for value in tqdm.tqdm(property_values)
-                    ]
-                )
+                property.encoder.on_start(property_values=property_values)
+                encoded_values = [
+                    enc_if_not_none(property.encoder.encode, value)
+                    for value in tqdm.tqdm(property_values)
+                ]
+
                 torch.save(
                     [
-                        {property.name: feat, "ident": id}
+                        {property.name: torch.cat(feat), "ident": id}
                         for feat, id in zip(encoded_values, idents)
                         if feat is not None
                     ],
@@ -111,16 +126,15 @@ class ChEBI50GraphProperties(ChEBIOver50):
                     self.reader.read_bond_property(feat, property)
                     for feat in tqdm.tqdm(features)
                 ]
-                enc_vec = np.vectorize(property.encoder.encode)
-                encoded_values = torch.cat(
-                    [
-                        enc_if_not_none(enc_vec, value)
-                        for value in tqdm.tqdm(property_values)
-                    ]
-                )
+                property.encoder.on_start(property_values=property_values)
+                encoded_values = [
+                    enc_if_not_none(property.encoder.encode, value)
+                    for value in tqdm.tqdm(property_values)
+                ]
+
                 torch.save(
                     [
-                        {property.name: feat, "ident": id}
+                        {property.name: torch.cat(feat), "ident": id}
                         for feat, id in zip(encoded_values, idents)
                         if feat is not None
                     ],
@@ -128,19 +142,32 @@ class ChEBI50GraphProperties(ChEBIOver50):
                 )
                 property.on_finish()
 
+        print(
+            f"Finished setting up properties."
+            f"If you train a model with these properties and encodings, "
+            f"use n_atom_properties: {sum([prop.encoder.get_encoding_length() for prop in self.atom_properties])} "
+            f"and n_bond_properties: {sum([prop.encoder.get_encoding_length() for prop in self.bond_properties])}"
+        )
+
     @property
     def processed_atom_properties_dir(self):
         return os.path.join(self.processed_dir, "atom_properties")
 
     def get_atom_property_path(self, property: AtomProperty):
-        return os.path.join(self.processed_atom_properties_dir, f"{property.name}.pt")
+        return os.path.join(
+            self.processed_atom_properties_dir,
+            f"{property.name}_{property.encoder.name}.pt",
+        )
 
     @property
     def processed_bond_properties_dir(self):
         return os.path.join(self.processed_dir, "bond_properties")
 
     def get_bond_property_path(self, property: BondProperty):
-        return os.path.join(self.processed_bond_properties_dir, f"{property.name}.pt")
+        return os.path.join(
+            self.processed_bond_properties_dir,
+            f"{property.name}_{property.encoder.name}.pt",
+        )
 
     def setup(self, **kwargs):
         super().setup(keep_reader=True, **kwargs)
@@ -152,7 +179,16 @@ class ChEBI50GraphProperties(ChEBIOver50):
     def _merge_atom_prop_into_base(row, property: AtomProperty):
         geom_data = row["features"]
         assert isinstance(geom_data, GeomData)
-        x = torch.cat([geom_data.x, row[f"atom_{property.name}"].unsqueeze(1)], dim=1)
+        property_values = row[f"atom_{property.name}"]
+
+        if isinstance(property_values, torch.Tensor):
+            if len(property_values.size()) == 0:
+                property_values = property_values.unsqueeze(0)
+            if len(property_values.size()) == 1:
+                property_values = property_values.unsqueeze(1)
+        else:
+            property_values = torch.zeros((0, property.encoder.get_encoding_length()))
+        x = torch.cat([geom_data.x, property_values], dim=1)
         return GeomData(
             x=x, edge_index=geom_data.edge_index, edge_attr=geom_data.edge_attr
         )
@@ -161,8 +197,13 @@ class ChEBI50GraphProperties(ChEBIOver50):
     def _merge_bond_prop_into_base(row, property: BondProperty):
         geom_data = row["features"]
         assert isinstance(geom_data, GeomData)
-        if isinstance(row[f"bond_{property.name}"], torch.Tensor):
-            property_values = row[f"bond_{property.name}"].unsqueeze(1)
+        property_values = row[f"bond_{property.name}"]
+
+        if isinstance(property_values, torch.Tensor):
+            if len(property_values.size()) == 0:
+                property_values = property_values.unsqueeze(0)
+            if len(property_values.size()) == 1:
+                property_values = property_values.unsqueeze(1)
         else:
             property_values = torch.zeros((0, property.encoder.get_encoding_length()))
         edge_attr = torch.cat([geom_data.edge_attr, property_values], dim=1)
