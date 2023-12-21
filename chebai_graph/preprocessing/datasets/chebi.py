@@ -142,15 +142,6 @@ class ChEBI50GraphProperties(ChEBIOver50):
                 )
                 property.on_finish()
 
-        print(
-            f"Finished setting up properties."
-            f"\nEncoding lengths are: {[(prop.name, prop.encoder.get_encoding_length()) for prop in self.atom_properties]}"
-            f"{[(prop.name, prop.encoder.get_encoding_length()) for prop in self.bond_properties]}"
-            f"\nIf you train a model with these properties and encodings, "
-            f"use n_atom_properties: {sum([prop.encoder.get_encoding_length() for prop in self.atom_properties])} "
-            f"and n_bond_properties: {sum([prop.encoder.get_encoding_length() for prop in self.bond_properties])}"
-        )
-
     @property
     def processed_atom_properties_dir(self):
         return os.path.join(self.processed_dir, "atom_properties")
@@ -250,5 +241,22 @@ class ChEBI50GraphProperties(ChEBIOver50):
             base_df["features"] = base_df.apply(
                 lambda row: self._merge_bond_prop_into_base(row, property), axis=1
             )
+
+        atom_prop_lengths = [
+            (prop.name, prop.encoder.get_encoding_length())
+            for prop in self.atom_properties
+        ]
+        bond_prop_lengths = [
+            (prop.name, prop.encoder.get_encoding_length())
+            for prop in self.bond_properties
+        ]
+        print(
+            f"Finished loading dataset from properties."
+            f"\nEncoding lengths are: "
+            f"{atom_prop_lengths + bond_prop_lengths}"
+            f"\nIf you train a model with these properties and encodings, "
+            f"use n_atom_properties: {sum([prop.encoder.get_encoding_length() for prop in self.atom_properties])} "
+            f"and n_bond_properties: {sum([prop.encoder.get_encoding_length() for prop in self.bond_properties])}"
+        )
 
         return base_df[base_data[0].keys()].to_dict("records")
