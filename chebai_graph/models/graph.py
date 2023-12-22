@@ -67,7 +67,7 @@ class JCIGraphNet(ChebaiBaseNet):
         return a
 
 
-class ResGatedGraphConvNet(JCIGraphNet):
+class ResGatedGraphConvNet(ChebaiBaseNet):
     """GNN that supports edge attributes"""
 
     NAME = "ResGatedGraphConvNet"
