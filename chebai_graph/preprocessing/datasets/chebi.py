@@ -204,10 +204,9 @@ class ChEBI50GraphProperties(ChEBIOver50):
             x=geom_data.x, edge_index=geom_data.edge_index, edge_attr=edge_attr
         )
 
-    def _load_processed_data(self, kind):
+    def load_processed_data(self, kind: str = None, filename: str = None):
         """Combine base data set with property values for atoms and bonds."""
-        base_filename = self.processed_file_names_dict[kind]
-        base_data = torch.load(os.path.join(self.processed_dir, base_filename))
+        base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
         for property in self.atom_properties:
             assert isinstance(property, AtomProperty)
