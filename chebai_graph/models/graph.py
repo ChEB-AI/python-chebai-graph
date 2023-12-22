@@ -43,7 +43,7 @@ class JCIGraphNet(ChebaiBaseNet):
         self.activation = F.elu
 
         self.linear_layers = torch.nn.ModuleList([])
-        for _ in range(self.n_linear_layers):
+        for _ in range(self.n_linear_layers - 1):
             self.linear_layers.append(nn.Linear(self.hidden_length, self.hidden_length))
         self.final_layer = nn.Linear(self.hidden_length, self.out_dim)
 
@@ -73,11 +73,21 @@ class ResGatedGraphConvNet(JCIGraphNet):
     NAME = "ResGatedGraphConvNet"
 
     def __init__(self, config: typing.Dict, **kwargs):
-        super().__init__(config, **kwargs)
-        # todo: replace by argument linking
+        super().__init__(**kwargs)
+
+        self.in_length = config["in_length"]
+        self.hidden_length = config["hidden_length"]
+        self.dropout_rate = config["dropout_rate"]
+        self.n_conv_layers = config["n_conv_layers"] if "n_conv_layers" in config else 3
+        self.n_linear_layers = (
+            config["n_linear_layers"] if "n_linear_layers" in config else 3
+        )
         self.n_atom_properties = config["n_atom_properties"]
         self.n_bond_properties = config["n_bond_properties"]
-        # replace with ResGatedGraphConvs
+
+        self.activation = F.elu
+        self.dropout = nn.Dropout(self.dropout_rate)
+
         self.convs = torch.nn.ModuleList([])
         for i in range(self.n_conv_layers):
             if i == 0:
@@ -97,6 +107,11 @@ class ResGatedGraphConvNet(JCIGraphNet):
         self.final_conv = tgnn.ResGatedGraphConv(
             self.in_length, self.hidden_length, edge_dim=self.n_bond_properties
         )
+
+        self.linear_layers = torch.nn.ModuleList([])
+        for _ in range(self.n_linear_layers - 1):
+            self.linear_layers.append(nn.Linear(self.hidden_length, self.hidden_length))
+        self.final_layer = nn.Linear(self.hidden_length, self.out_dim)
 
     def forward(self, batch):
         graph_data = batch["features"][0]

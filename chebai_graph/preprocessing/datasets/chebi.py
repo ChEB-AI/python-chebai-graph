@@ -71,7 +71,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
         print(
             f"Data module uses (in this order): "
             f'\n\tAtom properties: {", ".join([str(p) for p in atom_properties])} '
-            f'\n\tBond properties: {",".join([str(p) for p in bond_properties])}'
+            f'\n\tBond properties: {", ".join([str(p) for p in bond_properties])}'
         )
 
     def _setup_properties(self):
