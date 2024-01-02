@@ -13,7 +13,12 @@ from chebai.models.base import ChebaiBaseNet
 logging.getLogger("pysmiles").setLevel(logging.CRITICAL)
 
 
-class JCIGraphNet(ChebaiBaseNet):
+class GraphBaseNet(ChebaiBaseNet):
+    def _get_prediction_and_labels(self, data, labels, output):
+        return torch.sigmoid(output), labels.int()
+
+
+class JCIGraphNet(GraphBaseNet):
     NAME = "GNN"
 
     def __init__(self, config: typing.Dict, **kwargs):
@@ -67,7 +72,7 @@ class JCIGraphNet(ChebaiBaseNet):
         return a
 
 
-class ResGatedGraphConvNet(ChebaiBaseNet):
+class ResGatedGraphConvNet(GraphBaseNet):
     """GNN that supports edge attributes"""
 
     NAME = "ResGatedGraphConvNet"
@@ -138,7 +143,7 @@ class ResGatedGraphConvNet(ChebaiBaseNet):
         return a
 
 
-class JCIGraphAttentionNet(ChebaiBaseNet):
+class JCIGraphAttentionNet(GraphBaseNet):
     NAME = "AGNN"
 
     def __init__(self, config: typing.Dict, **kwargs):
