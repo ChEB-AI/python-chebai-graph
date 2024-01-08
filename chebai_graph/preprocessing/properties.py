@@ -77,6 +77,22 @@ class Chirality(AtomProperty):
         return atom.GetChiralTag()
 
 
+class Hybridization(AtomProperty):
+    def __init__(self, encoder: Optional[PropertyEncoder] = None):
+        super().__init__(encoder or OneHotEncoder(self))
+
+    def get_atom_property_value(self, atom: Chem.rdchem.Atom):
+        return atom.GetHybridization()
+
+
+class NumHAtoms(AtomProperty):
+    def __init__(self, encoder: Optional[PropertyEncoder] = None):
+        super().__init__(encoder or OneHotEncoder(self))
+
+    def get_atom_property_value(self, atom: Chem.rdchem.Atom):
+        return atom.GetTotalNumHs()
+
+
 class Aromaticity(AtomProperty, BondProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or BoolEncoder(self))

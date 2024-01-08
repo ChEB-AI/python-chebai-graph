@@ -1,4 +1,5 @@
 from chebai.preprocessing.datasets.chebi import ChEBIOver50
+from lightning_utilities.core.rank_zero import rank_zero_info
 
 from chebai_graph.preprocessing.reader import GraphReader, GraphPropertyReader
 from chebai_graph.preprocessing.properties import (
@@ -68,7 +69,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
         assert isinstance(self.bond_properties, list) and all(
             isinstance(p, BondProperty) for p in self.bond_properties
         )
-        print(
+        rank_zero_info(
             f"Data module uses (in this order): "
             f'\n\tAtom properties: {", ".join([str(p) for p in atom_properties])} '
             f'\n\tBond properties: {", ".join([str(p) for p in bond_properties])}'
@@ -95,7 +96,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
         for property in self.atom_properties:
             assert isinstance(property, AtomProperty)
             if not os.path.isfile(self.get_atom_property_path(property)):
-                print(f"Process atom property {property.name}")
+                rank_zero_info(f"Processing atom property {property.name}")
                 # read all property values first, then encode
                 property_values = [
                     self.reader.read_atom_property(feat, property)
@@ -120,7 +121,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
         for property in self.bond_properties:
             assert isinstance(property, BondProperty)
             if not os.path.isfile(self.get_bond_property_path(property)):
-                print(f"Process bond property {property.name}")
+                rank_zero_info(f"Processing bond property {property.name}")
                 # read all property values first, then encode
                 property_values = [
                     self.reader.read_bond_property(feat, property)
@@ -249,7 +250,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
             (prop.name, prop.encoder.get_encoding_length())
             for prop in self.bond_properties
         ]
-        print(
+        rank_zero_info(
             f"Finished loading dataset from properties."
             f"\nEncoding lengths are: "
             f"{atom_prop_lengths + bond_prop_lengths}"
