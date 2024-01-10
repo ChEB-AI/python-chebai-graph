@@ -1,4 +1,4 @@
-class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphPropertiesPartial
+class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphProperties
 init_args:
   atom_properties:
       - chebai_graph.preprocessing.properties.AtomType

@@ -44,7 +44,7 @@ class GINEConvNet(GraphBaseNet):
         self.activation = F.relu
 
         self.convs = torch.nn.ModuleList([])
-        self.batch_norms = torch.nn.ModuleList([])
+        # self.batch_norms = torch.nn.ModuleList([])
         for i in range(self.n_conv_layers):
             in_length = self.n_atom_properties if i == 0 else self.hidden_size
             out_length = self.hidden_size
@@ -54,7 +54,7 @@ class GINEConvNet(GraphBaseNet):
                     edge_dim=self.n_bond_properties,
                 )
             )
-            self.batch_norms.append(torch.nn.BatchNorm1d(out_length))
+            # self.batch_norms.append(torch.nn.BatchNorm1d(out_length))
 
         self.linear_layers = torch.nn.ModuleList([])
         for i in range(self.n_linear_layers):
