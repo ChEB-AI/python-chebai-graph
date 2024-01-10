@@ -19,7 +19,7 @@ class AggregateMLP(torch.nn.Module):
 
     def forward(self, x):
         x = self.activation(self.in_layer(x))
-        x = self.out_layer(x)
+        x = self.activation(self.out_layer(x))
         return x
 
 
