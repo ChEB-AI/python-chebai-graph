@@ -77,7 +77,7 @@ class GINEConvNet(GraphBaseNet):
             if not dropout_used:
                 a = self.dropout(a)
                 dropout_used = True
-            a = norm(a)
+            # a = norm(a)
         a = self.dropout(a)
 
         a = scatter_add(a, graph_data.batch, dim=0)
