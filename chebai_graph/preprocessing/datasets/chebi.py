@@ -1,4 +1,4 @@
-from chebai.preprocessing.datasets.chebi import ChEBIOver50
+from chebai.preprocessing.datasets.chebi import ChEBIOver50, ChEBIOverXPartial
 from lightning_utilities.core.rank_zero import rank_zero_info
 
 from chebai_graph.preprocessing.reader import GraphReader, GraphPropertyReader
@@ -260,3 +260,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
+
+
+class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):
+    pass

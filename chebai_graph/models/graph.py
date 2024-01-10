@@ -87,8 +87,8 @@ class ResGatedGraphConvNet(GraphBaseNet):
         self.n_linear_layers = (
             config["n_linear_layers"] if "n_linear_layers" in config else 3
         )
-        self.n_atom_properties = config["n_atom_properties"]
-        self.n_bond_properties = config["n_bond_properties"]
+        self.n_atom_properties = int(config["n_atom_properties"])
+        self.n_bond_properties = int(config["n_bond_properties"])
 
         self.activation = F.elu
         self.dropout = nn.Dropout(self.dropout_rate)
