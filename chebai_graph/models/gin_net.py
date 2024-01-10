@@ -70,7 +70,7 @@ class GINEConvNet(GraphBaseNet):
         a = graph_data.x
 
         dropout_used = False  # only apply dropout after first layer
-        for conv, norm in zip(self.convs, self.batch_norms):
+        for conv in self.convs:  # , norm in zip(self.convs, self.batch_norms):
             a = self.activation(
                 conv(a, graph_data.edge_index.long(), graph_data.edge_attr)
             )
