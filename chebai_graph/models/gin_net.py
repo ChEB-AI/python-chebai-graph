@@ -70,6 +70,7 @@ class GINEConvNet(GraphBaseNet):
         a = graph_data.x
 
         dropout_used = False  # only apply dropout after first layer
+        conv_out = []
         for conv in self.convs:  # , norm in zip(self.convs, self.batch_norms):
             a = self.activation(
                 conv(a, graph_data.edge_index.long(), graph_data.edge_attr)
@@ -78,12 +79,17 @@ class GINEConvNet(GraphBaseNet):
                 a = self.dropout(a)
                 dropout_used = True
             # a = norm(a)
-        a = self.dropout(a)
+            a = scatter_add(a, graph_data.batch, dim=0)
+            conv_out.append(a)
 
-        a = scatter_add(a, graph_data.batch, dim=0)
+        a = torch.cat(conv_out, dim=1)
 
-        for lin in self.linear_layers:
-            a = self.activation(lin(a))
+        for i in range(self.n_linear_layers):
+            if i != self.n_linear_layers - 1:
+                a = self.activation(self.linear_layers[i](a))
+            else:
+                a = self.linear_layers[i](a)
+            if i == 0:
+                a = self.dropout(a)
 
-        # todo: not implemented: concatenation over outputs from each conv layer
         return a
