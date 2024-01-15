@@ -30,77 +30,93 @@ class MolecularProperty(abc.ABC):
     def __str__(self):
         return self.name
 
+    def get_property_value(self, mol: Chem.rdchem.Mol):
+        raise NotImplementedError
+
 
 class AtomProperty(MolecularProperty):
     """Property of an atom."""
 
-    def get_atom_property_value(self, atom: Chem.rdchem.Atom):
-        """Calculate the value of this property for a given atom."""
-        raise NotImplementedError
+    def get_property_value(self, mol: Chem.rdchem.Mol):
+        return [self.get_atom_value(atom) for atom in mol.GetAtoms()]
+
+    def get_atom_value(self, atom: Chem.rdchem.Atom):
+        return NotImplementedError
 
 
 class BondProperty(MolecularProperty):
-    def get_bond_property_value(self, bond: Chem.rdchem.Bond):
-        """Calculate the value of this property for a given bond."""
-        raise NotImplementedError
+    def get_property_value(self, mol: Chem.rdchem.Mol):
+        return [self.get_bond_value(bond) for bond in mol.GetBonds()]
+
+    def get_bond_value(self, bond: Chem.rdchem.Bond):
+        return NotImplementedError
+
+
+class MoleculeProperty(MolecularProperty):
+    """Global property of a molecule."""
 
 
 class AtomType(AtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
-    def get_atom_property_value(self, atom):
+    def get_atom_value(self, atom: Chem.rdchem.Atom):
         return atom.GetAtomicNum()
 
 
 class NumAtomBonds(AtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
-        super().__init__(encoder or AsIsEncoder(self))
+        super().__init__(encoder or OneHotEncoder(self))
 
-    def get_atom_property_value(self, atom):
+    def get_atom_value(self, atom: Chem.rdchem.Atom):
         return atom.GetDegree()
 
 
-class FormalCharge(AtomProperty):
+class AtomCharge(AtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
-    def get_atom_property_value(self, atom: Chem.rdchem.Atom):
+    def get_atom_value(self, atom: Chem.rdchem.Atom):
         return atom.GetFormalCharge()
 
 
-class Chirality(AtomProperty):
+class AtomChirality(AtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
-    def get_atom_property_value(self, atom: Chem.rdchem.Atom):
+    def get_atom_value(self, atom: Chem.rdchem.Atom):
         return atom.GetChiralTag()
 
 
-class Hybridization(AtomProperty):
+class AtomHybridization(AtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
-    def get_atom_property_value(self, atom: Chem.rdchem.Atom):
+    def get_atom_value(self, atom: Chem.rdchem.Atom):
         return atom.GetHybridization()
 
 
-class NumHAtoms(AtomProperty):
+class AtomNumHs(AtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
-    def get_atom_property_value(self, atom: Chem.rdchem.Atom):
+    def get_atom_value(self, atom: Chem.rdchem.Atom):
         return atom.GetTotalNumHs()
 
 
-class Aromaticity(AtomProperty, BondProperty):
+class AtomAromaticity(AtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or BoolEncoder(self))
 
-    def get_atom_property_value(self, atom: Chem.rdchem.Atom):
+    def get_atom_value(self, atom: Chem.rdchem.Atom):
         return atom.GetIsAromatic()
 
-    def get_bond_property_value(self, bond: Chem.rdchem.Bond):
+
+class BondAromaticity(BondProperty):
+    def __init__(self, encoder: Optional[PropertyEncoder] = None):
+        super().__init__(encoder or BoolEncoder(self))
+
+    def get_bond_value(self, bond: Chem.rdchem.Bond):
         return bond.GetIsAromatic()
 
 
@@ -108,7 +124,7 @@ class BondType(BondProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
-    def get_bond_property_value(self, bond: Chem.rdchem.Bond):
+    def get_bond_value(self, bond: Chem.rdchem.Bond):
         return bond.GetBondType()
 
 
@@ -116,5 +132,13 @@ class BondInRing(BondProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or BoolEncoder(self))
 
-    def get_bond_property_value(self, bond: Chem.rdchem.Bond):
+    def get_bond_value(self, bond: Chem.rdchem.Bond):
         return bond.IsInRing()
+
+
+class MoleculeNumRings(MolecularProperty):
+    def __init__(self, encoder: Optional[PropertyEncoder] = None):
+        super().__init__(encoder or OneHotEncoder(self))
+
+    def get_property_value(self, mol: Chem.rdchem.Mol):
+        return [mol.GetRingInfo().NumRings()]

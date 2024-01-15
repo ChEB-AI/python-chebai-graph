@@ -30,8 +30,8 @@ class PropertyEncoder(abc.ABC):
 
 
 class IndexEncoder(PropertyEncoder):
-    """Enocdes property values as indices. For that purpose, compiles a dynamic list of different values that have
-    occured. Stores this list in a file for later reference."""
+    """Encodes property values as indices. For that purpose, compiles a dynamic list of different values that have
+    occurred. Stores this list in a file for later reference."""
 
     def __init__(self, property, indices_dir=None, **kwargs):
         super().__init__(property, **kwargs)
@@ -52,7 +52,7 @@ class IndexEncoder(PropertyEncoder):
     def index_path(self):
         """Get path to store indices of property values, create file if it does not exist yet"""
         index_path = os.path.join(
-            self.dirname, "bin", self.property.name, "indices.txt"
+            self.dirname, "bin", self.property.name, f"indices_{self.name}.txt"
         )
         os.makedirs(
             os.path.join(self.dirname, "bin", self.property.name), exist_ok=True

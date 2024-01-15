@@ -71,21 +71,13 @@ class GraphPropertyReader(dr.ChemDataReader):
         rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
         self.mol_object_buffer = {}
 
-    def read_atom_property(
-        self, smiles: str, property: properties.AtomProperty
+    def read_property(
+        self, smiles: str, property: properties.MolecularProperty
     ) -> Optional[List]:
         mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
-        return [property.get_atom_property_value(atom) for atom in mol.GetAtoms()]
-
-    def read_bond_property(
-        self, smiles: str, property: properties.BondProperty
-    ) -> Optional[List]:
-        mol = self._smiles_to_mol(smiles)
-        if mol is None:
-            return None
-        return [property.get_bond_property_value(bond) for bond in mol.GetBonds()]
+        return property.get_property_value(mol)
 
 
 class GraphReader(dr.ChemDataReader):

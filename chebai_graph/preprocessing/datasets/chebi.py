@@ -1,3 +1,5 @@
+from typing import Optional, List
+
 from chebai.preprocessing.datasets.chebi import ChEBIOver50, ChEBIOverXPartial
 from lightning_utilities.core.rank_zero import rank_zero_info
 
@@ -14,7 +16,6 @@ import chebai_graph.preprocessing.properties as graph_properties
 import importlib
 import os
 import tqdm
-import numpy as np
 
 
 class ChEBI50GraphData(ChEBIOver50):
@@ -27,10 +28,11 @@ class ChEBI50GraphData(ChEBIOver50):
 def _resolve_property(
     property,  #: str | properties.MolecularProperty
 ) -> MolecularProperty:
-    # split class_path into module-part and class name
+    # if property is given as a string, try to resolve as a class path
     if isinstance(property, MolecularProperty):
         return property
     try:
+        # split class_path into module-part and class name
         last_dot = property.rindex(".")
         module_name = property[:last_dot]
         class_name = property[last_dot + 1 :]
@@ -44,41 +46,27 @@ def _resolve_property(
 class ChEBI50GraphProperties(ChEBIOver50):
     READER = GraphPropertyReader
 
-    def __init__(self, atom_properties, bond_properties, **kwargs):
+    def __init__(self, properties: Optional[List], **kwargs):
         super().__init__(**kwargs)
         # atom_properties and bond_properties are given as lists containing class_paths
-        if atom_properties is not None:
-            atom_properties = [_resolve_property(prop) for prop in atom_properties]
-            atom_properties = sorted(
-                atom_properties, key=lambda prop: self.get_atom_property_path(prop)
+        if properties is not None:
+            properties = [_resolve_property(prop) for prop in properties]
+            properties = sorted(
+                properties, key=lambda prop: self.get_property_path(prop)
             )
         else:
-            atom_properties = []
-        if bond_properties is not None:
-            bond_properties = [_resolve_property(prop) for prop in bond_properties]
-            bond_properties = sorted(
-                bond_properties, key=lambda prop: self.get_bond_property_path(prop)
-            )
-        else:
-            bond_properties = []
-        self.atom_properties = atom_properties
-        self.bond_properties = bond_properties
-        assert isinstance(self.atom_properties, list) and all(
-            isinstance(p, AtomProperty) for p in self.atom_properties
-        )
-        assert isinstance(self.bond_properties, list) and all(
-            isinstance(p, BondProperty) for p in self.bond_properties
+            properties = []
+        self.properties = properties
+        assert isinstance(self.properties, list) and all(
+            isinstance(p, MolecularProperty) for p in self.properties
         )
         rank_zero_info(
-            f"Data module uses (in this order): "
-            f'\n\tAtom properties: {", ".join([str(p) for p in atom_properties])} '
-            f'\n\tBond properties: {", ".join([str(p) for p in bond_properties])}'
+            f"Data module uses these properties (ordered): {', '.join([str(p) for p in properties])}"
         )
 
     def _setup_properties(self):
         raw_data = []
-        os.makedirs(self.processed_atom_properties_dir, exist_ok=True)
-        os.makedirs(self.processed_bond_properties_dir, exist_ok=True)
+        os.makedirs(self.processed_properties_dir, exist_ok=True)
 
         for raw_file in self.raw_file_names:
             path = os.path.join(self.raw_dir, raw_file)
@@ -93,13 +81,12 @@ class ChEBI50GraphProperties(ChEBIOver50):
             else None
         )
 
-        for property in self.atom_properties:
-            assert isinstance(property, AtomProperty)
-            if not os.path.isfile(self.get_atom_property_path(property)):
-                rank_zero_info(f"Processing atom property {property.name}")
+        for property in self.properties:
+            if not os.path.isfile(self.get_property_path(property)):
+                rank_zero_info(f"Processing property {property.name}")
                 # read all property values first, then encode
                 property_values = [
-                    self.reader.read_atom_property(feat, property)
+                    self.reader.read_property(feat, property)
                     for feat in tqdm.tqdm(features)
                 ]
                 property.encoder.on_start(property_values=property_values)
@@ -114,52 +101,17 @@ class ChEBI50GraphProperties(ChEBIOver50):
                         for feat, id in zip(encoded_values, idents)
                         if feat is not None
                     ],
-                    self.get_atom_property_path(property),
-                )
-                property.on_finish()
-
-        for property in self.bond_properties:
-            assert isinstance(property, BondProperty)
-            if not os.path.isfile(self.get_bond_property_path(property)):
-                rank_zero_info(f"Processing bond property {property.name}")
-                # read all property values first, then encode
-                property_values = [
-                    self.reader.read_bond_property(feat, property)
-                    for feat in tqdm.tqdm(features)
-                ]
-                property.encoder.on_start(property_values=property_values)
-                encoded_values = [
-                    enc_if_not_none(property.encoder.encode, value)
-                    for value in tqdm.tqdm(property_values)
-                ]
-
-                torch.save(
-                    [
-                        {property.name: torch.cat(feat), "ident": id}
-                        for feat, id in zip(encoded_values, idents)
-                        if feat is not None
-                    ],
-                    self.get_bond_property_path(property),
+                    self.get_property_path(property),
                 )
                 property.on_finish()
 
     @property
-    def processed_atom_properties_dir(self):
+    def processed_properties_dir(self):
         return os.path.join(self.processed_dir, "atom_properties")
 
-    def get_atom_property_path(self, property: AtomProperty):
+    def get_property_path(self, property: MolecularProperty):
         return os.path.join(
-            self.processed_atom_properties_dir,
-            f"{property.name}_{property.encoder.name}.pt",
-        )
-
-    @property
-    def processed_bond_properties_dir(self):
-        return os.path.join(self.processed_dir, "bond_properties")
-
-    def get_bond_property_path(self, property: BondProperty):
-        return os.path.join(
-            self.processed_bond_properties_dir,
+            self.processed_properties_dir,
             f"{property.name}_{property.encoder.name}.pt",
         )
 
@@ -169,49 +121,42 @@ class ChEBI50GraphProperties(ChEBIOver50):
 
         self.reader.on_finish()
 
-    @staticmethod
-    def _merge_atom_prop_into_base(row, property: AtomProperty):
+    def _merge_props_into_base(self, row):
         geom_data = row["features"]
+        edge_attr = geom_data.edge_attr
+        x = geom_data.x
+        molecule_attr = torch.empty((1, 0))
         assert isinstance(geom_data, GeomData)
-        property_values = row[f"atom_{property.name}"]
-
-        if isinstance(property_values, torch.Tensor):
-            if len(property_values.size()) == 0:
-                property_values = property_values.unsqueeze(0)
-            if len(property_values.size()) == 1:
-                property_values = property_values.unsqueeze(1)
-        else:
-            property_values = torch.zeros((0, property.encoder.get_encoding_length()))
-        x = torch.cat([geom_data.x, property_values], dim=1)
+        for property in self.properties:
+            property_values = row[f"{property.name}"]
+            if isinstance(property_values, torch.Tensor):
+                if len(property_values.size()) == 0:
+                    property_values = property_values.unsqueeze(0)
+                if len(property_values.size()) == 1:
+                    property_values = property_values.unsqueeze(1)
+            else:
+                property_values = torch.zeros(
+                    (0, property.encoder.get_encoding_length())
+                )
+            if isinstance(property, AtomProperty):
+                x = torch.cat([x, property_values], dim=1)
+            elif isinstance(property, BondProperty):
+                edge_attr = torch.cat([edge_attr, property_values], dim=1)
+            else:
+                molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
         return GeomData(
-            x=x, edge_index=geom_data.edge_index, edge_attr=geom_data.edge_attr
-        )
-
-    @staticmethod
-    def _merge_bond_prop_into_base(row, property: BondProperty):
-        geom_data = row["features"]
-        assert isinstance(geom_data, GeomData)
-        property_values = row[f"bond_{property.name}"]
-
-        if isinstance(property_values, torch.Tensor):
-            if len(property_values.size()) == 0:
-                property_values = property_values.unsqueeze(0)
-            if len(property_values.size()) == 1:
-                property_values = property_values.unsqueeze(1)
-        else:
-            property_values = torch.zeros((0, property.encoder.get_encoding_length()))
-        edge_attr = torch.cat([geom_data.edge_attr, property_values], dim=1)
-        return GeomData(
-            x=geom_data.x, edge_index=geom_data.edge_index, edge_attr=edge_attr
+            x=x,
+            edge_index=geom_data.edge_index,
+            edge_attr=edge_attr,
+            molecule_attr=molecule_attr,
         )
 
     def load_processed_data(self, kind: str = None, filename: str = None):
         """Combine base data set with property values for atoms and bonds."""
         base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
-        for property in self.atom_properties:
-            assert isinstance(property, AtomProperty)
-            property_data = torch.load(self.get_atom_property_path(property))
+        for property in self.properties:
+            property_data = torch.load(self.get_property_path(property))
             if len(property_data[0][property.name].shape) > 1:
                 property.encoder.set_encoding_length(
                     property_data[0][property.name].shape[1]
@@ -219,44 +164,26 @@ class ChEBI50GraphProperties(ChEBIOver50):
 
             property_df = pd.DataFrame(property_data)
             property_df.rename(
-                columns={property.name: f"atom_{property.name}"}, inplace=True
+                columns={property.name: f"{property.name}"}, inplace=True
             )
             base_df = base_df.merge(property_df, on="ident", how="left")
-            base_df["features"] = base_df.apply(
-                lambda row: self._merge_atom_prop_into_base(row, property), axis=1
-            )
-        for property in self.bond_properties:
-            assert isinstance(property, BondProperty)
-            property_data = torch.load(self.get_bond_property_path(property))
-            if len(property_data[0][property.name].shape) > 1:
-                property.encoder.set_encoding_length(
-                    property_data[0][property.name].shape[1]
-                )
 
-            property_df = pd.DataFrame(property_data)
-            property_df.rename(
-                columns={property.name: f"bond_{property.name}"}, inplace=True
-            )
-            base_df = base_df.merge(property_df, on="ident", how="left")
-            base_df["features"] = base_df.apply(
-                lambda row: self._merge_bond_prop_into_base(row, property), axis=1
-            )
+        base_df["features"] = base_df.apply(
+            lambda row: self._merge_props_into_base(row), axis=1
+        )
 
-        atom_prop_lengths = [
-            (prop.name, prop.encoder.get_encoding_length())
-            for prop in self.atom_properties
+        prop_lengths = [
+            (prop.name, prop.encoder.get_encoding_length()) for prop in self.properties
         ]
-        bond_prop_lengths = [
-            (prop.name, prop.encoder.get_encoding_length())
-            for prop in self.bond_properties
-        ]
+
         rank_zero_info(
             f"Finished loading dataset from properties."
             f"\nEncoding lengths are: "
-            f"{atom_prop_lengths + bond_prop_lengths}"
+            f"{prop_lengths}"
             f"\nIf you train a model with these properties and encodings, "
-            f"use n_atom_properties: {sum([prop.encoder.get_encoding_length() for prop in self.atom_properties])} "
-            f"and n_bond_properties: {sum([prop.encoder.get_encoding_length() for prop in self.bond_properties])}"
+            f"use n_atom_properties: {sum([prop.encoder.get_encoding_length() for prop in self.properties if isinstance(prop, AtomProperty)])}, "
+            f"n_bond_properties: {sum([prop.encoder.get_encoding_length() for prop in self.properties if isinstance(prop, BondProperty)])} "
+            f"and n_molecule_properties: {sum([prop.encoder.get_encoding_length() for prop in self.properties if not (isinstance(prop, AtomProperty) or isinstance(prop, BondProperty))])}"
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
@@ -264,3 +191,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
 
 class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):
     pass
+
+
+class ChEBI50GraphPropertiesGlobal(ChEBI50GraphProperties):
+    """Add global properties to the dataset"""

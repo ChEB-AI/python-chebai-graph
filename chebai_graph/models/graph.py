@@ -89,6 +89,7 @@ class ResGatedGraphConvNet(GraphBaseNet):
         )
         self.n_atom_properties = int(config["n_atom_properties"])
         self.n_bond_properties = int(config["n_bond_properties"])
+        self.n_molecule_properties = int(config["n_molecule_properties"])
 
         self.activation = F.elu
         self.dropout = nn.Dropout(self.dropout_rate)
@@ -114,8 +115,18 @@ class ResGatedGraphConvNet(GraphBaseNet):
         )
 
         self.linear_layers = torch.nn.ModuleList([])
-        for _ in range(self.n_linear_layers - 1):
-            self.linear_layers.append(nn.Linear(self.hidden_length, self.hidden_length))
+        for i in range(self.n_linear_layers - 1):
+            if i == 0:
+                self.linear_layers.append(
+                    nn.Linear(
+                        self.hidden_length + self.n_molecule_properties,
+                        self.hidden_length,
+                    )
+                )
+            else:
+                self.linear_layers.append(
+                    nn.Linear(self.hidden_length, self.hidden_length)
+                )
         self.final_layer = nn.Linear(self.hidden_length, self.out_dim)
 
     def forward(self, batch):
@@ -136,6 +147,8 @@ class ResGatedGraphConvNet(GraphBaseNet):
         )
         a = self.dropout(a)
         a = scatter_add(a, graph_data.batch, dim=0)
+
+        a = torch.cat([a, graph_data.molecule_attr], dim=1)
 
         for lin in self.linear_layers:
             a = self.activation(lin(a))
