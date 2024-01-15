@@ -2,6 +2,7 @@ import abc
 from typing import Optional
 
 import rdkit.Chem as Chem
+from descriptastorus.descriptors import rdNormalizedDescriptors
 
 from chebai_graph.preprocessing.property_encoder import (
     PropertyEncoder,
@@ -142,3 +143,15 @@ class MoleculeNumRings(MolecularProperty):
 
     def get_property_value(self, mol: Chem.rdchem.Mol):
         return [mol.GetRingInfo().NumRings()]
+
+
+class RDKit2DNormalized(MolecularProperty):
+    def __init__(self, encoder: Optional[PropertyEncoder] = None):
+        super().__init__(encoder or AsIsEncoder(self))
+
+    def get_property_value(self, mol: Chem.rdchem.Mol):
+        generator_normalized = rdNormalizedDescriptors.RDKit2DNormalized()
+        features_normalized = generator_normalized.processMol(
+            mol, Chem.MolToSmiles(mol)
+        )
+        return [features_normalized[1:]]

@@ -20,7 +20,7 @@ class PropertyEncoder(abc.ABC):
         self._encoding_length = encoding_length
 
     def encode(self, value):
-        raise NotImplementedError
+        return value
 
     def on_start(self, **kwargs):
         pass

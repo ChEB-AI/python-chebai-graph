@@ -107,7 +107,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
 
     @property
     def processed_properties_dir(self):
-        return os.path.join(self.processed_dir, "atom_properties")
+        return os.path.join(self.processed_dir, "properties")
 
     def get_property_path(self, property: MolecularProperty):
         return os.path.join(
@@ -191,7 +191,3 @@ class ChEBI50GraphProperties(ChEBIOver50):
 
 class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):
     pass
-
-
-class ChEBI50GraphPropertiesGlobal(ChEBI50GraphProperties):
-    """Add global properties to the dataset"""
