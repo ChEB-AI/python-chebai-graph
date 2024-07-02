@@ -89,7 +89,11 @@ class ResGatedGraphConvNet(GraphBaseNet):
         )
         self.n_atom_properties = int(config["n_atom_properties"])
         self.n_bond_properties = int(config["n_bond_properties"])
-        self.n_molecule_properties = int(config["n_molecule_properties"])
+        self.n_molecule_properties = (
+            int(config["n_molecule_properties"])
+            if "n_molecule_properties" in config
+            else 0
+        )
 
         self.activation = F.elu
         self.dropout = nn.Dropout(self.dropout_rate)

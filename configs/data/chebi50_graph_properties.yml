@@ -1,12 +1,12 @@
-class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphPropertiesPartial
+class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphProperties
 init_args:
   properties:
       - chebai_graph.preprocessing.properties.AtomType
       - chebai_graph.preprocessing.properties.NumAtomBonds
       - chebai_graph.preprocessing.properties.AtomCharge
       - chebai_graph.preprocessing.properties.AtomAromaticity
-      - chebai_graph.preprocessing.properties.Hybridization
-      - chebai_graph.preprocessing.properties.NumHAtoms
+      - chebai_graph.preprocessing.properties.AtomHybridization
+      - chebai_graph.preprocessing.properties.AtomNumHs
       - chebai_graph.preprocessing.properties.BondType
       - chebai_graph.preprocessing.properties.BondInRing
       - chebai_graph.preprocessing.properties.BondAromaticity
