@@ -105,7 +105,7 @@ class ResGatedGraphConvNet(GraphBaseNet):
                     tgnn.ResGatedGraphConv(
                         self.n_atom_properties,
                         self.in_length,
-                        dropout=self.dropout_rate,
+                        # dropout=self.dropout_rate,
                         edge_dim=self.n_bond_properties,
                     )
                 )

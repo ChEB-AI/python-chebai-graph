@@ -8,10 +8,10 @@ from torch_geometric.data.collate import collate as graph_collate
 from chebai_graph.preprocessing.structures import XYGraphData
 
 
-from chebai.preprocessing import collate
+from chebai.preprocessing.collate import RaggedCollator
 
 
-class GraphCollater(collate.RaggedCollater):
+class GraphCollater(RaggedCollator):
     def __call__(self, data):
         y, idents = zip(*((d["labels"], d.get("ident")) for d in data))
         merged_data = []
