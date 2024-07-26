@@ -1,17 +1,12 @@
-from typing import Tuple, Mapping, Optional
-from collections import defaultdict
-
-
 import torch
 from torch_geometric.data import Data as GeomData
 from torch_geometric.data.collate import collate as graph_collate
 from chebai_graph.preprocessing.structures import XYGraphData
 
-
 from chebai.preprocessing.collate import RaggedCollator
 
 
-class GraphCollater(RaggedCollator):
+class GraphCollator(RaggedCollator):
     def __call__(self, data):
         y, idents = zip(*((d["labels"], d.get("ident")) for d in data))
         merged_data = []

@@ -69,7 +69,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
         os.makedirs(self.processed_properties_dir, exist_ok=True)
 
         for raw_file in self.raw_file_names:
-            path = os.path.join(self.raw_dir, raw_file)
+            path = os.path.join(self.processed_dir_main, raw_file)
             raw_data += list(self._load_dict(path))
         idents = [row["ident"] for row in raw_data]
         features = [row["features"] for row in raw_data]

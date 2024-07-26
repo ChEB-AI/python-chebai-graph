@@ -10,14 +10,14 @@ import torch
 import rdkit.Chem as Chem
 import pysmiles as ps
 import chebai.preprocessing.reader as dr
-from chebai_graph.preprocessing.collate import GraphCollater
+from chebai_graph.preprocessing.collate import GraphCollator
 import chebai_graph.preprocessing.properties as properties
 from torch_geometric.data import Data as GeomData
 from lightning_utilities.core.rank_zero import rank_zero_warn, rank_zero_info
 
 
 class GraphPropertyReader(dr.ChemDataReader):
-    COLLATER = GraphCollater
+    COLLATOR = GraphCollator
 
     def __init__(
         self,
@@ -84,7 +84,7 @@ class GraphReader(dr.ChemDataReader):
     """Reads each atom as one token (atom symbol + charge), reads bond order as edge attribute.
     Creates nx Graph from SMILES."""
 
-    COLLATER = GraphCollater
+    COLLATOR = GraphCollator
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -132,4 +132,4 @@ class GraphReader(dr.ChemDataReader):
         return data
 
     def collate(self, list_of_tuples):
-        return self.collater(list_of_tuples)
+        return self.collator(list_of_tuples)
