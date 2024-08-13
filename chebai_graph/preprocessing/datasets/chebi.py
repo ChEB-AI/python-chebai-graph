@@ -1,6 +1,7 @@
-from typing import Optional, List
+from typing import Optional, List, Callable
 
 from chebai.preprocessing.datasets.chebi import ChEBIOver50, ChEBIOverXPartial
+from chebai.preprocessing.datasets.base import XYBaseDataModule
 from lightning_utilities.core.rank_zero import rank_zero_info
 
 from chebai_graph.preprocessing.reader import GraphReader, GraphPropertyReader
@@ -43,10 +44,12 @@ def _resolve_property(
         return getattr(graph_properties, property)()
 
 
-class ChEBI50GraphProperties(ChEBIOver50):
+class GraphPropertiesMixIn(XYBaseDataModule):
     READER = GraphPropertyReader
 
-    def __init__(self, properties: Optional[List], **kwargs):
+    def __init__(
+        self, properties: Optional[List], transform: Optional[Callable] = None, **kwargs
+    ):
         super().__init__(**kwargs)
         # atom_properties and bond_properties are given as lists containing class_paths
         if properties is not None:
@@ -63,6 +66,7 @@ class ChEBI50GraphProperties(ChEBIOver50):
         rank_zero_info(
             f"Data module uses these properties (ordered): {', '.join([str(p) for p in properties])}"
         )
+        self.transform = transform
 
     def _setup_properties(self):
         raw_data = []
@@ -155,8 +159,11 @@ class ChEBI50GraphProperties(ChEBIOver50):
         """Combine base data set with property values for atoms and bonds."""
         base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
+
         for property in self.properties:
-            property_data = torch.load(self.get_property_path(property))
+            property_data = torch.load(
+                self.get_property_path(property), weights_only=False
+            )
             if len(property_data[0][property.name].shape) > 1:
                 property.encoder.set_encoding_length(
                     property_data[0][property.name].shape[1]
@@ -171,6 +178,9 @@ class ChEBI50GraphProperties(ChEBIOver50):
         base_df["features"] = base_df.apply(
             lambda row: self._merge_props_into_base(row), axis=1
         )
+        # apply transformation, e.g. masking for pretraining task
+        if self.transform is not None:
+            base_df["features"] = base_df["features"].apply(self.transform, axis=1)
 
         prop_lengths = [
             (prop.name, prop.encoder.get_encoding_length()) for prop in self.properties
@@ -187,6 +197,10 @@ class ChEBI50GraphProperties(ChEBIOver50):
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
+
+
+class ChEBI50GraphProperties(GraphPropertiesMixIn, ChEBIOver50):
+    pass
 
 
 class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):

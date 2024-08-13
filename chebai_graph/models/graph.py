@@ -1,6 +1,8 @@
 import logging
 import typing
+from typing import Dict, Any
 
+from chebai.preprocessing.structures import XYData
 from torch import nn
 from torch_geometric import nn as tgnn
 from torch_scatter import scatter_add, scatter_mean
@@ -72,10 +74,10 @@ class JCIGraphNet(GraphBaseNet):
         return a
 
 
-class ResGatedGraphConvNet(GraphBaseNet):
+class ResGatedGraphConvNetBase(GraphBaseNet):
     """GNN that supports edge attributes"""
 
-    NAME = "ResGatedGraphConvNet"
+    NAME = "ResGatedGraphConvNetBase"
 
     def __init__(self, config: typing.Dict, **kwargs):
         super().__init__(**kwargs)
@@ -88,7 +90,9 @@ class ResGatedGraphConvNet(GraphBaseNet):
             config["n_linear_layers"] if "n_linear_layers" in config else 3
         )
         self.n_atom_properties = int(config["n_atom_properties"])
-        self.n_bond_properties = int(config["n_bond_properties"])
+        self.n_bond_properties = (
+            int(config["n_bond_properties"]) if "n_bond_properties" in config else 7
+        )
         self.n_molecule_properties = (
             int(config["n_molecule_properties"])
             if "n_molecule_properties" in config
@@ -118,21 +122,6 @@ class ResGatedGraphConvNet(GraphBaseNet):
             self.in_length, self.hidden_length, edge_dim=self.n_bond_properties
         )
 
-        self.linear_layers = torch.nn.ModuleList([])
-        for i in range(self.n_linear_layers - 1):
-            if i == 0:
-                self.linear_layers.append(
-                    nn.Linear(
-                        self.hidden_length + self.n_molecule_properties,
-                        self.hidden_length,
-                    )
-                )
-            else:
-                self.linear_layers.append(
-                    nn.Linear(self.hidden_length, self.hidden_length)
-                )
-        self.final_layer = nn.Linear(self.hidden_length, self.out_dim)
-
     def forward(self, batch):
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
@@ -149,15 +138,66 @@ class ResGatedGraphConvNet(GraphBaseNet):
                 a, graph_data.edge_index.long(), edge_attr=graph_data.edge_attr
             )
         )
-        a = self.dropout(a)
+        return a
+
+
+class ResGatedGraphConvNetGraphPred(GraphBaseNet):
+    """GNN for graph-level prediction"""
+
+    NAME = "ResGatedGraphConvNetPred"
+
+    def __init__(self, config: typing.Dict, n_linear_layers=2, **kwargs):
+        super().__init__(**kwargs)
+        self.gnn = ResGatedGraphConvNetBase(config, **kwargs)
+        self.linear_layers = torch.nn.ModuleList(
+            [
+                torch.nn.Linear(self.gnn.hidden_length, self.gnn.hidden_length)
+                for _ in range(n_linear_layers - 1)
+            ]
+        )
+        self.final_layer = nn.Linear(self.gnn.hidden_length, self.out_dim)
+
+    def forward(self, batch):
+        graph_data = batch["features"][0]
+        assert isinstance(graph_data, GraphData)
+        a = self.gnn(batch)
         a = scatter_add(a, graph_data.batch, dim=0)
 
         a = torch.cat([a, graph_data.molecule_attr], dim=1)
 
         for lin in self.linear_layers:
-            a = self.activation(lin(a))
+            a = self.gnn.activation(lin(a))
         a = self.final_layer(a)
         return a
+
+
+class ResGatedGraphConvNetPretrain(GraphBaseNet):
+    """For pretraining. BaseNet with two output layers for predicting atom and bond properties"""
+
+    NAME = "ResGatedGraphConvNetPre"
+
+    def __init__(self, config: typing.Dict, **kwargs):
+        super().__init__(**kwargs)
+        self.gnn = ResGatedGraphConvNetBase(config, **kwargs)
+        self.atom_prediction = nn.Linear(
+            self.gnn.hidden_length, self.gnn.n_atom_properties
+        )
+        self.bond_prediction = nn.Linear(
+            self.gnn.hidden_length, self.gnn.n_bond_properties
+        )
+
+    def forward(self, batch):
+        embedding = self.gnn(batch)
+        atom_pred = self.atom_prediction(embedding)
+        bond_pred = self.bond_prediction(embedding)
+        return atom_pred, bond_pred
+
+    @property
+    def as_pretrained(self):
+        return self.gnn
+
+    def _process_batch(self, batch: XYData, batch_idx: int) -> Dict[str, Any]:
+        ...
 
 
 class JCIGraphAttentionNet(GraphBaseNet):
