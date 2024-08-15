@@ -1,6 +1,7 @@
 class_path: chebai_graph.preprocessing.datasets.pubchem.PubChemGraphProperties
 init_args:
-  transform: chebai_graph.preprocessing.transform_unlabeled.MaskAtom  # mask atoms / bonds
+  transform:
+    class_path: chebai_graph.preprocessing.transform_unlabeled.MaskAtom  # mask atoms / bonds
   properties:
       - chebai_graph.preprocessing.properties.AtomType
       - chebai_graph.preprocessing.properties.NumAtomBonds

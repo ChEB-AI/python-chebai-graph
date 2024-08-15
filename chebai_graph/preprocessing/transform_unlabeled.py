@@ -4,19 +4,15 @@ import torch
 
 # class taken from Hu, 2020: https://arxiv.org/pdf/1905.12265, modified
 class MaskAtom:
-    def __init__(self, num_atom_type, num_edge_type, mask_rate, mask_edge=True):
+    def __init__(self, mask_rate=0.15, mask_edge=True):
         """
         Randomly masks an atom, and optionally masks edges connecting to it.
         The mask atom type index is num_possible_atom_type
         The mask edge type index in num_possible_edge_type
-        :param num_atom_type:
-        :param num_edge_type:
         :param mask_rate: % of atoms to be masked
         :param mask_edge: If True, also mask the edges that connect to the
         masked atoms
         """
-        self.num_atom_type = num_atom_type
-        self.num_edge_type = num_edge_type
         self.mask_rate = mask_rate
         self.mask_edge = mask_edge
 
@@ -55,7 +51,7 @@ class MaskAtom:
 
         # modify the original node feature of the masked node
         for atom_idx in masked_atom_indices:
-            data.x[atom_idx] = torch.tensor([self.num_atom_type, 0])
+            data.x[atom_idx] = torch.zeros(data.x.size()[1])
 
         if self.mask_edge:
             # create mask edge labels by copying edge features of edges that are bonded to
@@ -82,7 +78,7 @@ class MaskAtom:
                 data.mask_edge_label = torch.cat(mask_edge_labels_list, dim=0)
                 # modify the original bond features of the bonds connected to the mask atoms
                 for bond_idx in connected_edge_indices:
-                    data.edge_attr[bond_idx] = torch.tensor([self.num_edge_type, 0])
+                    data.edge_attr[bond_idx] = torch.zeros(data.edge_attr.size()[1])
 
                 data.connected_edge_indices = torch.tensor(connected_edge_indices[::2])
             else:
@@ -92,14 +88,3 @@ class MaskAtom:
                 )
 
         return data
-
-    def __repr__(self):
-        return (
-            "{}(num_atom_type={}, num_edge_type={}, mask_rate={}, mask_edge={})".format(
-                self.__class__.__name__,
-                self.num_atom_type,
-                self.num_edge_type,
-                self.mask_rate,
-                self.mask_edge,
-            )
-        )

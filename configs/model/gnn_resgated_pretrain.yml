@@ -8,6 +8,6 @@ init_args:
     dropout_rate: 0.1
     n_conv_layers: 3
     n_linear_layers: 3
-    n_atom_properties: 158
+    n_atom_properties: 151
     n_bond_properties: 7
     n_molecule_properties: 200

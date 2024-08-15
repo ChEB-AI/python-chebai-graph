@@ -73,7 +73,13 @@ class GraphPropertiesMixIn(XYBaseDataModule):
         os.makedirs(self.processed_properties_dir, exist_ok=True)
 
         for raw_file in self.raw_file_names:
-            path = os.path.join(self.processed_dir_main, raw_file)
+            # processed_dir_main only exists for ChEBI datasets
+            path = os.path.join(
+                self.processed_dir_main
+                if hasattr(self, "processed_dir_main")
+                else self.raw_dir,
+                raw_file,
+            )
             raw_data += list(self._load_dict(path))
         idents = [row["ident"] for row in raw_data]
         features = [row["features"] for row in raw_data]
@@ -180,7 +186,7 @@ class GraphPropertiesMixIn(XYBaseDataModule):
         )
         # apply transformation, e.g. masking for pretraining task
         if self.transform is not None:
-            base_df["features"] = base_df["features"].apply(self.transform, axis=1)
+            base_df["features"] = base_df["features"].apply(self.transform)
 
         prop_lengths = [
             (prop.name, prop.encoder.get_encoding_length()) for prop in self.properties

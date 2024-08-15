@@ -19,6 +19,9 @@ class GraphBaseNet(ChebaiBaseNet):
     def _get_prediction_and_labels(self, data, labels, output):
         return torch.sigmoid(output), labels.int()
 
+    def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor:
+        return batch.y.float() if batch.y else None
+
 
 class JCIGraphNet(GraphBaseNet):
     NAME = "GNN"
@@ -196,8 +199,10 @@ class ResGatedGraphConvNetPretrain(GraphBaseNet):
     def as_pretrained(self):
         return self.gnn
 
-    def _process_batch(self, batch: XYData, batch_idx: int) -> Dict[str, Any]:
-        ...
+    def _get_prediction_and_labels(self, data, labels, output):
+        return (
+            torch.sigmoid(out) for out in output
+        ), labels.int() if labels is not None else None
 
 
 class JCIGraphAttentionNet(GraphBaseNet):
