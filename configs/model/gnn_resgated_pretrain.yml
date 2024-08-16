@@ -1,5 +1,7 @@
 class_path: chebai_graph.models.graph.ResGatedGraphConvNetPretrain
 init_args:
+  criterion:
+    class_path: chebai_graph.loss.pretraining.MaskPretrainingLoss
   optimizer_kwargs:
     lr: 1e-4
   config:
