@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from torch_geometric.data import Data as GraphData
 
 from chebai.models.base import ChebaiBaseNet
+from chebai_graph.loss.pretraining import MaskPretrainingLoss
 
 logging.getLogger("pysmiles").setLevel(logging.CRITICAL)
 
@@ -180,6 +181,9 @@ class ResGatedGraphConvNetPretrain(GraphBaseNet):
     NAME = "ResGatedGraphConvNetPre"
 
     def __init__(self, config: typing.Dict, **kwargs):
+        if "criterion" not in kwargs or kwargs["criterion"] is None:
+            kwargs["criterion"] = MaskPretrainingLoss()
+        print(f"Initing ResGatedGraphConvNetPre with criterion: {kwargs['criterion']}")
         super().__init__(**kwargs)
         self.gnn = ResGatedGraphConvNetBase(config, **kwargs)
         self.atom_prediction = nn.Linear(
@@ -190,9 +194,14 @@ class ResGatedGraphConvNetPretrain(GraphBaseNet):
         )
 
     def forward(self, batch):
+        data = batch["features"][0]
         embedding = self.gnn(batch)
-        atom_pred = self.atom_prediction(embedding)
-        bond_pred = self.bond_prediction(embedding)
+        node_rep = embedding[data.masked_atom_indices.int()]
+        atom_pred = self.atom_prediction(node_rep)
+
+        masked_edge_index = data.edge_index[:, data.connected_edge_indices.int()].int()
+        edge_rep = embedding[masked_edge_index[0]] + embedding[masked_edge_index[1]]
+        bond_pred = self.bond_prediction(edge_rep)
         return atom_pred, bond_pred
 
     @property
@@ -200,9 +209,12 @@ class ResGatedGraphConvNetPretrain(GraphBaseNet):
         return self.gnn
 
     def _get_prediction_and_labels(self, data, labels, output):
-        return (
-            torch.sigmoid(out) for out in output
-        ), labels.int() if labels is not None else None
+        if isinstance(labels, tuple):
+            labels = (label.int() for label in labels)
+        return (torch.sigmoid(out) for out in output), labels
+
+    def _process_labels_in_batch(self, batch):
+        return batch.x[0].mask_node_label, batch.x[0].mask_edge_label
 
 
 class JCIGraphAttentionNet(GraphBaseNet):

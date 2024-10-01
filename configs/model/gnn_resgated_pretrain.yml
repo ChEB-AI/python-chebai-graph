@@ -1,7 +1,8 @@
 class_path: chebai_graph.models.graph.ResGatedGraphConvNetPretrain
 init_args:
-  criterion:
-    class_path: chebai_graph.loss.pretraining.MaskPretrainingLoss
+  # adding a custom criterion leads to errors, but MaskPretrainingLoss is the default for the pretraining model
+  #criterion:
+  #  class_path: chebai.loss.bce_weighted.BCEWeighted #chebai_graph.loss.pretraining.MaskPretrainingLoss
   optimizer_kwargs:
     lr: 1e-4
   config:

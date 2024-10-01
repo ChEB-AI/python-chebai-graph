@@ -2,17 +2,14 @@ import torch
 
 
 class MaskPretrainingLoss(torch.nn.Module):
+    # Mask atoms and edges, try to predict them (see Hu et al., 2020: Strategies for Pre-training Graph Neural Networks)
     def __init__(self):
         super().__init__()
         self.ce = torch.nn.CrossEntropyLoss()
 
     def forward(self, input, target, **loss_kwargs):
-        print(
-            f"Called loss function with input: {input} (type: {type(input)}, target: {target}"
-        )
-        for i in input:
-            print(f"Input i: type: {type(i)}")
-            if type(i) == torch.Tensor:
-                print(f"Input i: shape: {i.shape}")
-            print(f"Input i: {i}")
-        return torch.tensor(0)
+        atom_preds, bond_preds = input
+        atom_targets, bond_targets = target
+        atom_loss = self.ce(atom_preds, atom_targets)
+        bond_loss = self.ce(bond_preds, bond_targets)
+        return atom_loss + bond_loss

@@ -3,6 +3,7 @@ import torch
 
 
 # class taken from Hu, 2020: https://arxiv.org/pdf/1905.12265, modified
+# acts as a transformation for input data, masking some atoms and edges
 class MaskAtom:
     def __init__(self, mask_rate=0.15, mask_edge=True):
         """
@@ -35,7 +36,7 @@ class MaskAtom:
         data.mask_edge_label
         """
 
-        if masked_atom_indices == None:
+        if masked_atom_indices is None:
             # sample x distinct atoms to be masked, based on mask rate. But
             # will sample at least 1 atom
             num_atoms = data.x.size()[0]
@@ -59,10 +60,7 @@ class MaskAtom:
             connected_edge_indices = []
             for bond_idx, (u, v) in enumerate(data.edge_index.cpu().numpy().T):
                 for atom_idx in masked_atom_indices:
-                    if (
-                        atom_idx in set((u, v))
-                        and bond_idx not in connected_edge_indices
-                    ):
+                    if atom_idx in {u, v} and bond_idx not in connected_edge_indices:
                         connected_edge_indices.append(bond_idx)
 
             if len(connected_edge_indices) > 0:
