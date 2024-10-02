@@ -2,6 +2,8 @@ class_path: chebai_graph.preprocessing.datasets.pubchem.PubChemGraphProperties
 init_args:
   transform:
     class_path: chebai_graph.preprocessing.transform_unlabeled.MaskAtom  # mask atoms / bonds
+    init_args:
+      n_bond_properties: 7 # TODO: this is a duplicate specification, find a way to remove it
   properties:
       - chebai_graph.preprocessing.properties.AtomType
       - chebai_graph.preprocessing.properties.NumAtomBonds
