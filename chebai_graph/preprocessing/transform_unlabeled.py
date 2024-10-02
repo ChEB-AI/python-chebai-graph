@@ -5,7 +5,7 @@ import torch
 # class taken from Hu, 2020: https://arxiv.org/pdf/1905.12265, modified
 # acts as a transformation for input data, masking some atoms and edges
 class MaskAtom:
-    def __init__(self, mask_rate=0.15, mask_edge=True):
+    def __init__(self, mask_rate=0.15, mask_edge=True, n_bond_properties=7):
         """
         Randomly masks an atom, and optionally masks edges connecting to it.
         The mask atom type index is num_possible_atom_type
@@ -16,6 +16,7 @@ class MaskAtom:
         """
         self.mask_rate = mask_rate
         self.mask_edge = mask_edge
+        self.n_bond_properties = n_bond_properties
 
     def __call__(self, data, masked_atom_indices=None):
         """
@@ -80,7 +81,9 @@ class MaskAtom:
 
                 data.connected_edge_indices = torch.tensor(connected_edge_indices[::2])
             else:
-                data.mask_edge_label = torch.empty((0, 2)).to(torch.int64)
+                data.mask_edge_label = torch.empty((0, self.n_bond_properties)).to(
+                    torch.int64
+                )
                 data.connected_edge_indices = torch.tensor(connected_edge_indices).to(
                     torch.int64
                 )
