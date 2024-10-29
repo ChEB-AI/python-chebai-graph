@@ -4,7 +4,7 @@ init_args:
   #criterion:
   #  class_path: chebai.loss.bce_weighted.BCEWeighted #chebai_graph.loss.pretraining.MaskPretrainingLoss
   optimizer_kwargs:
-    lr: 1e-4
+    lr: 1e-3
   config:
     in_length: 256
     hidden_length: 512
