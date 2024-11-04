@@ -210,7 +210,7 @@ class ResGatedGraphConvNetPretrain(GraphBaseNet):
 
     def _get_prediction_and_labels(self, data, labels, output):
         if isinstance(labels, tuple):
-            labels = (label.int() for label in labels)
+            labels = tuple(label.int() for label in labels)
         return (torch.sigmoid(out) for out in output), labels
 
     def _process_labels_in_batch(self, batch):
