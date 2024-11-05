@@ -44,16 +44,28 @@ class MaskAtom:
             sample_size = int(num_atoms * self.mask_rate + 1)
             masked_atom_indices = random.sample(range(num_atoms), sample_size)
 
+        # within atoms, only mask some properties
+        mask_n_properties = int(data.x.size()[1] * self.mask_rate + 1)
+        masked_property_indices = [
+            random.sample(range(data.x.size()[1]), mask_n_properties)
+            for _ in masked_atom_indices
+        ]
+
         # create mask node label by copying atom feature of mask atom
         mask_node_labels_list = []
-        for atom_idx in masked_atom_indices:
-            mask_node_labels_list.append(data.x[atom_idx].view(1, -1))
+        for atom_idx, property_idxs in zip(
+            masked_atom_indices, masked_property_indices
+        ):
+            mask_node_labels_list.append(data.x[atom_idx, property_idxs].view(1, -1))
         data.mask_node_label = torch.cat(mask_node_labels_list, dim=0)
         data.masked_atom_indices = torch.tensor(masked_atom_indices)
+        data.masked_property_indices = torch.tensor(masked_property_indices)
 
         # modify the original node feature of the masked node
-        for atom_idx in masked_atom_indices:
-            data.x[atom_idx] = torch.zeros(data.x.size()[1])
+        for atom_idx, property_idxs in zip(
+            masked_atom_indices, masked_property_indices
+        ):
+            data.x[atom_idx, property_idxs] = torch.zeros(mask_n_properties)
 
         if self.mask_edge:
             # create mask edge labels by copying edge features of edges that are bonded to
