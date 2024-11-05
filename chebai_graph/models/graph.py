@@ -197,7 +197,10 @@ class ResGatedGraphConvNetPretrain(GraphBaseNet):
         data = batch["features"][0]
         embedding = self.gnn(batch)
         node_rep = embedding[data.masked_atom_indices.int()]
-        atom_pred = self.atom_prediction(node_rep)[data.masked_property_indices.int()]
+        atom_pred_all_properties = self.atom_prediction(node_rep)
+        atom_pred = torch.gather(
+            atom_pred_all_properties, 1, data.masked_property_indices.to(torch.int64)
+        )
 
         if "connected_edge_indices" in data:
             masked_edge_index = data.edge_index[
