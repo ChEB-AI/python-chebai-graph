@@ -176,7 +176,7 @@ class ResGatedGraphConvNetGraphPred(GraphBaseNet):
 
 
 class ResGatedGraphConvNetPretrain(GraphBaseNet):
-    """For pretraining. BaseNet with two output layers for predicting atom and bond properties"""
+    """For pretraining. BaseNet with an additional output layer for predicting atom properties"""
 
     NAME = "ResGatedGraphConvNetPre"
 
@@ -189,6 +189,41 @@ class ResGatedGraphConvNetPretrain(GraphBaseNet):
         self.atom_prediction = nn.Linear(
             self.gnn.hidden_length, self.gnn.n_atom_properties
         )
+
+    def forward(self, batch):
+        data = batch["features"][0]
+        embedding = self.gnn(batch)
+        node_rep = embedding[data.masked_atom_indices.int()]
+        atom_pred = torch.gather(
+            self.atom_prediction(node_rep),
+            1,
+            data.masked_property_indices.to(torch.int64),
+        )
+        return atom_pred
+
+    @property
+    def as_pretrained(self):
+        return self.gnn
+
+    def _get_prediction_and_labels(self, data, labels, output):
+        if isinstance(labels, tuple):
+            labels = tuple(label.int() for label in labels)
+        return tuple(torch.sigmoid(out) for out in output), labels
+
+    def _process_labels_in_batch(self, batch):
+        return batch.x[0].mask_node_label
+
+
+class ResGatedGraphConvNetPretrainBonds(GraphBaseNet):
+    """For pretraining. BaseNet with two output layers for predicting atom and bond properties"""
+
+    NAME = "ResGatedGraphConvNetPreBonds"
+
+    def __init__(self, config: typing.Dict, **kwargs):
+        if "criterion" not in kwargs or kwargs["criterion"] is None:
+            kwargs["criterion"] = MaskPretrainingLoss()
+        print(f"Initing ResGatedGraphConvNetPre with criterion: {kwargs['criterion']}")
+        super().__init__(config, **kwargs)
         self.bond_prediction = nn.Linear(
             self.gnn.hidden_length, self.gnn.n_bond_properties
         )
@@ -202,29 +237,13 @@ class ResGatedGraphConvNetPretrain(GraphBaseNet):
             atom_pred_all_properties, 1, data.masked_property_indices.to(torch.int64)
         )
 
-        if "connected_edge_indices" in data:
-            masked_edge_index = data.edge_index[
-                :, data.connected_edge_indices.int()
-            ].int()
-            edge_rep = embedding[masked_edge_index[0]] + embedding[masked_edge_index[1]]
-            bond_pred = self.bond_prediction(edge_rep)
-            return atom_pred, bond_pred
-        return atom_pred
-
-    @property
-    def as_pretrained(self):
-        return self.gnn
-
-    def _get_prediction_and_labels(self, data, labels, output):
-        if isinstance(labels, tuple):
-            labels = tuple(label.int() for label in labels)
-        return tuple(torch.sigmoid(out) for out in output), labels
+        masked_edge_index = data.edge_index[:, data.connected_edge_indices.int()].int()
+        edge_rep = embedding[masked_edge_index[0]] + embedding[masked_edge_index[1]]
+        bond_pred = self.bond_prediction(edge_rep)
+        return atom_pred, bond_pred
 
     def _process_labels_in_batch(self, batch):
-        if "mask_edge_label" in batch.x[0]:
-            return batch.x[0].mask_node_label, batch.x[0].mask_edge_label
-        else:
-            return batch.x[0].mask_node_label
+        return batch.x[0].mask_node_label, batch.x[0].mask_edge_label
 
 
 class JCIGraphAttentionNet(GraphBaseNet):
