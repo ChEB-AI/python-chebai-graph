@@ -1,16 +1,15 @@
 import logging
 import typing
-from typing import Dict, Any
 
+import torch
+import torch.nn.functional as F
+from chebai.models.base import ChebaiBaseNet
 from chebai.preprocessing.structures import XYData
 from torch import nn
 from torch_geometric import nn as tgnn
-from torch_scatter import scatter_add, scatter_mean
-import torch
-import torch.nn.functional as F
 from torch_geometric.data import Data as GraphData
+from torch_scatter import scatter_add, scatter_mean
 
-from chebai.models.base import ChebaiBaseNet
 from chebai_graph.loss.pretraining import MaskPretrainingLoss
 
 logging.getLogger("pysmiles").setLevel(logging.CRITICAL)
@@ -150,9 +149,20 @@ class ResGatedGraphConvNetGraphPred(GraphBaseNet):
 
     NAME = "ResGatedGraphConvNetPred"
 
-    def __init__(self, config: typing.Dict, n_linear_layers=2, **kwargs):
+    def __init__(
+        self,
+        config: typing.Dict,
+        n_linear_layers=2,
+        pretrained_checkpoint=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
-        self.gnn = ResGatedGraphConvNetBase(config, **kwargs)
+        if pretrained_checkpoint:
+            self.gnn = ResGatedGraphConvNetBase.load_from_checkpoint(
+                pretrained_checkpoint, map_location=self.device
+            )
+        else:
+            self.gnn = ResGatedGraphConvNetBase(config, **kwargs)
         self.linear_layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(self.gnn.hidden_length, self.gnn.hidden_length)

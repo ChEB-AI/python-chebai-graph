@@ -1,7 +1,7 @@
 class_path: chebai_graph.models.graph.ResGatedGraphConvNetGraphPred
 init_args:
   optimizer_kwargs:
-    lr: 1e-4
+    lr: 1e-3
   config:
     in_length: 256
     hidden_length: 512
@@ -10,4 +10,4 @@ init_args:
     n_linear_layers: 3
     n_atom_properties: 151
     n_bond_properties: 7
-    #n_molecule_properties: 200
+    n_molecule_properties: 200
