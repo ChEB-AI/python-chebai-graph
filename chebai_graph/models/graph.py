@@ -205,11 +205,6 @@ class ResGatedGraphConvNetPretrain(GraphBaseNet):
     def as_pretrained(self):
         return self.gnn
 
-    def _get_prediction_and_labels(self, data, labels, output):
-        if isinstance(labels, tuple):
-            labels = tuple(label.int() for label in labels)
-        return tuple(torch.sigmoid(out) for out in output), labels
-
     def _process_labels_in_batch(self, batch):
         return batch.x[0].mask_node_label
 
@@ -241,6 +236,11 @@ class ResGatedGraphConvNetPretrainBonds(GraphBaseNet):
         edge_rep = embedding[masked_edge_index[0]] + embedding[masked_edge_index[1]]
         bond_pred = self.bond_prediction(edge_rep)
         return atom_pred, bond_pred
+
+    def _get_prediction_and_labels(self, data, labels, output):
+        if isinstance(labels, tuple):
+            labels = tuple(label.int() for label in labels)
+        return tuple(torch.sigmoid(out) for out in output), labels
 
     def _process_labels_in_batch(self, batch):
         return batch.x[0].mask_node_label, batch.x[0].mask_edge_label

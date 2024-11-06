@@ -5,7 +5,9 @@ import torch
 # class taken from Hu, 2020: https://arxiv.org/pdf/1905.12265, modified
 # acts as a transformation for input data, masking some atoms and edges
 class MaskAtom:
-    def __init__(self, mask_rate=0.15, mask_edge=True, n_bond_properties=7):
+    def __init__(
+        self, mask_rate=0.15, mask_edge=True, n_bond_properties=7, random_seed=42
+    ):
         """
         Randomly masks an atom, and optionally masks edges connecting to it.
         The mask atom type index is num_possible_atom_type
@@ -17,6 +19,7 @@ class MaskAtom:
         self.mask_rate = mask_rate
         self.mask_edge = mask_edge
         self.n_bond_properties = n_bond_properties
+        self.random_seed = random_seed
 
     def __call__(self, data, masked_atom_indices=None):
         """
@@ -42,10 +45,12 @@ class MaskAtom:
             # will sample at least 1 atom
             num_atoms = data.x.size()[0]
             sample_size = int(num_atoms * self.mask_rate + 1)
+            random.seed(self.random_seed)
             masked_atom_indices = random.sample(range(num_atoms), sample_size)
 
         # within atoms, only mask some properties
         mask_n_properties = int(data.x.size()[1] * self.mask_rate + 1)
+        random.seed(self.random_seed)
         masked_property_indices = [
             random.sample(range(data.x.size()[1]), mask_n_properties)
             for _ in masked_atom_indices
