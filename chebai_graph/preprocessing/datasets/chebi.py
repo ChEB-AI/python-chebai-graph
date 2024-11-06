@@ -71,14 +71,18 @@ class GraphPropertiesMixIn(XYBaseDataModule):
     def _setup_properties(self):
         raw_data = []
         os.makedirs(self.processed_properties_dir, exist_ok=True)
+        try:
+            file_names = self.processed_main_file_names
+        except NotImplementedError:
+            file_names = self.raw_file_names
 
-        for raw_file in self.raw_file_names:
+        for file in file_names:
             # processed_dir_main only exists for ChEBI datasets
             path = os.path.join(
                 self.processed_dir_main
                 if hasattr(self, "processed_dir_main")
                 else self.raw_dir,
-                raw_file,
+                file,
             )
             raw_data += list(self._load_dict(path))
         idents = [row["ident"] for row in raw_data]
