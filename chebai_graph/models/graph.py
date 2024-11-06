@@ -160,7 +160,7 @@ class ResGatedGraphConvNetGraphPred(GraphBaseNet):
         if pretrained_checkpoint:
             self.gnn = ResGatedGraphConvNetPretrain.load_from_checkpoint(
                 pretrained_checkpoint, map_location=self.device
-            ).as_pretrained()
+            ).as_pretrained
         else:
             self.gnn = ResGatedGraphConvNetBase(config, **kwargs)
         self.linear_layers = torch.nn.ModuleList(
