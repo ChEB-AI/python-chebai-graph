@@ -20,7 +20,7 @@ class GraphBaseNet(ChebaiBaseNet):
         return torch.sigmoid(output), labels.int()
 
     def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor:
-        return batch.y.float() if batch.y else None
+        return batch.y.float() if batch.y is not None else None
 
 
 class JCIGraphNet(GraphBaseNet):
