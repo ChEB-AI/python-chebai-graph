@@ -1,5 +1,10 @@
-class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphProperties
+class_path: chebai_graph.preprocessing.datasets.pubchem.PubChemGraphProperties
 init_args:
+  transform:
+    class_path: chebai_graph.preprocessing.transform_unlabeled.MaskAtom  # mask atoms / bonds
+    init_args:
+      n_bond_properties: 7 # TODO: this is a duplicate specification, find a way to remove it
+      mask_edge: False
   properties:
       - chebai_graph.preprocessing.properties.AtomType
       - chebai_graph.preprocessing.properties.NumAtomBonds
@@ -11,4 +16,4 @@ init_args:
       - chebai_graph.preprocessing.properties.BondInRing
       - chebai_graph.preprocessing.properties.BondAromaticity
       #- chebai_graph.preprocessing.properties.MoleculeNumRings
-      #- chebai_graph.preprocessing.properties.RDKit2DNormalized
+      - chebai_graph.preprocessing.properties.RDKit2DNormalized
