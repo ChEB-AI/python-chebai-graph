@@ -165,8 +165,11 @@ class ResGatedGraphConvNetGraphPred(GraphBaseNet):
             self.gnn = ResGatedGraphConvNetBase(config, **kwargs)
         self.linear_layers = torch.nn.ModuleList(
             [
-                torch.nn.Linear(self.gnn.hidden_length, self.gnn.hidden_length)
-                for _ in range(n_linear_layers - 1)
+                torch.nn.Linear(
+                    self.gnn.hidden_length + (i == 0) * self.gnn.n_molecule_properties,
+                    self.gnn.hidden_length,
+                )
+                for i in range(n_linear_layers - 1)
             ]
         )
         self.final_layer = nn.Linear(self.gnn.hidden_length, self.out_dim)
