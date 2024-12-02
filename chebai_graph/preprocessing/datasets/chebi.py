@@ -1,6 +1,10 @@
 from typing import Optional, List, Callable
 
-from chebai.preprocessing.datasets.chebi import ChEBIOver50, ChEBIOverXPartial
+from chebai.preprocessing.datasets.chebi import (
+    ChEBIOver50,
+    ChEBIOver100,
+    ChEBIOverXPartial,
+)
 from chebai.preprocessing.datasets.base import XYBaseDataModule
 from lightning_utilities.core.rank_zero import rank_zero_info
 
@@ -44,12 +48,10 @@ def _resolve_property(
         return getattr(graph_properties, property)()
 
 
-class GraphPropertiesMixIn(XYBaseDataModule):
+class ChEBI50GraphProperties(ChEBIOver50):
     READER = GraphPropertyReader
 
-    def __init__(
-        self, properties: Optional[List], transform: Optional[Callable] = None, **kwargs
-    ):
+    def __init__(self, properties: Optional[List], **kwargs):
         super().__init__(**kwargs)
         # atom_properties and bond_properties are given as lists containing class_paths
         if properties is not None:
@@ -66,24 +68,13 @@ class GraphPropertiesMixIn(XYBaseDataModule):
         rank_zero_info(
             f"Data module uses these properties (ordered): {', '.join([str(p) for p in properties])}"
         )
-        self.transform = transform
 
     def _setup_properties(self):
         raw_data = []
         os.makedirs(self.processed_properties_dir, exist_ok=True)
-        try:
-            file_names = self.processed_main_file_names
-        except NotImplementedError:
-            file_names = self.raw_file_names
 
-        for file in file_names:
-            # processed_dir_main only exists for ChEBI datasets
-            path = os.path.join(
-                self.processed_dir_main
-                if hasattr(self, "processed_dir_main")
-                else self.raw_dir,
-                file,
-            )
+        for raw_file in self.raw_file_names:
+            path = os.path.join(self.processed_dir_main, raw_file)
             raw_data += list(self._load_dict(path))
         idents = [row["ident"] for row in raw_data]
         features = [row["features"] for row in raw_data]
@@ -169,11 +160,8 @@ class GraphPropertiesMixIn(XYBaseDataModule):
         """Combine base data set with property values for atoms and bonds."""
         base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
-
         for property in self.properties:
-            property_data = torch.load(
-                self.get_property_path(property), weights_only=False
-            )
+            property_data = torch.load(self.get_property_path(property))
             if len(property_data[0][property.name].shape) > 1:
                 property.encoder.set_encoding_length(
                     property_data[0][property.name].shape[1]
@@ -188,9 +176,6 @@ class GraphPropertiesMixIn(XYBaseDataModule):
         base_df["features"] = base_df.apply(
             lambda row: self._merge_props_into_base(row), axis=1
         )
-        # apply transformation, e.g. masking for pretraining task
-        if self.transform is not None:
-            base_df["features"] = base_df["features"].apply(self.transform)
 
         prop_lengths = [
             (prop.name, prop.encoder.get_encoding_length()) for prop in self.properties
@@ -210,6 +195,10 @@ class GraphPropertiesMixIn(XYBaseDataModule):
 
 
 class ChEBI50GraphProperties(GraphPropertiesMixIn, ChEBIOver50):
+    pass
+
+
+class ChEBI100GraphProperties(GraphPropertiesMixIn, ChEBIOver100):
     pass
 
 
