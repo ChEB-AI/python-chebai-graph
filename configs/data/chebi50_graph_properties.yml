@@ -11,4 +11,4 @@ init_args:
       - chebai_graph.preprocessing.properties.BondInRing
       - chebai_graph.preprocessing.properties.BondAromaticity
       #- chebai_graph.preprocessing.properties.MoleculeNumRings
-      #- chebai_graph.preprocessing.properties.RDKit2DNormalized
+      - chebai_graph.preprocessing.properties.RDKit2DNormalized
