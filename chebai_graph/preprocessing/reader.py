@@ -142,6 +142,13 @@ class GraphReader(dr.ChemDataReader):
 
 class GraphFGAugmentorReader(dr.ChemDataReader):
     COLLATOR = GraphCollator
+    NODE_LEVEL = {"atom_node": 1, "fg_node": 2, "graph_node": 3}
+    EDGE_LEVEL = {
+        "within_atoms": 1,
+        "within_fg": 2,
+        "atom_fg": 3,
+        "fg_graphNode": 4,
+    }
 
     def __init__(
         self,
@@ -151,13 +158,12 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         super().__init__(*args, **kwargs)
         self.failed_counter = 0
         self.mol_object_buffer = {}
-        self.node_level = {"atom_node": 1, "fg_node": 2, "graph_node": 3}
-        self.edge_level = {
-            "within_atoms": 1,
-            "within_fg": 2,
-            "atom_fg": 3,
-            "fg_graphNode": 4,
-        }
+
+        if "graph_fg" not in self.cache:
+            raise KeyError(
+                f"Function group `graph_fg` doesn't exits in {self.token_path}. "
+                f"It should be manually added to token file (preferably at 0th index)"
+            )
 
     @classmethod
     def name(cls):
@@ -214,7 +220,7 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         )
         for idx, atom in enumerate(sorted_atoms):
             node_features.append(
-                [self.node_level["atom_node"], self._get_fg_index(atom)]
+                [self.NODE_LEVEL["atom_node"], self._get_fg_index(atom)]
             )
 
         structure, bonds = get_structure(mol)
@@ -236,7 +242,7 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
 
             node_features.append(
                 [
-                    self.node_level["fg_node"],
+                    self.NODE_LEVEL["fg_node"],
                     self._get_fg_index(next(iter(structure[fg]["atom"][0]))),
                 ]
             )
@@ -255,7 +261,7 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
             within_fg_edge_index[1].extend([target_fg, source_fg])
 
         node_features.append(
-            [self.node_level["global_node"], self._get_token_index("graph_fg")]
+            [self.NODE_LEVEL["global_node"], self._get_token_index("graph_fg")]
         )
         global_node_edge_index = [[], []]
         for fg in new_structure.keys():
