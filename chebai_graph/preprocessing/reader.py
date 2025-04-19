@@ -218,9 +218,14 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         sorted_atoms = sorted(
             list(mol.GetAtoms()), key=lambda atom: atom.GetAtomMapNum()
         )
+
         for idx, atom in enumerate(sorted_atoms):
             node_features.append(
-                [self.NODE_LEVEL["atom_node"], self._get_fg_index(atom)]
+                [
+                    self.NODE_LEVEL["atom_node"],
+                    self._get_fg_index(atom),
+                    self._get_ring_size(atom),
+                ]
             )
 
         structure, bonds = get_structure(mol)
@@ -240,10 +245,12 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
                 fg_to_atoms_edge_index[0].extend([num_of_nodes, atom])
                 fg_to_atoms_edge_index[1].extend([atom, num_of_nodes])
 
+            any_atom = next(iter(structure[fg]["atom"][0]))  # any atom related to fg
             node_features.append(
                 [
                     self.NODE_LEVEL["fg_node"],
-                    self._get_fg_index(next(iter(structure[fg]["atom"][0]))),
+                    self._get_fg_index(any_atom),
+                    self._get_ring_size(any_atom),
                 ]
             )
 
@@ -261,7 +268,7 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
             within_fg_edge_index[1].extend([target_fg, source_fg])
 
         node_features.append(
-            [self.NODE_LEVEL["global_node"], self._get_token_index("graph_fg")]
+            [self.NODE_LEVEL["global_node"], self._get_token_index("graph_fg"), 0]
         )
         global_node_edge_index = [[], []]
         for fg in new_structure.keys():
@@ -288,6 +295,15 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         else:
             raise Exception("")
 
+    def _get_ring_size(self, atom):
+        ring_size_str = atom.GetProp("RING")
+        if ring_size_str:
+            ring_sizes = list(map(int, ring_size_str.split("-")))
+            # TODO: Decide ring size for atoms belongs to fused rings, rn only max ring size taken
+            return max(ring_sizes)
+        else:
+            return 0
+
     def on_finish(self):
         rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
         self.mol_object_buffer = {}
@@ -299,24 +315,3 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         if mol is None:
             return None
         return property.get_property_value(mol)
-
-
-if __name__ == "__main__":
-    import matplotlib
-    import matplotlib.pyplot as plt
-
-    matplotlib.use("TkAgg")  # or 'Qt5Agg'
-    import networkx as nx
-    from torch_geometric.utils import to_networkx
-
-    gr = GraphFGAugmentorReader()
-    SMILES = "CC(=O)Oc1ccccc1C(O)=O"
-    data_obj = gr._read_data(SMILES)
-    # Convert GeomData to NetworkX graph
-    G = to_networkx(data_obj, to_undirected=True)  # optional: directed=False
-
-    # Plot it
-    plt.figure(figsize=(4, 4))
-    nx.draw(G, with_labels=True, node_color="skyblue", node_size=700, edge_color="gray")
-    plt.title("Molecular Graph")
-    plt.show()
