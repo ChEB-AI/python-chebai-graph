@@ -1,6 +1,5 @@
-import importlib
 import os
-from typing import List, Mapping, Optional, Tuple
+from typing import List, Optional
 
 import chebai.preprocessing.reader as dr
 import networkx as nx
@@ -14,6 +13,17 @@ from torch_geometric.utils import from_networkx
 
 import chebai_graph.preprocessing.properties as properties
 from chebai_graph.preprocessing.collate import GraphCollator
+from chebai_graph.preprocessing.fg_detection.fg_constants import (
+    ATOM_FG_EDGE,
+    ATOM_NODE_LEVEL,
+    EDGE_LEVEL,
+    FG_GRAPHNODE_LEVEL,
+    FG_NODE_LEVEL,
+    GRAPH_NODE_LEVEL,
+    NODE_LEVEL,
+    WITHIN_ATOMS_EDGE,
+    WITHIN_FG_EDGE,
+)
 from chebai_graph.preprocessing.fg_detection.rule_based import (
     detect_functional_group,
     get_structure,
@@ -142,13 +152,6 @@ class GraphReader(dr.ChemDataReader):
 
 class GraphFGAugmentorReader(dr.ChemDataReader):
     COLLATOR = GraphCollator
-    NODE_LEVEL = {"atom_node": 1, "fg_node": 2, "graph_node": 3}
-    EDGE_LEVEL = {
-        "within_atoms": 1,
-        "within_fg": 2,
-        "atom_fg": 3,
-        "fg_graphNode": 4,
-    }
 
     def __init__(
         self,
@@ -170,23 +173,28 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         return "graph_fg_augmentor"
 
     def _read_data(self, raw_data):
-        mol = self._smiles_to_mol(raw_data)
-        if mol is None:
-            return None
+        augmented_mol, edge_index = self._get_augmented_molecule(raw_data)
 
-        x = torch.zeros((mol.GetNumAtoms(), 0))
-
-        edge_attr = torch.zeros((mol.GetNumBonds(), 0))
-
-        edge_index = self._augment_graph(mol)
+        x = torch.zeros((augmented_mol["nodes"]["num_nodes"], 0))
+        edge_attr = torch.zeros((augmented_mol["nodes"]["num_edges"], 0))
 
         return GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
-    def _smiles_to_mol(self, smiles: str) -> Optional[Chem.rdchem.Mol]:
-        """Load smiles into rdkit, store object in buffer"""
-        if smiles in self.mol_object_buffer:
-            return self.mol_object_buffer[smiles]
+    def _get_augmented_molecule(self, smiles):
+        mol = self._smiles_to_mol(smiles)
+        if mol is None:
+            return None
 
+        edge_index, augmented_graph_nodes, augmented_graph_edges = self._augment_graph(
+            mol
+        )
+
+        augmented_mol = {"nodes": augmented_graph_nodes, "edges": augmented_graph_edges}
+        self.mol_object_buffer[smiles] = augmented_mol
+
+        return augmented_mol, edge_index
+
+    def _smiles_to_mol(self, smiles: str) -> Optional[Chem.rdchem.Mol]:
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             rank_zero_warn(f"RDKit failed to at parsing {smiles} (returned None)")
@@ -195,9 +203,8 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
             try:
                 Chem.SanitizeMol(mol)
             except Exception as e:
-                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}")
+                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}, Error {e}")
                 self.failed_counter += 1
-        self.mol_object_buffer[smiles] = mol
         return mol
 
     def _augment_graph(self, mol: Mol):
@@ -210,23 +217,16 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         within_atoms_edge_index = torch.cat([edge_index, edge_index[[1, 0], :]], dim=1)
 
         num_of_nodes = mol.GetNumAtoms()
+        num_of_edges = mol.GetNumBonds()
 
         set_atom_map_num(mol)
         detect_functional_group(mol)
 
-        node_features = []
-        sorted_atoms = sorted(
-            list(mol.GetAtoms()), key=lambda atom: atom.GetAtomMapNum()
-        )
+        for atom in mol.GetAtoms():
+            atom.SetProp(NODE_LEVEL, ATOM_NODE_LEVEL)
 
-        for idx, atom in enumerate(sorted_atoms):
-            node_features.append(
-                [
-                    self.NODE_LEVEL["atom_node"],
-                    self._get_fg_index(atom),
-                    self._get_ring_size(atom),
-                ]
-            )
+        for edge in mol.GetBonds():
+            edge.SetProp(EDGE_LEVEL, WITHIN_ATOMS_EDGE)
 
         structure, bonds = get_structure(mol)
 
@@ -235,6 +235,7 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
 
         # Preprocess the molecular structure to match feature dictionary keys
         fg_to_atoms_edge_index = [[], []]
+        fg_nodes, fg_atom_edges = {}, {}
         new_structure = {}
         for idx, fg in enumerate(structure):
             # new_sm = preprocess_smiles(sm)  # Preprocess SMILES to match the feature dictionary
@@ -244,18 +245,19 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
             for atom in structure[fg]["atom"]:
                 fg_to_atoms_edge_index[0].extend([num_of_nodes, atom])
                 fg_to_atoms_edge_index[1].extend([atom, num_of_nodes])
+                fg_atom_edges[f"{num_of_nodes}_{atom}"] = {EDGE_LEVEL: ATOM_FG_EDGE}
+                num_of_edges += 1
 
             any_atom = next(iter(structure[fg]["atom"][0]))  # any atom related to fg
-            node_features.append(
-                [
-                    self.NODE_LEVEL["fg_node"],
-                    self._get_fg_index(any_atom),
-                    self._get_ring_size(any_atom),
-                ]
-            )
+            fg_nodes[num_of_nodes] = {
+                NODE_LEVEL: FG_NODE_LEVEL,
+                "FG": any_atom.GetProp("FG"),
+                "RING": any_atom.GetProp("RING"),
+            }
 
             num_of_nodes += 1
 
+        fg_edges = {}
         within_fg_edge_index = [[], []]
         for bond in bonds:
             start_idx, end_idx = bond[:2]
@@ -266,14 +268,24 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
                     target_fg = key
             within_fg_edge_index[0].extend([source_fg, target_fg])
             within_fg_edge_index[1].extend([target_fg, source_fg])
+            fg_edges[f"{source_fg}_{target_fg}"] = {EDGE_LEVEL: WITHIN_FG_EDGE}
+            num_of_edges += 1
 
-        node_features.append(
-            [self.NODE_LEVEL["global_node"], self._get_token_index("graph_fg"), 0]
-        )
+        graph_node = {
+            NODE_LEVEL: GRAPH_NODE_LEVEL,
+            "FG": "graph_fg",
+            "RING": "0",
+        }
+
+        fg_graphNode_edges = {}
         global_node_edge_index = [[], []]
         for fg in new_structure.keys():
             global_node_edge_index[0].extend([num_of_nodes, fg])
             global_node_edge_index[1].extend([fg, num_of_nodes])
+            fg_graphNode_edges[f"{num_of_nodes}_{fg}"] = {
+                NODE_LEVEL: FG_GRAPHNODE_LEVEL
+            }
+            num_of_edges += 1
 
         all_edges = torch.cat(
             [
@@ -285,7 +297,21 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
             dim=1,
         )
 
-        return all_edges
+        augmented_graph_nodes = {
+            "atom_nodes": mol,
+            "fg_nodes": fg_nodes,
+            "graph_node": graph_node,
+            "num_nodes": num_of_nodes,
+        }
+        augmented_graph_edges = {
+            WITHIN_ATOMS_EDGE: mol,
+            WITHIN_FG_EDGE: fg_edges,
+            ATOM_FG_EDGE: fg_atom_edges,
+            FG_GRAPHNODE_LEVEL: fg_graphNode_edges,
+            "num_edges": num_of_edges,
+        }
+
+        return all_edges, augmented_graph_nodes, augmented_graph_edges
 
     def _get_fg_index(self, atom):
         fg_group = atom.GetProp("FG")
@@ -314,4 +340,9 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
+
+        if smiles in self.mol_object_buffer:
+            return property.get_property_value(self.mol_object_buffer[smiles])
+
+        augmented_mol, _ = self._get_augmented_molecule(smiles)
         return property.get_property_value(mol)
