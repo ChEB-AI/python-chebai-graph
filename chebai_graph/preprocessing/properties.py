@@ -6,14 +6,6 @@ import rdkit.Chem as Chem
 from descriptastorus.descriptors import rdNormalizedDescriptors
 from rdkit.Chem import Mol
 
-from chebai_graph.preprocessing.fg_detection.fg_constants import (
-    ATOM_FG_EDGE,
-    EDGE_LEVELS,
-    FG_GRAPHNODE_LEVEL,
-    NODE_LEVEL,
-    WITHIN_ATOMS_EDGE,
-    WITHIN_FG_EDGE,
-)
 from chebai_graph.preprocessing.property_encoder import (
     AsIsEncoder,
     BoolEncoder,
@@ -21,6 +13,7 @@ from chebai_graph.preprocessing.property_encoder import (
     OneHotEncoder,
     PropertyEncoder,
 )
+from chebai_graph.preprocessing.utils.properties_constants import *
 
 
 class MolecularProperty(abc.ABC):
@@ -171,7 +164,7 @@ class AugmentedBondProperty(MolecularProperty, abc):
     def get_bond_value(self, bond: Chem.rdchem.Bond | Dict):
         pass
 
-    def _check_modify_atom_prop_value(self, bond: Chem.rdchem.Bond | Dict, prop: str):
+    def _check_modify_bond_prop_value(self, bond: Chem.rdchem.Bond | Dict, prop: str):
         value = self._get_bond_prop_value(bond, prop)
         if not value:
             # Every atom/node should have given value
@@ -303,6 +296,14 @@ class BondInRing(BondProperty):
 
     def get_bond_value(self, bond: Chem.rdchem.Bond):
         return bond.IsInRing()
+
+
+class BondLevel(AugmentedBondProperty):
+    def __init__(self, encoder: Optional[PropertyEncoder] = None):
+        super().__init__(encoder or OneHotEncoder(self))
+
+    def get_bond_value(self, bond: Chem.rdchem.Bond | Dict):
+        return self._check_modify_bond_prop_value(bond, EDGE_LEVEL)
 
 
 class MoleculeNumRings(MolecularProperty):

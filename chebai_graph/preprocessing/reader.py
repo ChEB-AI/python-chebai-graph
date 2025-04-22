@@ -13,22 +13,12 @@ from torch_geometric.utils import from_networkx
 
 import chebai_graph.preprocessing.properties as properties
 from chebai_graph.preprocessing.collate import GraphCollator
-from chebai_graph.preprocessing.fg_detection.fg_constants import (
-    ATOM_FG_EDGE,
-    ATOM_NODE_LEVEL,
-    EDGE_LEVEL,
-    FG_GRAPHNODE_LEVEL,
-    FG_NODE_LEVEL,
-    GRAPH_NODE_LEVEL,
-    NODE_LEVEL,
-    WITHIN_ATOMS_EDGE,
-    WITHIN_FG_EDGE,
-)
 from chebai_graph.preprocessing.fg_detection.rule_based import (
     detect_functional_group,
     get_structure,
     set_atom_map_num,
 )
+from chebai_graph.preprocessing.utils.properties_constants import *
 
 
 class GraphPropertyReader(dr.ChemDataReader):
@@ -305,8 +295,8 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         }
         augmented_graph_edges = {
             WITHIN_ATOMS_EDGE: mol,
-            WITHIN_FG_EDGE: fg_edges,
             ATOM_FG_EDGE: fg_atom_edges,
+            WITHIN_FG_EDGE: fg_edges,
             FG_GRAPHNODE_LEVEL: fg_graphNode_edges,
             "num_edges": num_of_edges,
         }
