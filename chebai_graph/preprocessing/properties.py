@@ -7,9 +7,12 @@ from descriptastorus.descriptors import rdNormalizedDescriptors
 from rdkit.Chem import Mol
 
 from chebai_graph.preprocessing.fg_detection.fg_constants import (
+    ATOM_FG_EDGE,
     EDGE_LEVELS,
+    FG_GRAPHNODE_LEVEL,
     NODE_LEVEL,
     WITHIN_ATOMS_EDGE,
+    WITHIN_FG_EDGE,
 )
 from chebai_graph.preprocessing.property_encoder import (
     AsIsEncoder,
@@ -136,46 +139,53 @@ class AugmentedBondProperty(MolecularProperty, abc):
         atom_molecule: Mol = augmented_mol[self.MAIN_KEY][WITHIN_ATOMS_EDGE]
         if not isinstance(atom_molecule, Mol):
             raise TypeError(
-                f'augmented_mol["{self.MAIN_KEY}"]["atom_nodes"] must be an instance of rdkit.Chem.Mol'
+                f'augmented_mol["{self.MAIN_KEY}"]["{WITHIN_ATOMS_EDGE}"] must be an instance of rdkit.Chem.Mol'
             )
 
-        prop_list = [self.get_atom_value(atom) for atom in atom_molecule.GetAtoms()]
+        prop_list = [self.get_bond_value(bond) for bond in atom_molecule.GetBonds()]
 
-        fg_nodes = augmented_mol[self.MAIN_KEY]["fg_nodes"]
-        graph_node = atom_molecule[self.MAIN_KEY]["graph_node"]
-        if not isinstance(fg_nodes, dict) or not isinstance(graph_node, dict):
+        fg_atom_edges = augmented_mol[self.MAIN_KEY][ATOM_FG_EDGE]
+        fg_edges = augmented_mol[self.MAIN_KEY][WITHIN_FG_EDGE]
+        fg_graphNode_edges = augmented_mol[self.MAIN_KEY][FG_GRAPHNODE_LEVEL]
+
+        if (
+            not isinstance(fg_atom_edges, dict)
+            or not isinstance(fg_edges, dict)
+            or not isinstance(fg_graphNode_edges, dict)
+        ):
             raise TypeError(
-                f'augmented_mol["{self.MAIN_KEY}"](["fg_nodes"]/["graph_node"]) must be an instance of dict '
-                f"containing its properties"
+                f'augmented_mol["{self.MAIN_KEY}"](["{ATOM_FG_EDGE}"]/["{WITHIN_FG_EDGE}"]/["{FG_GRAPHNODE_LEVEL}"]) '
+                f"must be an instance of dict containing its properties"
             )
 
         # For python 3.7+, the standard dict type preserves insertion order, and is iterated over in same order
         # https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
         # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
-        prop_list.extend([self.get_atom_value(atom) for atom in fg_nodes])
-        prop_list.extend([self.get_atom_value(atom) for atom in graph_node])
+        prop_list.extend([self.get_bond_value(bond) for bond in fg_atom_edges])
+        prop_list.extend([self.get_bond_value(bond) for bond in fg_edges])
+        prop_list.extend([self.get_bond_value(bond) for bond in fg_graphNode_edges])
 
         return prop_list
 
     @abc.abstractmethod
-    def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
+    def get_bond_value(self, bond: Chem.rdchem.Bond | Dict):
         pass
 
-    def _check_modify_atom_prop_value(self, atom: Chem.rdchem.Atom | Dict, prop: str):
-        value = self._get_atom_prop_value(atom, prop)
+    def _check_modify_atom_prop_value(self, bond: Chem.rdchem.Bond | Dict, prop: str):
+        value = self._get_bond_prop_value(bond, prop)
         if not value:
             # Every atom/node should have given value
             raise ValueError(f"'{prop}' is set but empty.")
         return value
 
     @staticmethod
-    def _get_atom_prop_value(atom: Chem.rdchem.Atom | Dict, prop: str):
-        if isinstance(atom, Chem.rdchem.Atom):
-            return atom.GetProp(prop)
-        elif isinstance(atom, dict):
-            return atom[prop]
+    def _get_bond_prop_value(bond: Chem.rdchem.Bond | Dict, prop: str):
+        if isinstance(bond, Chem.rdchem.Bond):
+            return bond.GetProp(prop)
+        elif isinstance(bond, dict):
+            return bond[prop]
         else:
-            raise TypeError("Atom/Node should be of type `Chem.rdchem.Atom` or `dict`.")
+            raise TypeError("Bond/Edge should be of type `Chem.rdchem.Bond` or `dict`.")
 
 
 class MoleculeProperty(MolecularProperty):
