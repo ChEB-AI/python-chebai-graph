@@ -37,10 +37,6 @@ Then use:
 pip install torch-${lib} -f https://data.pyg.org/whl/torch-2.6.0+${CUDA}.html
 ```
 
-### ⚠️ Important Compatibility Note
-
-> **Inconsistencies between your installed PyTorch version and the versions of `torch-scatter`, `torch-geometric`, and related libraries can cause unexpected or strange errors at runtime.**
-
 Always ensure the installed library versions match your exact `torch` version.
 
 📚 Refer to the [PyTorch Geometric Installation Guide](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for full compatibility instructions.
@@ -111,7 +107,7 @@ python3 -m chebai fit \
 
 ### What is `PYTHONPATH`?
 
-`PYTHONPATH` is an environment variable that tells Python where to search for modules that aren't installed via `pip`.
+`PYTHONPATH` is an environment variable that tells Python where to search for modules that aren't installed via `pip` or not in your current working directory.
 
 ### Why You Need It
 
