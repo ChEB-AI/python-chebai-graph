@@ -1,15 +1,14 @@
-import abc
+from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
 from rdkit import Chem
 
-from chebai_graph.preprocessing import OneHotEncoder, PropertyEncoder
 from chebai_graph.preprocessing.properties import MolecularProperty
 from chebai_graph.preprocessing.properties.constants import *
-from chebai_graph.preprocessing.reader import RuleBasedFGReader
+from chebai_graph.preprocessing.property_encoder import OneHotEncoder, PropertyEncoder
 
 
-class AugmentedBondProperty(MolecularProperty, abc):
+class AugmentedBondProperty(MolecularProperty, ABC):
     MAIN_KEY = "edges"
 
     def get_property_value(self, augmented_mol: Dict):
@@ -32,12 +31,12 @@ class AugmentedBondProperty(MolecularProperty, abc):
 
         fg_atom_edges = augmented_mol[self.MAIN_KEY][ATOM_FG_EDGE]
         fg_edges = augmented_mol[self.MAIN_KEY][WITHIN_FG_EDGE]
-        fg_graphNode_edges = augmented_mol[self.MAIN_KEY][FG_GRAPHNODE_LEVEL]
+        fg_graph_node_edges = augmented_mol[self.MAIN_KEY][FG_GRAPHNODE_LEVEL]
 
         if (
             not isinstance(fg_atom_edges, dict)
             or not isinstance(fg_edges, dict)
-            or not isinstance(fg_graphNode_edges, dict)
+            or not isinstance(fg_graph_node_edges, dict)
         ):
             raise TypeError(
                 f'augmented_mol["{self.MAIN_KEY}"](["{ATOM_FG_EDGE}"]/["{WITHIN_FG_EDGE}"]/["{FG_GRAPHNODE_LEVEL}"]) '
@@ -49,11 +48,11 @@ class AugmentedBondProperty(MolecularProperty, abc):
         # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
         prop_list.extend([self.get_bond_value(bond) for bond in fg_atom_edges])
         prop_list.extend([self.get_bond_value(bond) for bond in fg_edges])
-        prop_list.extend([self.get_bond_value(bond) for bond in fg_graphNode_edges])
+        prop_list.extend([self.get_bond_value(bond) for bond in fg_graph_node_edges])
 
         return prop_list
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_bond_value(self, bond: Chem.rdchem.Bond | Dict):
         pass
 
@@ -74,7 +73,7 @@ class AugmentedBondProperty(MolecularProperty, abc):
             raise TypeError("Bond/Edge should be of type `Chem.rdchem.Bond` or `dict`.")
 
 
-class AugmentedAtomProperty(MolecularProperty, abc):
+class AugmentedAtomProperty(MolecularProperty, ABC):
     MAIN_KEY = "nodes"
 
     def get_property_value(self, augmented_mol: Dict):
@@ -113,7 +112,7 @@ class AugmentedAtomProperty(MolecularProperty, abc):
 
         return prop_list
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
         pass
 
@@ -146,6 +145,10 @@ class AtomNodeLevel(AugmentedAtomProperty):
 class AtomFunctionalGroup(AugmentedAtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
+
+        # To avoid circular imports
+        from chebai_graph.preprocessing.reader import RuleBasedFGReader
+
         self.fg_reader = RuleBasedFGReader()
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
