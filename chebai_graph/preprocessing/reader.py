@@ -18,7 +18,7 @@ from chebai_graph.preprocessing.fg_detection.rule_based import (
     get_structure,
     set_atom_map_num,
 )
-from chebai_graph.preprocessing.utils.properties_constants import *
+from chebai_graph.preprocessing.properties.constants import *
 
 
 class GraphPropertyReader(dr.ChemDataReader):
@@ -249,6 +249,7 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
 
         fg_edges = {}
         within_fg_edge_index = [[], []]
+        # TODO: Can we optimize this ?
         for bond in bonds:
             start_idx, end_idx = bond[:2]
             for key, value in new_structure.items():
