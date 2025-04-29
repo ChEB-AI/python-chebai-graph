@@ -1,6 +1,7 @@
 import matplotlib
 import networkx as nx
 
+from chebai_graph.preprocessing.properties.constants import *
 from chebai_graph.preprocessing.reader import GraphFGAugmentorReader
 
 matplotlib.use("TkAgg")  # or "QtAgg", if you have PyQt/PySide installed
@@ -18,31 +19,59 @@ def plot_augmented_graph(edge_index, augmented_graph_nodes, augmented_graph_edge
     atom_nodes = augmented_graph_nodes["atom_nodes"]
     for atom in atom_nodes.GetAtoms():
         idx = atom.GetIdx()
-        label = atom.GetSymbol()
         G.add_node(idx)
-        node_labels[idx] = label
-        node_colors.append("lightblue")
+        node_labels[idx] = atom.GetSymbol()
+        node_colors.append("#9ecae1")  # soft blue
 
     # Add functional group nodes
     fg_nodes = augmented_graph_nodes["fg_nodes"]
     for fg_idx, fg_props in fg_nodes.items():
-        label = f"FG:{fg_props['FG']}"
         G.add_node(fg_idx)
-        node_labels[fg_idx] = label
-        node_colors.append("orange")
+        node_labels[fg_idx] = f"FG:{fg_props['FG']}"
+        node_colors.append("#fdae6b")  # orange
 
     # Add graph-level node
     graph_node_idx = augmented_graph_nodes["num_nodes"]
     G.add_node(graph_node_idx)
     node_labels[graph_node_idx] = "Graph Node"
-    node_colors.append("red")
+    node_colors.append("#d62728")  # red
 
     # Add edges
     src_nodes, tgt_nodes = edge_index.tolist()
-    for src, tgt in zip(src_nodes, tgt_nodes):
-        G.add_edge(src, tgt)
 
-    # Plot the graph
+    with_atom_edges = {
+        f"{bond.GetBeginAtomIdx()}_{bond.GetEndAtomIdx()}"
+        for bond in augmented_graph_edges[WITHIN_ATOMS_EDGE].GetBonds()
+    }
+    atom_fg_edges = set(augmented_graph_edges[ATOM_FG_EDGE])
+    within_fg_edges = set(augmented_graph_edges[WITHIN_FG_EDGE])
+    fg_graph_edges = set(augmented_graph_edges[FG_GRAPHNODE_EDGE])
+
+    edge_colors = []
+    edge_color_map = {
+        WITHIN_ATOMS_EDGE: "#1f77b4",  # blue
+        ATOM_FG_EDGE: "#ff7f0e",  # orange
+        WITHIN_FG_EDGE: "#ffbb78",  # light orange
+        FG_GRAPHNODE_EDGE: "#2ca02c",  # green
+    }
+
+    for src, tgt in zip(src_nodes, tgt_nodes):
+        undirected_edge_set = {f"{src}_{tgt}", f"{tgt}_{src}"}
+
+        if undirected_edge_set & with_atom_edges:
+            edge_type = WITHIN_ATOMS_EDGE
+        elif undirected_edge_set & atom_fg_edges:
+            edge_type = ATOM_FG_EDGE
+        elif undirected_edge_set & within_fg_edges:
+            edge_type = WITHIN_FG_EDGE
+        elif undirected_edge_set & fg_graph_edges:
+            edge_type = FG_GRAPHNODE_EDGE
+        else:
+            raise Exception("Unexpected edge type")
+
+        G.add_edge(src, tgt)
+        edge_colors.append(edge_color_map[edge_type])
+
     plt.figure(figsize=(10, 8))
     pos = nx.spring_layout(G, seed=42)
     nx.draw(
@@ -51,7 +80,8 @@ def plot_augmented_graph(edge_index, augmented_graph_nodes, augmented_graph_edge
         with_labels=False,
         node_color=node_colors,
         node_size=600,
-        edge_color="gray",
+        edge_color=edge_colors,
+        width=2,
     )
     nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=10)
     plt.title("Augmented Molecular Graph")
