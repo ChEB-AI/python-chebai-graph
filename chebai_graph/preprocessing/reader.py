@@ -302,9 +302,7 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         for fg in new_structure.keys():
             global_node_edge_index[0].extend([num_of_nodes, fg])
             global_node_edge_index[1].extend([fg, num_of_nodes])
-            fg_graphNode_edges[f"{num_of_nodes}_{fg}"] = {
-                NODE_LEVEL: FG_GRAPHNODE_LEVEL
-            }
+            fg_graphNode_edges[f"{num_of_nodes}_{fg}"] = {NODE_LEVEL: FG_GRAPHNODE_EDGE}
             num_of_edges += 1
 
         all_edges = torch.cat(
@@ -327,7 +325,7 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
             WITHIN_ATOMS_EDGE: mol,
             ATOM_FG_EDGE: fg_atom_edges,
             WITHIN_FG_EDGE: fg_edges,
-            FG_GRAPHNODE_LEVEL: fg_graphNode_edges,
+            FG_GRAPHNODE_EDGE: fg_graphNode_edges,
             "num_edges": num_of_edges,
         }
 

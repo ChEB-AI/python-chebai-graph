@@ -31,7 +31,7 @@ class AugmentedBondProperty(MolecularProperty, ABC):
 
         fg_atom_edges = augmented_mol[self.MAIN_KEY][ATOM_FG_EDGE]
         fg_edges = augmented_mol[self.MAIN_KEY][WITHIN_FG_EDGE]
-        fg_graph_node_edges = augmented_mol[self.MAIN_KEY][FG_GRAPHNODE_LEVEL]
+        fg_graph_node_edges = augmented_mol[self.MAIN_KEY][FG_GRAPHNODE_EDGE]
 
         if (
             not isinstance(fg_atom_edges, dict)
@@ -39,7 +39,7 @@ class AugmentedBondProperty(MolecularProperty, ABC):
             or not isinstance(fg_graph_node_edges, dict)
         ):
             raise TypeError(
-                f'augmented_mol["{self.MAIN_KEY}"](["{ATOM_FG_EDGE}"]/["{WITHIN_FG_EDGE}"]/["{FG_GRAPHNODE_LEVEL}"]) '
+                f'augmented_mol["{self.MAIN_KEY}"](["{ATOM_FG_EDGE}"]/["{WITHIN_FG_EDGE}"]/["{FG_GRAPHNODE_EDGE}"]) '
                 f"must be an instance of dict containing its properties"
             )
 
