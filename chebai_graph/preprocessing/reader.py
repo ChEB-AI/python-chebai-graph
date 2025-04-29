@@ -232,12 +232,47 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
                 fg_atom_edges[f"{num_of_nodes}_{atom}"] = {EDGE_LEVEL: ATOM_FG_EDGE}
                 num_of_edges += 1
 
-            any_atom = next(iter(structure[fg]["atom"][0]))  # any atom related to fg
-            fg_nodes[num_of_nodes] = {
-                NODE_LEVEL: FG_NODE_LEVEL,
-                "FG": any_atom.GetProp("FG"),
-                "RING": any_atom.GetProp("RING"),
+            fg_set = {
+                mol.GetAtomWithIdx(atom_idx).GetProp("FG")
+                for atom_idx in structure[fg]["atom"]
+                if mol.GetAtomWithIdx(atom_idx).GetProp("FG")
             }
+
+            if len(fg_set) > 1:
+                raise Exception("connected atoms should belong to only one fg")
+
+            elif len(fg_set) == 0:
+                ring_sizes = set()
+                for atom_idx in structure[fg]["atom"]:
+                    atom = mol.GetAtomWithIdx(atom_idx)
+                    ring_size_prop = atom.GetProp("RING")
+                    if not ring_size_prop:
+                        raise Exception("All atoms should have ring size")
+                    ring_sizes.add(int(ring_size_prop))
+                    atom.SetProp("FG", f"RING_{ring_size_prop}")
+
+                # TODO: Incase error is raised check logic for fused rings
+                assert len(ring_sizes) == 1, "all atoms should have one ring size"
+                ring_size = list(ring_sizes)[0]
+
+                fg_nodes[num_of_nodes] = {
+                    NODE_LEVEL: FG_NODE_LEVEL,
+                    "FG": f"RING_{ring_size}",
+                    "RING": ring_size,
+                }
+
+            else:
+                any_atom = None
+                for atom_idx in structure[fg]["atom"]:
+                    atom = mol.GetAtomWithIdx(atom_idx)
+                    if atom.GetProp("FG"):
+                        any_atom = atom
+
+                fg_nodes[num_of_nodes] = {
+                    NODE_LEVEL: FG_NODE_LEVEL,
+                    "FG": any_atom.GetProp("FG"),
+                    "RING": any_atom.GetProp("RING"),
+                }
 
             num_of_nodes += 1
 
