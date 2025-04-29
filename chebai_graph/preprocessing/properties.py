@@ -13,6 +13,7 @@ from chebai_graph.preprocessing.property_encoder import (
     OneHotEncoder,
     PropertyEncoder,
 )
+from chebai_graph.preprocessing.reader import RuleBasedFGReader
 from chebai_graph.preprocessing.utils.properties_constants import *
 
 
@@ -98,14 +99,15 @@ class AugmentedAtomProperty(MolecularProperty, abc):
             raise ValueError(f"'{prop}' is set but empty.")
         return value
 
-    @staticmethod
-    def _get_atom_prop_value(atom: Chem.rdchem.Atom | Dict, prop: str):
+    def _get_atom_prop_value(self, atom: Chem.rdchem.Atom | Dict, prop: str):
         if isinstance(atom, Chem.rdchem.Atom):
             return atom.GetProp(prop)
         elif isinstance(atom, dict):
             return atom[prop]
         else:
-            raise TypeError("Atom/Node should be of type `Chem.rdchem.Atom` or `dict`.")
+            raise TypeError(
+                f"Atom/Node in key `{self.MAIN_KEY}` should be of type `Chem.rdchem.Atom` or `dict`."
+            )
 
 
 class BondProperty(MolecularProperty):
@@ -252,9 +254,18 @@ class AtomNodeLevel(AugmentedAtomProperty):
 class AtomFunctionalGroup(AugmentedAtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
+        self.fg_reader = RuleBasedFGReader()
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
         return self._check_modify_atom_prop_value(atom, "FG")
+
+    def _get_atom_prop_value(self, atom: Chem.rdchem.Atom | Dict, prop: str):
+        if isinstance(atom, Chem.rdchem.Atom):
+            return self.fg_reader._read_data(atom.GetProp(prop))  # noqa
+        elif isinstance(atom, dict):
+            return self.fg_reader._read_data(atom[prop])  # noqa
+        else:
+            raise TypeError("Atom/Node should be of type `Chem.rdchem.Atom` or `dict`.")
 
 
 class AtomRingSize(AugmentedAtomProperty):

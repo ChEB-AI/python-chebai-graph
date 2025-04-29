@@ -344,28 +344,5 @@ class RuleBasedFGReader(dr.ChemDataReader):
     def name(cls) -> str:
         return "rule_based_fg"
 
-    def _read_data(self, augmented_mol: dict) -> List[int] | None:
-        feature_vector = []
-        augmented_mol_nodes = augmented_mol["nodes"]
-
-        if "atom_nodes" in augmented_mol_nodes:
-            if not isinstance(augmented_mol_nodes["atom_nodes"], Chem.Mol):
-                raise TypeError(f"augmented_mol_nodes['atom_nodes'] should be Chem.Mol")
-            feature_vector.extend(
-                self._get_token_index(node.GetProp("FG"))
-                for node in augmented_mol_nodes["atom_nodes"]
-            )
-
-        if "fg_nodes" in augmented_mol_nodes:
-            feature_vector.extend(
-                self._get_token_index(node["FG"])
-                for node in augmented_mol_nodes["fg_nodes"]
-            )
-
-        if "graph_node" in augmented_mol_nodes:
-            feature_vector.extend(
-                self._get_token_index(node["FG"])
-                for node in augmented_mol_nodes["graph_node"]
-            )
-
-        return feature_vector if feature_vector else None
+    def _read_data(self, fg: str) -> int | None:
+        return self._get_token_index(fg)
