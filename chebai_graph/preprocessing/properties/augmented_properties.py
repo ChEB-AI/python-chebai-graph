@@ -3,7 +3,8 @@ from typing import Dict, Optional
 
 from rdkit import Chem
 
-from chebai_graph.preprocessing import MolecularProperty, OneHotEncoder, PropertyEncoder
+from chebai_graph.preprocessing import OneHotEncoder, PropertyEncoder
+from chebai_graph.preprocessing.properties import MolecularProperty
 from chebai_graph.preprocessing.reader import RuleBasedFGReader
 from chebai_graph.preprocessing.utils.properties_constants import *
 
