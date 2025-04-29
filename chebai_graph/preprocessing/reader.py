@@ -152,12 +152,6 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         self.failed_counter = 0
         self.mol_object_buffer = {}
 
-        if "graph_fg" not in self.cache:
-            raise KeyError(
-                f"Function group `graph_fg` doesn't exits in {self.token_path}. "
-                f"It should be manually added to token file (preferably at 0th index)"
-            )
-
     @classmethod
     def name(cls):
         return "graph_fg_augmentor"
