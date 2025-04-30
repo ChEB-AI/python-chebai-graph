@@ -10,7 +10,9 @@ from chebai_graph.preprocessing.reader import GraphFGAugmentorReader
 matplotlib.use("TkAgg")
 
 
-def plot_augmented_graph(edge_index, augmented_graph_nodes, augmented_graph_edges, mol):
+def plot_augmented_graph(
+    edge_index, augmented_graph_nodes, augmented_graph_edges, mol, plot_type
+):
     G = nx.Graph()
 
     node_labels = {}
@@ -73,63 +75,87 @@ def plot_augmented_graph(edge_index, augmented_graph_nodes, augmented_graph_edge
             edge_type = FG_GRAPHNODE_EDGE
         else:
             raise Exception("Unexpected edge type")
-        edges.append((src, tgt))
+        edges.append((src, tgt, {"type": edge_type}))
         edge_colors.append(edge_color_map[edge_type])
     G.add_edges_from(edges)
 
-    # 1. Get atom positions from RDKit
-    AllChem.Compute2DCoords(mol)
-    atom_pos, max_atom_pos_y = {}, 0
-    for atom in mol.GetAtoms():
-        idx = atom.GetIdx()
-        pos = mol.GetConformer().GetAtomPosition(idx)
-        atom_pos[idx] = (pos.x, pos.y)  # Flip y-axis so graph node is on top
-        if pos.y > max_atom_pos_y:
-            max_atom_pos_y = pos.y
+    if plot_type == "h":  # hierarchy
+        # 1. Get atom positions from RDKit
+        AllChem.Compute2DCoords(mol)
+        atom_pos, max_atom_pos_y = {}, 0
+        for atom in mol.GetAtoms():
+            idx = atom.GetIdx()
+            pos = mol.GetConformer().GetAtomPosition(idx)
+            atom_pos[idx] = (pos.x, pos.y)  # Flip y-axis so graph node is on top
+            if pos.y > max_atom_pos_y:
+                max_atom_pos_y = pos.y
 
-    # 2. Layout for FG and Graph nodes
-    fg_subgraph = G.subgraph(fg_ids)
-    fg_pos = nx.spring_layout(fg_subgraph, seed=42)
-    fg_pos = {
-        node: (x, y + max_atom_pos_y + 2) for node, (x, y) in fg_pos.items()
-    }  # Below atoms
+        # 2. Layout for FG and Graph nodes
+        fg_subgraph = G.subgraph(fg_ids)
+        fg_pos = nx.spring_layout(fg_subgraph, seed=42)
+        fg_pos = {
+            node: (x, y + max_atom_pos_y + 2) for node, (x, y) in fg_pos.items()
+        }  # Below atoms
 
-    graph_node_subgraph = G.subgraph(graph_ids)
-    graph_pos = nx.spring_layout(graph_node_subgraph, seed=123)
-    graph_pos = {
-        node: (x, y + max_atom_pos_y + 3) for node, (x, y) in graph_pos.items()
-    }  # Above atoms
+        graph_node_subgraph = G.subgraph(graph_ids)
+        graph_pos = nx.spring_layout(graph_node_subgraph, seed=123)
+        graph_pos = {
+            node: (x, y + max_atom_pos_y + 3) for node, (x, y) in graph_pos.items()
+        }  # Above atoms
 
-    # Combine all positions
-    pos = {**atom_pos, **fg_pos, **graph_pos}
+        # Combine all positions
+        pos = {**atom_pos, **fg_pos, **graph_pos}
 
-    # Final node color mapping
-    node_colors_final = [
-        {"atom": "#9ecae1", "fg": "#fdae6b", "graph": "#d62728"}[node_type_map[n]]
-        for n in G.nodes
-    ]
+        # Final node color mapping
+        node_colors_final = [
+            {"atom": "#9ecae1", "fg": "#fdae6b", "graph": "#d62728"}[node_type_map[n]]
+            for n in G.nodes
+        ]
 
-    # Draw
-    plt.figure(figsize=(10, 8))
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors_final, node_size=600)
-    nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=10)
-    nx.draw_networkx_edges(G, pos, edgelist=edges, width=2, edge_color=edge_colors)
+        # Draw
+        plt.figure(figsize=(10, 8))
+        nx.draw_networkx_nodes(G, pos, node_color=node_colors_final, node_size=600)
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=10)
+        nx.draw_networkx_edges(G, pos, edgelist=edges, width=2, edge_color=edge_colors)
 
-    plt.title("Augmented Graph with RDKit Atom Layout + FG/Graph Clusters")
-    plt.axis("off")
-    plt.show()
+        plt.title("Augmented Graph with RDKit Atom Layout + FG/Graph Clusters")
+        plt.axis("off")
+        plt.show()
+
+    elif plot_type == "simple":
+        plt.figure(figsize=(10, 8))
+        pos = nx.spring_layout(G, seed=42)
+        nx.draw(
+            G,
+            pos,
+            with_labels=False,
+            node_color=node_colors,
+            node_size=600,
+            edge_color=[
+                edge_color_map[data["type"]] for _, _, data in G.edges(data=True)
+            ],
+            width=2,
+        )
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=10)
+        plt.title("Augmented Graph with simple layout")
+        plt.axis("off")
+        plt.show()
+    else:
+        raise Exception("Unknown plot type")
 
 
 class Main:
     def __init__(self):
         self._fg_reader = GraphFGAugmentorReader()
 
-    def plot(self, smiles: str = "OC(=O)c1ccccc1O"):
+    def plot(self, smiles: str = "OC(=O)c1ccccc1O", plot_type: str = "simple"):
         mol = self._fg_reader._smiles_to_mol(smiles)  # noqa
         edge_index, augmented_nodes, augmented_edges = self._fg_reader._augment_graph(
             mol
         )  # noqa
-        plot_augmented_graph(edge_index, augmented_nodes, augmented_edges, mol)
+        plot_augmented_graph(
+            edge_index, augmented_nodes, augmented_edges, mol, plot_type
+        )
 
 
 if __name__ == "__main__":
