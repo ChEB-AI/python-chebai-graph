@@ -36,6 +36,9 @@ def plot_augmented_graph(edge_index, augmented_graph_nodes, augmented_graph_edge
     node_labels[graph_node_idx] = "Graph Node"
     node_colors.append("#d62728")  # red
 
+    # Ensure edge_index is undirected by converting it to undirected
+    edge_index = edge_index
+
     # Add edges
     src_nodes, tgt_nodes = edge_index.tolist()
 
@@ -47,14 +50,13 @@ def plot_augmented_graph(edge_index, augmented_graph_nodes, augmented_graph_edge
     within_fg_edges = set(augmented_graph_edges[WITHIN_FG_EDGE])
     fg_graph_edges = set(augmented_graph_edges[FG_GRAPHNODE_EDGE])
 
-    edge_colors = []
     edge_color_map = {
         WITHIN_ATOMS_EDGE: "#1f77b4",  # blue
-        ATOM_FG_EDGE: "#ff7f0e",  # orange
-        WITHIN_FG_EDGE: "#ffbb78",  # light orange
+        ATOM_FG_EDGE: "#9467bd",  # purple
+        WITHIN_FG_EDGE: "#ff7f0e",  # orange
         FG_GRAPHNODE_EDGE: "#2ca02c",  # green
     }
-
+    augmented_edges = []
     for src, tgt in zip(src_nodes, tgt_nodes):
         undirected_edge_set = {f"{src}_{tgt}", f"{tgt}_{src}"}
 
@@ -69,8 +71,9 @@ def plot_augmented_graph(edge_index, augmented_graph_nodes, augmented_graph_edge
         else:
             raise Exception("Unexpected edge type")
 
-        G.add_edge(src, tgt)
-        edge_colors.append(edge_color_map[edge_type])
+        augmented_edges.append((src, tgt, {"type": edge_type}))
+
+    G.add_edges_from(augmented_edges)
 
     plt.figure(figsize=(10, 8))
     pos = nx.spring_layout(G, seed=42)
@@ -80,7 +83,7 @@ def plot_augmented_graph(edge_index, augmented_graph_nodes, augmented_graph_edge
         with_labels=False,
         node_color=node_colors,
         node_size=600,
-        edge_color=edge_colors,
+        edge_color=[edge_color_map[data["type"]] for _, _, data in G.edges(data=True)],
         width=2,
     )
     nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=10)
