@@ -1,6 +1,7 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
+from jsonargparse import CLI
 from rdkit.Chem import AllChem
 
 from chebai_graph.preprocessing.properties.constants import *
@@ -119,13 +120,18 @@ def plot_augmented_graph(edge_index, augmented_graph_nodes, augmented_graph_edge
     plt.show()
 
 
-def main(smiles: str):
-    reader = GraphFGAugmentorReader()
-    mol = reader._smiles_to_mol(smiles)
-    edge_index, augmented_nodes, augmented_edges = reader._augment_graph(mol)
-    plot_augmented_graph(edge_index, augmented_nodes, augmented_edges, mol)
+class Main:
+    def __init__(self):
+        self._fg_reader = GraphFGAugmentorReader()
+
+    def plot(self, smiles: str = "OC(=O)c1ccccc1O"):
+        mol = self._fg_reader._smiles_to_mol(smiles)  # noqa
+        edge_index, augmented_nodes, augmented_edges = self._fg_reader._augment_graph(
+            mol
+        )  # noqa
+        plot_augmented_graph(edge_index, augmented_nodes, augmented_edges, mol)
 
 
 if __name__ == "__main__":
-    smiles = "OC(=O)c1ccccc1O"
-    main(smiles)
+    # use:- visualize_augmented_molecule.py plot --smiles="OC(=O)c1ccccc1O"
+    CLI(Main)
