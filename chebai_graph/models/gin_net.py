@@ -1,10 +1,11 @@
+import typing
+
+import torch
+import torch.nn.functional as F
+import torch_geometric
 from torch_scatter import scatter_add
 
 from chebai_graph.models.graph import GraphBaseNet
-import torch_geometric
-import torch.nn.functional as F
-import torch
-import typing
 
 
 class AggregateMLP(torch.nn.Module):
