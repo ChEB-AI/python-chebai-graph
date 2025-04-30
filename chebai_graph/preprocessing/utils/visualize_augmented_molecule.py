@@ -140,6 +140,98 @@ def plot_augmented_graph(
         plt.title("Augmented Graph with simple layout")
         plt.axis("off")
         plt.show()
+
+    elif plot_type == "3d":
+        from plotly import graph_objects as go
+
+        # Compute 3D coordinates for atoms
+        AllChem.EmbedMolecule(mol)
+        conf = mol.GetConformer()
+
+        atom_pos = {}
+        for atom in mol.GetAtoms():
+            idx = atom.GetIdx()
+            pos = conf.GetAtomPosition(idx)
+            atom_pos[idx] = (pos.x, pos.y, 0)  # pos.z
+
+        # Generate 3D layout for FG and Graph nodes using spring layout
+        fg_pos_3d = nx.spring_layout(G.subgraph(fg_ids), seed=42, dim=3)
+        graph_pos_3d = nx.spring_layout(G.subgraph(graph_ids), seed=123, dim=3)
+
+        # Offset to avoid overlap with atom layer
+        max_z = 0  # max(z for _, (_, _, z) in atom_pos.items()) if atom_pos else 0
+        fg_pos = {k: (x, y, z + max_z + 2) for k, (x, y, z) in fg_pos_3d.items()}
+        graph_pos = {k: (x, y, z + max_z + 4) for k, (x, y, z) in graph_pos_3d.items()}
+        pos = {**atom_pos, **fg_pos, **graph_pos}
+
+        # Group edges by type
+        edge_type_to_edges = {
+            WITHIN_ATOMS_EDGE: [],
+            ATOM_FG_EDGE: [],
+            WITHIN_FG_EDGE: [],
+            FG_GRAPHNODE_EDGE: [],
+        }
+
+        for src, tgt, data in edges:
+            edge_type_to_edges[data["type"]].append((src, tgt))
+
+        # Create edge traces
+        edge_traces = []
+        for edge_type, edge_list in edge_type_to_edges.items():
+            xs, ys, zs = [], [], []
+            for src, tgt in edge_list:
+                x0, y0, z0 = pos[src]
+                x1, y1, z1 = pos[tgt]
+                xs += [x0, x1, None]
+                ys += [y0, y1, None]
+                zs += [z0, z1, None]
+
+            trace = go.Scatter3d(
+                x=xs,
+                y=ys,
+                z=zs,
+                mode="lines",
+                line=dict(color=edge_color_map[edge_type], width=4),
+                name=edge_type,
+                hoverinfo="none",
+            )
+            edge_traces.append(trace)
+
+        # Node trace
+
+        node_trace = go.Scatter3d(
+            x=[pos[n][0] for n in G.nodes],
+            y=[pos[n][1] for n in G.nodes],
+            z=[pos[n][2] for n in G.nodes],
+            mode="markers+text",
+            marker=dict(
+                size=8,
+                color=[
+                    {"atom": "#9ecae1", "fg": "#fdae6b", "graph": "#d62728"}[
+                        node_type_map[n]
+                    ]
+                    for n in G.nodes
+                ],
+                opacity=0.9,
+            ),
+            text=[node_labels[n] for n in G.nodes],
+            textposition="top center",
+            hoverinfo="text",
+        )
+
+        # Combine all traces and plot
+        fig = go.Figure(data=edge_traces + [node_trace])
+        fig.update_layout(
+            title="3D Augmented Molecule Graph",
+            showlegend=True,
+            scene=dict(
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
+                zaxis=dict(visible=False),
+            ),
+            margin=dict(l=0, r=0, b=0, t=40),
+        )
+        fig.show()
     else:
         raise Exception("Unknown plot type")
 
