@@ -142,7 +142,13 @@ def plot_augmented_graph(
         plt.show()
 
     elif plot_type == "3d":
-        from plotly import graph_objects as go
+        try:
+            from plotly import graph_objects as go
+        except ImportError:
+            raise ImportError(
+                "Plotly is required for 3D plotting. Please install it using:\n\n"
+                "    pip install plotly"
+            )
 
         # Compute 3D coordinates for atoms
         AllChem.EmbedMolecule(mol)
