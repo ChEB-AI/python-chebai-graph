@@ -1,4 +1,5 @@
-from typing import List, Optional
+from abc import ABC, abstractmethod
+from typing import Dict, List, Optional, Tuple
 
 from chebai.preprocessing.reader import ChemDataReader
 from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
@@ -16,7 +17,7 @@ from chebai_graph.preprocessing.properties import MolecularProperty
 from chebai_graph.preprocessing.properties.constants import *
 
 
-class GraphFGAugmentorReader(ChemDataReader):
+class _AugmentorReader(ChemDataReader, ABC):
     COLLATOR = GraphCollator
 
     def __init__(
@@ -27,6 +28,50 @@ class GraphFGAugmentorReader(ChemDataReader):
         super().__init__(*args, **kwargs)
         self.failed_counter = 0
         self.mol_object_buffer = {}
+
+    @classmethod
+    @abstractmethod
+    def name(cls) -> str:
+        pass
+
+    @abstractmethod
+    def _get_augmented_molecule(self, smile: str) -> Tuple[Dict, torch.Tensor]:
+        pass
+
+    @abstractmethod
+    def _read_data(self, raw_data: str) -> List[int]:
+        pass
+
+    def _smiles_to_mol(self, smiles: str) -> Optional[Chem.rdchem.Mol]:
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            rank_zero_warn(f"RDKit failed to at parsing {smiles} (returned None)")
+            self.failed_counter += 1
+        else:
+            try:
+                Chem.SanitizeMol(mol)
+            except Exception as e:
+                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}, Error {e}")
+                self.failed_counter += 1
+        return mol
+
+    def on_finish(self):
+        rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
+        self.mol_object_buffer = {}
+
+    def read_property(self, smiles: str, property: MolecularProperty) -> Optional[List]:
+        mol = self._smiles_to_mol(smiles)
+        if mol is None:
+            return None
+
+        if smiles in self.mol_object_buffer:
+            return property.get_property_value(self.mol_object_buffer[smiles])
+
+        augmented_mol, _ = self._get_augmented_molecule(smiles)
+        return property.get_property_value(mol)
+
+
+class GraphFGAugmentorReader(_AugmentorReader):
 
     @classmethod
     def name(cls):
@@ -53,19 +98,6 @@ class GraphFGAugmentorReader(ChemDataReader):
         self.mol_object_buffer[smiles] = augmented_mol
 
         return augmented_mol, edge_index
-
-    def _smiles_to_mol(self, smiles: str) -> Optional[Chem.rdchem.Mol]:
-        mol = Chem.MolFromSmiles(smiles)
-        if mol is None:
-            rank_zero_warn(f"RDKit failed to at parsing {smiles} (returned None)")
-            self.failed_counter += 1
-        else:
-            try:
-                Chem.SanitizeMol(mol)
-            except Exception as e:
-                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}, Error {e}")
-                self.failed_counter += 1
-        return mol
 
     def _augment_graph(self, mol: Chem.Mol):
         edge_index = torch.tensor(
@@ -223,21 +255,6 @@ class GraphFGAugmentorReader(ChemDataReader):
             return max(ring_sizes)
         else:
             return 0
-
-    def on_finish(self):
-        rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
-        self.mol_object_buffer = {}
-
-    def read_property(self, smiles: str, property: MolecularProperty) -> Optional[List]:
-        mol = self._smiles_to_mol(smiles)
-        if mol is None:
-            return None
-
-        if smiles in self.mol_object_buffer:
-            return property.get_property_value(self.mol_object_buffer[smiles])
-
-        augmented_mol, _ = self._get_augmented_molecule(smiles)
-        return property.get_property_value(mol)
 
 
 class RuleBasedFGReader(ChemDataReader):
