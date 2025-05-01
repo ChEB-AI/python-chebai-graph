@@ -295,8 +295,7 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
 
 def plot_augmented_graph(
     edge_index: Tensor,
-    augmented_graph_nodes: dict,
-    augmented_graph_edges: dict,
+    augmented_molecule: dict,
     mol: Mol,
     plot_type: str,
 ) -> None:
@@ -305,12 +304,13 @@ def plot_augmented_graph(
 
     Args:
         edge_index (torch.Tensor): Edge indices tensor (2, num_edges).
-        augmented_graph_nodes (dict): Node metadata.
-        augmented_graph_edges (dict): Edge metadata.
+        augmented_molecule (dict): Augmented Molecule.
         mol (Chem.Mol): RDKit molecule object.
         plot_type (str): One of ["simple", "h", "3d"].
     """
-    G = _create_graph(edge_index, augmented_graph_nodes, augmented_graph_edges)
+    G = _create_graph(
+        edge_index, augmented_molecule["nodes"], augmented_molecule["edges"]
+    )
 
     if plot_type == "h":
         _draw_hierarchy(G, mol)
@@ -342,12 +342,10 @@ class Main:
                 - 3d: Hierarchical 3D-graph
         """
         mol = self._fg_reader._smiles_to_mol(smiles)  # noqa
-        edge_index, augmented_nodes, augmented_edges = self._fg_reader._augment_graph(
+        edge_index, augmented_molecule = self._fg_reader._create_augmented_graph(
             mol
         )  # noqa
-        plot_augmented_graph(
-            edge_index, augmented_nodes, augmented_edges, mol, plot_type
-        )
+        plot_augmented_graph(edge_index, augmented_molecule, mol, plot_type)
 
 
 if __name__ == "__main__":
