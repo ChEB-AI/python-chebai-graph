@@ -8,7 +8,7 @@ from rdkit import Chem
 from torch_geometric.data import Data as GeomData
 
 from chebai_graph.preprocessing.collate import GraphCollator
-from chebai_graph.preprocessing.fg_detection.rule_based import (
+from chebai_graph.preprocessing.fg_detection.fg_aware_rule_based import (
     detect_functional_group,
     get_structure,
     set_atom_map_num,
