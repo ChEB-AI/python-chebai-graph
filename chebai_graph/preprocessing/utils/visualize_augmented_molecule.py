@@ -1,10 +1,9 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
-import torch
 from jsonargparse import CLI
-from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import AllChem, Mol
+from torch import Tensor
 
 from chebai_graph.preprocessing.properties.constants import *
 from chebai_graph.preprocessing.reader import GraphFGAugmentorReader
@@ -26,7 +25,7 @@ NODE_COLOR_MAP = {
 
 
 def _create_graph(
-    edge_index: torch.Tensor, augmented_graph_nodes: dict, augmented_graph_edges: dict
+    edge_index: Tensor, augmented_graph_nodes: dict, augmented_graph_edges: dict
 ) -> nx.Graph:
     """
     Create a NetworkX graph from augmented molecular information.
@@ -115,7 +114,7 @@ def _get_subgraph_by_node_type(G: nx.Graph, node_type: str) -> nx.Graph:
     return G.subgraph(selected_nodes).copy()
 
 
-def _draw_hierarchy(G: nx.Graph, mol: Chem.Mol) -> None:
+def _draw_hierarchy(G: nx.Graph, mol: Mol) -> None:
     """
     Draw a hierarchical layout combining RDKit 2D coordinates for atoms and spring layout for FG/graph nodes.
 
@@ -190,7 +189,7 @@ def _draw_simple(G: nx.Graph) -> None:
     plt.show()
 
 
-def _draw_3d(G: nx.Graph, mol: Chem.Mol) -> None:
+def _draw_3d(G: nx.Graph, mol: Mol) -> None:
     """
     Visualize the graph in 3D using Plotly.
 
@@ -261,9 +260,9 @@ def _draw_3d(G: nx.Graph, mol: Chem.Mol) -> None:
         edge_traces.append(trace)
 
     # Collect node attributes for visualization
-    pos_x, pos_y, pos_z, node_colors, node_names = zip(
+    pos_x, pos_y, pos_z, node_colors, node_names, node_ids = zip(
         *[
-            (pos[n][0], pos[n][1], pos[n][2], attr["node_color"], attr["node_name"])
+            (pos[n][0], pos[n][1], pos[n][2], attr["node_color"], attr["node_name"], n)
             for n, attr in G.nodes(data=True)
         ]
     )
@@ -276,6 +275,7 @@ def _draw_3d(G: nx.Graph, mol: Chem.Mol) -> None:
         marker=dict(size=8, color=node_colors, opacity=0.9),
         text=node_names,
         textposition="top center",
+        hovertext=node_ids,
         hoverinfo="text",
     )
 
@@ -294,10 +294,10 @@ def _draw_3d(G: nx.Graph, mol: Chem.Mol) -> None:
 
 
 def plot_augmented_graph(
-    edge_index: torch.Tensor,
+    edge_index: Tensor,
     augmented_graph_nodes: dict,
     augmented_graph_edges: dict,
-    mol: Chem.Mol,
+    mol: Mol,
     plot_type: str,
 ) -> None:
     """
