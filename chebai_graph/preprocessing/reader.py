@@ -11,13 +11,13 @@ from rdkit.Chem import Mol
 from torch_geometric.data import Data as GeomData
 from torch_geometric.utils import from_networkx
 
-import chebai_graph.preprocessing.properties as properties
 from chebai_graph.preprocessing.collate import GraphCollator
 from chebai_graph.preprocessing.fg_detection.rule_based import (
     detect_functional_group,
     get_structure,
     set_atom_map_num,
 )
+from chebai_graph.preprocessing.properties import MolecularProperty
 from chebai_graph.preprocessing.properties.constants import *
 
 
@@ -76,9 +76,7 @@ class GraphPropertyReader(dr.ChemDataReader):
         rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
         self.mol_object_buffer = {}
 
-    def read_property(
-        self, smiles: str, property: properties.MolecularProperty
-    ) -> Optional[List]:
+    def read_property(self, smiles: str, property: MolecularProperty) -> Optional[List]:
         mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
@@ -352,9 +350,7 @@ class GraphFGAugmentorReader(dr.ChemDataReader):
         rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
         self.mol_object_buffer = {}
 
-    def read_property(
-        self, smiles: str, property: properties.MolecularProperty
-    ) -> Optional[List]:
+    def read_property(self, smiles: str, property: MolecularProperty) -> Optional[List]:
         mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
