@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple
 
+import torch
 from chebai.preprocessing.reader import ChemDataReader
 from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from rdkit import Chem
 from torch_geometric.data import Data as GeomData
-from wandb.integration.torch.wandb_torch import torch
 
 from chebai_graph.preprocessing.collate import GraphCollator
 from chebai_graph.preprocessing.fg_detection.rule_based import (
@@ -140,29 +140,17 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 fg_atom_edges[f"{num_of_nodes}_{atom}"] = {EDGE_LEVEL: ATOM_FG_EDGE}
                 num_of_edges += 1
 
-            fg_set = {
-                mol.GetAtomWithIdx(atom_idx).GetProp("FG")
+            ring_fg = {
+                mol.GetAtomWithIdx(atom_idx).GetProp("RING")
                 for atom_idx in structure[fg]["atom"]
-                if mol.GetAtomWithIdx(atom_idx).GetProp("FG")
+                if mol.GetAtomWithIdx(atom_idx).GetProp("RING")
             }
 
-            if len(fg_set) > 1:
-                raise Exception("connected atoms should belong to only one fg")
+            if len(ring_fg) > 1:
+                raise Exception("connected atom rings should have only one ring size")
 
-            elif len(fg_set) == 0:
-                ring_sizes = set()
-                for atom_idx in structure[fg]["atom"]:
-                    atom = mol.GetAtomWithIdx(atom_idx)
-                    ring_size_prop = atom.GetProp("RING")
-                    if not ring_size_prop:
-                        raise Exception("All atoms should have ring size")
-                    ring_sizes.add(int(ring_size_prop))
-                    atom.SetProp("FG", f"RING_{ring_size_prop}")
-
-                # TODO: Incase error is raised check logic for fused rings
-                assert len(ring_sizes) == 1, "all atoms should have one ring size"
-                ring_size = list(ring_sizes)[0]
-
+            elif len(ring_fg) == 1:
+                ring_size = next(iter(ring_fg))
                 fg_nodes[num_of_nodes] = {
                     NODE_LEVEL: FG_NODE_LEVEL,
                     "FG": f"RING_{ring_size}",
@@ -170,11 +158,26 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 }
 
             else:
+
+                fg_set = {
+                    mol.GetAtomWithIdx(atom_idx).GetProp("FG")
+                    for atom_idx in structure[fg]["atom"]
+                }
+                if "" in fg_set:
+                    raise Exception(
+                        "All connected atoms have a Functional Group assigned"
+                    )
+                elif len(fg_set) > 1:
+                    raise Exception(
+                        "All connected atoms should belong to only one Functional Group or should have"
+                    )
+
                 any_atom = None
                 for atom_idx in structure[fg]["atom"]:
                     atom = mol.GetAtomWithIdx(atom_idx)
                     if atom.GetProp("FG"):
                         any_atom = atom
+                assert any_atom is not None, "Need a FG"
 
                 fg_nodes[num_of_nodes] = {
                     NODE_LEVEL: FG_NODE_LEVEL,

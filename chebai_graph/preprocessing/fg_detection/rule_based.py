@@ -1927,10 +1927,9 @@ def get_structure(mol):
 if __name__ == "__main__":
     from rdkit.Chem import MolFromSmiles as s2m
 
-    SMILES = (
-        "CCOc1c(OC)cccc1[C@@H]1C(C(=O)OCCOC)=C(C)N=c2s/c(=C/c3cccc(OCC#N)c3)c(=O)n21"
-    )
-    mol = s2m(SMILES)
-    # set_atom_map_num(mol)
+    smiles = "CC(=O)OC1=CC=CC=C1C(=O)O"  # Aspirin,  CHEBI:15365 - acetylsalicylic acid
+    mol = s2m(smiles)
+    set_atom_map_num(mol)
+    detect_functional_group(mol)
     get_structure(mol)
     print(m2s(mol))

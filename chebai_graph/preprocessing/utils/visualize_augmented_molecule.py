@@ -352,4 +352,9 @@ class Main:
 
 if __name__ == "__main__":
     # Example: python visualize_augmented_molecule.py plot --smiles="OC(=O)c1ccccc1O" --plot_type="h"
+    # Aspirin ->  CC(=O)OC1=CC=CC=C1C(=O)O ; CHEBI:15365, acetylsalicylic acid
+    # Salicylic acid -> OC(=O)c1ccccc1O ; CHEBI:16914
+    # 1-hydroxy-2-naphthoic acid -> OC(=O)c1ccc2ccccc2c1O ; CHEBI:36108 ; Fused Rings
+    #  3-nitrobenzoic acid -> OC(=O)C1=CC(=CC=C1)[N+]([O-])=O ; CHEBI:231494 ; Ring + Novel atom (Nitrogen)
+    # nile blue A -> [Cl-].CCN(CC)c1ccc2nc3c(cc(N)c4ccccc34)[o+]c2c1 ; CHEBI:52163 ; Fused rings + Novel atoms
     CLI(Main)
