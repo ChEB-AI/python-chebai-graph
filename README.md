@@ -129,14 +129,14 @@ python -c "import sys; print(sys.path)"
 #### 🐧 Linux / macOS
 
 ```bash
-export PYTHONPATH=/path/to/python-chebai
+export PYTHONPATH=/path/to/python-chebai-graph
 echo $PYTHONPATH
 ```
 
 #### 🪟 Windows CMD
 
 ```cmd
-set PYTHONPATH=C:\path\to\python-chebai
+set PYTHONPATH=C:\path\to\python-chebai-graph
 echo %PYTHONPATH%
 ```
 
