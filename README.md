@@ -68,7 +68,7 @@ This setup enables shared access to data and model configurations for both Trans
 ### ⚠️ Important Note
 
 - Before executing the following commands, ensure you are in the `python-chebai` directory and have set the `PYTHONPATH` to the `python-chebai-graph` directory, as explained in the [PYTHONPATH Explained](#-pythonpath-explained) section below.
-- To avoid any potential error, we recommend **configuring both directories** in the `PYTHONPATH`, using following command (for windows)
+- To avoid any potential error, we recommend **configuring both directories** in the `PYTHONPATH`, using following command (use **semicolon (`;`)** on Windows, and **colon (`:`)** on Linux as a separator)
   ```bash
       set PYTHONPATH=path/to/python-chebai;path/to/python-chebai-graph
   ```
