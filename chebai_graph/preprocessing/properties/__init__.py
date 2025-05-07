@@ -4,6 +4,8 @@
 # isort: off
 from .properties import (
     MolecularProperty,
+    AtomProperty,
+    BondProperty,
     AtomType,
     NumAtomBonds,
     AtomCharge,
@@ -29,6 +31,8 @@ from .augmented_properties import (
 
 __all__ = [
     "MolecularProperty",
+    "AtomProperty",
+    "BondProperty",
     "AtomType",
     "NumAtomBonds",
     "AtomCharge",
