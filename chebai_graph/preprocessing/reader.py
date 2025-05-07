@@ -1,19 +1,18 @@
 import importlib
-
-from torch_geometric.utils import from_networkx
-from typing import Tuple, Mapping, Optional, List
-
-import importlib
-import networkx as nx
 import os
-import torch
-import rdkit.Chem as Chem
-import pysmiles as ps
+from typing import List, Mapping, Optional, Tuple
+
 import chebai.preprocessing.reader as dr
-from chebai_graph.preprocessing.collate import GraphCollator
-import chebai_graph.preprocessing.properties as properties
+import networkx as nx
+import pysmiles as ps
+import rdkit.Chem as Chem
+import torch
+from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from torch_geometric.data import Data as GeomData
-from lightning_utilities.core.rank_zero import rank_zero_warn, rank_zero_info
+from torch_geometric.utils import from_networkx
+
+import chebai_graph.preprocessing.properties as properties
+from chebai_graph.preprocessing.collate import GraphCollator
 
 
 class GraphPropertyReader(dr.ChemDataReader):

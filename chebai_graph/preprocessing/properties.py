@@ -6,11 +6,11 @@ import rdkit.Chem as Chem
 from descriptastorus.descriptors import rdNormalizedDescriptors
 
 from chebai_graph.preprocessing.property_encoder import (
-    PropertyEncoder,
-    IndexEncoder,
-    OneHotEncoder,
     AsIsEncoder,
     BoolEncoder,
+    IndexEncoder,
+    OneHotEncoder,
+    PropertyEncoder,
 )
 
 
