@@ -147,19 +147,14 @@ class AtomFunctionalGroup(AugmentedAtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
-        # To avoid circular imports
-        from chebai_graph.preprocessing.reader import RuleBasedFGReader
-
-        self.fg_reader = RuleBasedFGReader()
-
     def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
         return self._check_modify_atom_prop_value(atom, "FG")
 
     def _get_atom_prop_value(self, atom: Chem.rdchem.Atom | Dict, prop: str):
         if isinstance(atom, Chem.rdchem.Atom):
-            return self.fg_reader._read_data(atom.GetProp(prop))  # noqa
+            return atom.GetProp(prop)
         elif isinstance(atom, dict):
-            return self.fg_reader._read_data(atom[prop])  # noqa
+            return atom[prop]
         else:
             raise TypeError("Atom/Node should be of type `Chem.rdchem.Atom` or `dict`.")
 

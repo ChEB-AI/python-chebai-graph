@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple
 
 import torch
-from chebai.preprocessing.reader import ChemDataReader
+from chebai.preprocessing.reader import DataReader
 from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from rdkit import Chem
 from torch_geometric.data import Data as GeomData
@@ -17,7 +17,7 @@ from chebai_graph.preprocessing.properties import MolecularProperty
 from chebai_graph.preprocessing.properties.constants import *
 
 
-class _AugmentorReader(ChemDataReader, ABC):
+class _AugmentorReader(DataReader, ABC):
     """
     Abstract base class for augmentor readers that extend ChemDataReader.
     Handles reading molecular data and augmenting molecules with functional group
@@ -430,31 +430,3 @@ class GraphFGAugmentorReader(_AugmentorReader):
             self.num_of_edges += 1
 
         return graph_edge_index, graph_node, fg_graph_edges
-
-
-class RuleBasedFGReader(ChemDataReader):
-    """
-    A reader which give numeric value for given functional group.
-    """
-
-    @classmethod
-    def name(cls) -> str:
-        """
-        Returns the name of the rule-based functional group reader.
-
-        Returns:
-            str: The name of the reader.
-        """
-        return "rule_based_fg"
-
-    def _read_data(self, fg: str) -> Optional[int]:
-        """
-        Reads and returns the token index for a given functional group.
-
-        Args:
-            fg (str): The functional group to look up.
-
-        Returns:
-            Optional[int]: The index of the functional group, or None if not found.
-        """
-        return self._get_token_index(fg)
