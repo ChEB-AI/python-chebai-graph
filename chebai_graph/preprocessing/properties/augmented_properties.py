@@ -3,12 +3,13 @@ from typing import Dict, Optional
 
 from rdkit import Chem
 
-from chebai_graph.preprocessing.properties import MolecularProperty
-from chebai_graph.preprocessing.properties.constants import *
 from chebai_graph.preprocessing.property_encoder import OneHotEncoder, PropertyEncoder
 
+from .constants import *
+from .properties import AtomProperty, BondProperty
 
-class AugmentedBondProperty(MolecularProperty, ABC):
+
+class AugmentedBondProperty(BondProperty, ABC):
     MAIN_KEY = "edges"
 
     def get_property_value(self, augmented_mol: Dict):
@@ -73,7 +74,7 @@ class AugmentedBondProperty(MolecularProperty, ABC):
             raise TypeError("Bond/Edge should be of type `Chem.rdchem.Bond` or `dict`.")
 
 
-class AugmentedAtomProperty(MolecularProperty, ABC):
+class AugmentedAtomProperty(AtomProperty, ABC):
     MAIN_KEY = "nodes"
 
     def get_property_value(self, augmented_mol: Dict):
