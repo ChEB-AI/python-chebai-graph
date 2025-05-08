@@ -1,19 +1,17 @@
-import importlib
-
-from torch_geometric.utils import from_networkx
-from typing import Tuple, Mapping, Optional, List
-
-import importlib
-import networkx as nx
 import os
-import torch
-import rdkit.Chem as Chem
-import pysmiles as ps
+from typing import List, Optional
+
 import chebai.preprocessing.reader as dr
-from chebai_graph.preprocessing.collate import GraphCollator
-import chebai_graph.preprocessing.properties as properties
+import networkx as nx
+import pysmiles as ps
+import rdkit.Chem as Chem
+import torch
+from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from torch_geometric.data import Data as GeomData
-from lightning_utilities.core.rank_zero import rank_zero_warn, rank_zero_info
+from torch_geometric.utils import from_networkx
+
+from chebai_graph.preprocessing.collate import GraphCollator
+from chebai_graph.preprocessing.properties import MolecularProperty
 
 
 class GraphPropertyReader(dr.ChemDataReader):
@@ -45,7 +43,7 @@ class GraphPropertyReader(dr.ChemDataReader):
             try:
                 Chem.SanitizeMol(mol)
             except Exception as e:
-                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}")
+                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}, \n Error: {e}")
                 self.failed_counter += 1
         self.mol_object_buffer[smiles] = mol
         return mol
@@ -71,9 +69,7 @@ class GraphPropertyReader(dr.ChemDataReader):
         rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
         self.mol_object_buffer = {}
 
-    def read_property(
-        self, smiles: str, property: properties.MolecularProperty
-    ) -> Optional[List]:
+    def read_property(self, smiles: str, property: MolecularProperty) -> Optional[List]:
         mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
