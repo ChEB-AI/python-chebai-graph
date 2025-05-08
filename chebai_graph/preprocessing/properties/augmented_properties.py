@@ -97,7 +97,7 @@ class AugmentedAtomProperty(MolecularProperty, ABC):
         prop_list = [self.get_atom_value(atom) for atom in atom_molecule.GetAtoms()]
 
         fg_nodes = augmented_mol[self.MAIN_KEY]["fg_nodes"]
-        graph_node = atom_molecule[self.MAIN_KEY]["graph_node"]
+        graph_node = augmented_mol[self.MAIN_KEY]["graph_node"]
         if not isinstance(fg_nodes, dict) or not isinstance(graph_node, dict):
             raise TypeError(
                 f'augmented_mol["{self.MAIN_KEY}"](["fg_nodes"]/["graph_node"]) must be an instance of dict '
@@ -107,8 +107,8 @@ class AugmentedAtomProperty(MolecularProperty, ABC):
         # For python 3.7+, the standard dict type preserves insertion order, and is iterated over in same order
         # https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
         # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
-        prop_list.extend([self.get_atom_value(atom) for atom in fg_nodes])
-        prop_list.extend([self.get_atom_value(atom) for atom in graph_node])
+        prop_list.extend([self.get_atom_value(atom) for atom in fg_nodes.values()])
+        prop_list.append(self.get_atom_value(graph_node))
 
         return prop_list
 
