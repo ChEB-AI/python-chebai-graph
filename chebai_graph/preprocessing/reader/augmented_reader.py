@@ -22,10 +22,6 @@ class _AugmentorReader(DataReader, ABC):
     Abstract base class for augmentor readers that extend ChemDataReader.
     Handles reading molecular data and augmenting molecules with functional group
     information.
-
-    Attributes:
-        failed_counter (int): Counter for failed SMILES parsing attempts.
-        mol_object_buffer (dict): Cache for storing augmented molecular objects.
     """
 
     COLLATOR = GraphCollator
@@ -39,7 +35,12 @@ class _AugmentorReader(DataReader, ABC):
             **kwargs: Additional keyword arguments passed to the ChemDataReader.
         """
         super().__init__(*args, **kwargs)
-        self.failed_counter = 0
+        self.f_cnt_for_smiles = (
+            0  # Record number of failures when constructing molecule from smiles
+        )
+        self.f_cnt_for_aug_graph = (
+            0  # Record number of failure during augmented graph construction
+        )
         self.mol_object_buffer = {}
         self.num_nodes = 0
         self.num_of_edges = 0
@@ -56,15 +57,15 @@ class _AugmentorReader(DataReader, ABC):
         pass
 
     @abstractmethod
-    def _create_augmented_graph(self, smile: str) -> Tuple[Dict, torch.Tensor]:
+    def _create_augmented_graph(self, mol: Chem.Mol) -> Tuple[torch.Tensor, Dict]:
         """
         Augments a molecule represented by a SMILES string.
 
         Args:
-            smile (str): SMILES string representing the molecule.
+            mol (Chem.Mol): RDKIT molecule.
 
         Returns:
-            Tuple[Dict, torch.Tensor]: Augmented molecule information and corresponding edge index.
+            Tuple[torch.Tensor, Dict]: Graph edge index and augmented molecule information
         """
         pass
 
@@ -77,11 +78,11 @@ class _AugmentorReader(DataReader, ABC):
             raw_data (str): Raw data input.
 
         Returns:
-            List[int]: Processed data as a list of integers.
+            GeomData: `torch_geometric.data.Data` object.
         """
         pass
 
-    def _smiles_to_mol(self, smiles: str) -> Optional[Chem.Mol]:
+    def _smiles_to_mol(self, smiles: str) -> Chem.Mol:
         """
         Converts a SMILES string to an RDKit molecule object. Sanitizes the molecule.
 
@@ -89,25 +90,28 @@ class _AugmentorReader(DataReader, ABC):
             smiles (str): SMILES string representing the molecule.
 
         Returns:
-            Optional[Chem.Mol]: RDKit molecule object if conversion is successful, else None.
+            Chem.Mol: RDKit molecule object.
         """
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             rank_zero_warn(f"RDKit failed to parse {smiles} (returned None)")
-            self.failed_counter += 1
+            self.f_cnt_for_smiles += 1
         else:
             try:
                 Chem.SanitizeMol(mol)
             except Exception as e:
                 rank_zero_warn(f"RDKit failed at sanitizing {smiles}, Error {e}")
-                self.failed_counter += 1
+                self.f_cnt_for_smiles += 1
         return mol
 
-    def on_finish(self):
+    def on_finish(self) -> None:
         """
-        Finalizes the reading process and logs the number of failed SMILES.
+        Finalizes the reading process and logs the number of failed SMILES and failed augmentation.
         """
-        rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
+        rank_zero_info(f"Failed to read {self.f_cnt_for_smiles} SMILES in total")
+        rank_zero_info(
+            f"Failed to construct augmented graph for {self.f_cnt_for_aug_graph} number of SMILES"
+        )
         self.mol_object_buffer = {}
 
     def read_property(self, smiles: str, property: MolecularProperty) -> Optional[List]:
@@ -121,15 +125,15 @@ class _AugmentorReader(DataReader, ABC):
         Returns:
             Optional[List]: Property values if molecule parsing is successful, else None.
         """
+        if smiles in self.mol_object_buffer:
+            return property.get_property_value(self.mol_object_buffer[smiles])
+
         mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
 
-        if smiles in self.mol_object_buffer:
-            return property.get_property_value(self.mol_object_buffer[smiles])
-
-        augmented_mol, _ = self._create_augmented_graph(smiles)
-        return property.get_property_value(mol)
+        _, augmented_mol = self._create_augmented_graph(mol)
+        return property.get_property_value(augmented_mol)
 
 
 class GraphFGAugmentorReader(_AugmentorReader):
@@ -164,7 +168,14 @@ class GraphFGAugmentorReader(_AugmentorReader):
         if mol is None:
             return None
 
-        edge_index, augmented_molecule = self._create_augmented_graph(mol)
+        returned_result = self._create_augmented_graph(mol)
+        if returned_result is None:
+            rank_zero_info(f"Failed to construct augmented graph for smiles {smiles}")
+            self.f_cnt_for_aug_graph += 1
+            return None
+
+        edge_index, augmented_molecule = returned_result
+
         self.mol_object_buffer[smiles] = augmented_molecule
 
         num_nodes = augmented_molecule["nodes"]["num_nodes"]
@@ -176,7 +187,9 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
         return GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
-    def _create_augmented_graph(self, mol: Chem.Mol) -> Tuple[torch.Tensor, dict]:
+    def _create_augmented_graph(
+        self, mol: Chem.Mol
+    ) -> Optional[Tuple[torch.Tensor, Dict]]:
         """
         Generates an augmented graph from a SMILES string.
 
@@ -186,7 +199,11 @@ class GraphFGAugmentorReader(_AugmentorReader):
         Returns:
             Tuple[dict, torch.Tensor]: Augmented molecule information and edge index.
         """
-        edge_index, node_info, edge_info = self._augment_graph_structure(mol)
+        returned_result = self._augment_graph_structure(mol)
+        if returned_result is None:
+            return None
+
+        edge_index, node_info, edge_info = returned_result
 
         augmented_molecule = {"nodes": node_info, "edges": edge_info}
 
@@ -194,7 +211,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
     def _augment_graph_structure(
         self, mol: Chem.Mol
-    ) -> Tuple[torch.Tensor, dict, dict]:
+    ) -> Optional[Tuple[torch.Tensor, dict, dict]]:
         """
         Constructs the full augmented graph structure from a molecule.
 
@@ -211,9 +228,15 @@ class GraphFGAugmentorReader(_AugmentorReader):
         atom_edge_index = self._generate_atom_level_edge_index(mol)
 
         # Create FG-level structure and edges
+        returned_result = self._construct_fg_to_atom_structure(mol)
+
+        if returned_result is None:
+            return None
+
         fg_atom_edge_index, fg_nodes, atom_fg_edges, structured_fg_map, bonds = (
-            self._construct_fg_to_atom_structure(mol)
+            returned_result
         )
+
         fg_internal_edge_index, internal_fg_edges = self._construct_fg_level_structure(
             structured_fg_map, bonds
         )
@@ -282,7 +305,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
     def _construct_fg_to_atom_structure(
         self, mol: Chem.Mol
-    ) -> Tuple[List[List[int]], dict, dict, dict, list]:
+    ) -> Optional[Tuple[List[List[int]], dict, dict, dict, list]]:
         """
         Constructs edges between functional group (FG) nodes and atom nodes.
 
@@ -346,6 +369,11 @@ class GraphFGAugmentorReader(_AugmentorReader):
                     mol.GetAtomWithIdx(i).GetProp("FG")
                     for i in structure[fg_key]["atom"]
                 }
+
+                if "" in fg_set and len(fg_set) == 1:
+                    # There will be no FGs for wildcard SMILES Eg. CHEBI:33429
+                    return None
+
                 if "" in fg_set or len(fg_set) > 1:
                     raise ValueError("Invalid functional group assignment to atoms.")
 
