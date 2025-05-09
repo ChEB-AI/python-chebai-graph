@@ -20,7 +20,11 @@ from chebai_graph.preprocessing.properties import (
     BondProperty,
     MolecularProperty,
 )
-from chebai_graph.preprocessing.reader import GraphPropertyReader, GraphReader
+from chebai_graph.preprocessing.reader import (
+    GraphFGAugmentorReader,
+    GraphPropertyReader,
+    GraphReader,
+)
 
 
 class ChEBI50GraphData(ChEBIOver50):
@@ -226,3 +230,7 @@ class ChEBI100GraphProperties(GraphPropertiesMixIn, ChEBIOver100):
 
 class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):
     pass
+
+
+class ChEBI50GraphFGAugmentorReader(ChEBI50GraphProperties):
+    READER = GraphFGAugmentorReader
