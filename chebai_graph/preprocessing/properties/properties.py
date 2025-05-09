@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 import rdkit.Chem as Chem
@@ -32,7 +32,7 @@ class MolecularProperty(ABC):
     def __str__(self):
         return self.name
 
-    def get_property_value(self, mol: Chem.rdchem.Mol):
+    def get_property_value(self, mol: Chem.rdchem.Mol | Dict):
         raise NotImplementedError
 
 
