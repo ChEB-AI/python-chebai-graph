@@ -111,8 +111,9 @@ class GraphPropertiesMixIn(XYBaseDataModule):
                 rank_zero_info(f"Processing property {property.name}")
                 # read all property values first, then encode
                 property_values = [
-                    self.reader.read_property(feat, property)
+                    val
                     for feat in tqdm.tqdm(features)
+                    if (val := self.reader.read_property(feat, property)) is not None
                 ]
                 property.encoder.on_start(property_values=property_values)
                 encoded_values = [
