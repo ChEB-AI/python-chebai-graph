@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from rdkit import Chem
 
@@ -12,7 +12,7 @@ from .properties import AtomProperty, BondProperty
 class AugmentedBondProperty(BondProperty, ABC):
     MAIN_KEY = "edges"
 
-    def get_property_value(self, augmented_mol: Dict):
+    def get_property_value(self, augmented_mol: Dict) -> List:
         if self.MAIN_KEY not in augmented_mol:
             raise KeyError(
                 f"Key `{self.MAIN_KEY}` should be present in augmented molecule dict"
@@ -50,6 +50,9 @@ class AugmentedBondProperty(BondProperty, ABC):
         prop_list.extend([self.get_bond_value(bond) for bond in fg_atom_edges])
         prop_list.extend([self.get_bond_value(bond) for bond in fg_edges])
         prop_list.extend([self.get_bond_value(bond) for bond in fg_graph_node_edges])
+        assert (
+            len(prop_list) == augmented_mol[self.MAIN_KEY]["num_edges"]
+        ), "Number of property values should be equal to number of edges"
 
         return prop_list
 
@@ -110,6 +113,9 @@ class AugmentedAtomProperty(AtomProperty, ABC):
         # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
         prop_list.extend([self.get_atom_value(atom) for atom in fg_nodes.values()])
         prop_list.append(self.get_atom_value(graph_node))
+        assert (
+            len(prop_list) == augmented_mol[self.MAIN_KEY]["num_nodes"]
+        ), "Number of property values should be equal to number of nodes"
 
         return prop_list
 
