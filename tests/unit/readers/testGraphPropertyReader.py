@@ -27,17 +27,30 @@ class TestGraphPropertyReader(unittest.TestCase):
             msg="The output should be an instance of torch_geometric.data.Data.",
         )
 
-        assert (
-            data.edge_index.shape[0] == 2
-        ), f"Expected edge_index to have shape [2, num_edges], but got shape {data.edge_index.shape}"
+        self.assertEqual(
+            data.edge_index.shape[0],
+            2,
+            msg=f"Expected edge_index to have shape [2, num_edges], but got shape {data.edge_index.shape}",
+        )
 
-        assert (
-            data.edge_index.shape[1] == data.edge_attr.shape[0]
-        ), f"Mismatch between number of edges in edge_index ({data.edge_index.shape[1]}) and edge_attr ({data.edge_attr.shape[0]})"
+        self.assertEqual(
+            data.edge_index.shape[1],
+            data.edge_attr.shape[0],
+            msg=f"Mismatch between number of edges in edge_index ({data.edge_index.shape[1]}) and edge_attr ({data.edge_attr.shape[0]})",
+        )
 
-        assert (
-            len(set(data.edge_index[0].tolist())) == data.x.shape[0]
-        ), f"Number of unique source nodes in edge_index ({len(set(data.edge_index[0].tolist()))}) does not match number of nodes in x ({data.x.shape[0]})"
+        self.assertEqual(
+            len(set(data.edge_index[0].tolist())),
+            data.x.shape[0],
+            msg=f"Number of unique source nodes in edge_index ({len(set(data.edge_index[0].tolist()))}) does not match number of nodes in x ({data.x.shape[0]})",
+        )
+
+        # Check for duplicates by checking if the rows are the same (direction matters)
+        _, counts = torch.unique(data.edge_index.t(), dim=0, return_counts=True)
+        self.assertFalse(
+            torch.any(counts > 1),
+            msg="There are duplicates of directed edge in edge_index",
+        )
 
         expected_data: GeomData = self.molecule_graph.get_aspirin_graph()
         self.assertTrue(
