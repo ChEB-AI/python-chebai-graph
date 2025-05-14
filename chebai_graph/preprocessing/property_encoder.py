@@ -1,7 +1,8 @@
 import abc
 import os
-import torch
 from typing import Optional
+
+import torch
 
 
 class PropertyEncoder(abc.ABC):

@@ -1,11 +1,11 @@
 from typing import Dict
 
 import torch
+from chebai.preprocessing.collate import RaggedCollator
 from torch_geometric.data import Data as GeomData
 from torch_geometric.data.collate import collate as graph_collate
-from chebai_graph.preprocessing.structures import XYGraphData
 
-from chebai.preprocessing.collate import RaggedCollator
+from chebai_graph.preprocessing.structures import XYGraphData
 
 
 class GraphCollator(RaggedCollator):

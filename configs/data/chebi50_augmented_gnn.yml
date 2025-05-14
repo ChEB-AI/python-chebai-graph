@@ -1,0 +1,4 @@
+class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphFGAugmentorReader
+init_args:
+  properties:
+      - chebai_graph.preprocessing.properties.AtomFunctionalGroup
