@@ -183,7 +183,19 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
         # Empty features initialized; node and edge features can be added later
         x = torch.zeros((augmented_molecule["nodes"]["num_nodes"], 0))
-        edge_attr = torch.zeros((augmented_molecule["edges"]["num_edges"], 0))
+        edge_attr = torch.zeros((augmented_molecule["edges"]["num_edges"] * 2, 0))
+
+        assert (
+            edge_index.shape[0] == 2
+        ), f"Expected edge_index to have shape [2, num_edges], but got shape {edge_index.shape}"
+
+        assert (
+            edge_index.shape[1] == edge_attr.shape[0]
+        ), f"Mismatch between number of edges in edge_index ({edge_index.shape[1]}) and edge_attr ({edge_attr.shape[0]})"
+
+        assert (
+            len(set(edge_index[0].tolist())) == x.shape[0]
+        ), f"Number of unique source nodes in edge_index ({len(set(edge_index[0].tolist()))}) does not match number of nodes in x ({x.shape[0]})"
 
         return GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
@@ -329,13 +341,13 @@ class GraphFGAugmentorReader(_AugmentorReader):
             {}
         )  # Contains augmented fg-nodes and connected atoms indices
 
-        for idx, fg_key in enumerate(structure):
-            structured_fg_map[self._num_of_nodes] = {"atom": structure[fg_key]["atom"]}
+        for fg_group in structure.values():
+            structured_fg_map[self._num_of_nodes] = {"atom": fg_group["atom"]}
 
             # Build edge index for fg to atom nodes connections
-            for atom_idx in structure[fg_key]["atom"]:
-                fg_atom_edge_index[0] += [self._num_of_nodes, atom_idx]
-                fg_atom_edge_index[1] += [atom_idx, self._num_of_nodes]
+            for atom_idx in fg_group["atom"]:
+                fg_atom_edge_index[0].extend([self._num_of_nodes, atom_idx])
+                fg_atom_edge_index[1].extend([atom_idx, self._num_of_nodes])
                 atom_fg_edges[f"{self._num_of_nodes}_{atom_idx}"] = {
                     EDGE_LEVEL: ATOM_FG_EDGE
                 }
@@ -344,7 +356,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
             # Identify ring vs. functional group type
             ring_fg = {
                 mol.GetAtomWithIdx(i).GetProp("RING")
-                for i in structure[fg_key]["atom"]
+                for i in fg_group["atom"]
                 if mol.GetAtomWithIdx(i).GetProp("RING")
             }
 
@@ -364,10 +376,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
                     "RING": ring_size,
                 }
             else:  # No connected has a ring size which indicates it is simple FG
-                fg_set = {
-                    mol.GetAtomWithIdx(i).GetProp("FG")
-                    for i in structure[fg_key]["atom"]
-                }
+                fg_set = {mol.GetAtomWithIdx(i).GetProp("FG") for i in fg_group["atom"]}
 
                 if "" in fg_set and len(fg_set) == 1:
                     # There will be no FGs for wildcard SMILES Eg. CHEBI:33429
@@ -376,7 +385,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 if "" in fg_set or len(fg_set) > 1:
                     raise ValueError("Invalid functional group assignment to atoms.")
 
-                for atom_idx in structure[fg_key]["atom"]:
+                for atom_idx in fg_group["atom"]:
                     atom = mol.GetAtomWithIdx(atom_idx)
                     if atom.GetProp("FG"):
                         fg_nodes[self._num_of_nodes] = {
@@ -424,8 +433,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 source_fg is not None and target_fg is not None
             ), "Each bond should have a fg node on both end"
 
-            internal_edge_index[0] += [source_fg, target_fg]
-            internal_edge_index[1] += [target_fg, source_fg]
+            internal_edge_index[0].extend([source_fg, target_fg])
+            internal_edge_index[1].extend([target_fg, source_fg])
             internal_fg_edges[f"{source_fg}_{target_fg}"] = {EDGE_LEVEL: WITHIN_FG_EDGE}
             self._num_of_edges += 1
 
@@ -449,8 +458,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
         graph_edge_index = [[], []]
 
         for fg_id in structured_fg_map:
-            graph_edge_index[0] += [self._num_of_nodes, fg_id]
-            graph_edge_index[1] += [fg_id, self._num_of_nodes]
+            graph_edge_index[0].extend([self._num_of_nodes, fg_id])
+            graph_edge_index[1].extend([fg_id, self._num_of_nodes])
             fg_graph_edges[f"{self._num_of_nodes}_{fg_id}"] = {
                 EDGE_LEVEL: FG_GRAPHNODE_EDGE
             }
