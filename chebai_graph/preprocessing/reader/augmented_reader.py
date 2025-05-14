@@ -295,13 +295,12 @@ class GraphFGAugmentorReader(_AugmentorReader):
         Returns:
             torch.Tensor: Bidirectional edge index tensor.
         """
-        edge_index = torch.tensor(
-            [
-                [bond.GetBeginAtomIdx() for bond in mol.GetBonds()],
-                [bond.GetEndAtomIdx() for bond in mol.GetBonds()],
-            ]
-        )
-        return torch.cat([edge_index, edge_index[[1, 0], :]], dim=1)
+        # We need to ensure that directed edges which form a undirected edge are adjacent to each other
+        edge_index_list = [[], []]
+        for bond in mol.GetBonds():
+            edge_index_list[0].extend([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
+            edge_index_list[1].extend([bond.GetEndAtomIdx(), bond.GetBeginAtomIdx()])
+        return torch.tensor(edge_index_list, dtype=torch.long)
 
     def _construct_fg_to_atom_structure(
         self, mol: Chem.Mol
