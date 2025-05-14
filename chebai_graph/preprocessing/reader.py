@@ -55,14 +55,12 @@ class GraphPropertyReader(dr.ChemDataReader):
 
         x = torch.zeros((mol.GetNumAtoms(), 0))
 
-        edge_index = to_undirected(
-            torch.tensor(
-                [
-                    [bond.GetBeginAtomIdx() for bond in mol.GetBonds()],
-                    [bond.GetEndAtomIdx() for bond in mol.GetBonds()],
-                ]
-            )
-        )
+        # We need to ensure that directed edges which form a undirected edge are adjacent to each other
+        edge_index_list = [[], []]
+        for bond in mol.GetBonds():
+            edge_index_list[0].extend([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
+            edge_index_list[1].extend([bond.GetEndAtomIdx(), bond.GetBeginAtomIdx()])
+        edge_index = torch.tensor(edge_index_list, dtype=torch.long)
 
         # edge_index.shape == [2, num_edges]; edge_attr.shape == [num_edges, num_edge_features]
         edge_attr = torch.zeros((edge_index.size(1), 0))
