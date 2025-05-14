@@ -55,15 +55,19 @@ class GraphPropertyReader(dr.ChemDataReader):
 
         x = torch.zeros((mol.GetNumAtoms(), 0))
 
-        edge_attr = torch.zeros((mol.GetNumBonds(), 0))
-
-        edge_index = torch.tensor(
-            [
-                [bond.GetBeginAtomIdx() for bond in mol.GetBonds()],
-                [bond.GetEndAtomIdx() for bond in mol.GetBonds()],
-            ]
+        edge_index = to_undirected(
+            torch.tensor(
+                [
+                    [bond.GetBeginAtomIdx() for bond in mol.GetBonds()],
+                    [bond.GetEndAtomIdx() for bond in mol.GetBonds()],
+                ]
+            )
         )
-        return GeomData(x=x, edge_index=to_undirected(edge_index), edge_attr=edge_attr)
+
+        # edge_index.shape == [2, num_edges]; edge_attr.shape == [num_edges, num_edge_features]
+        edge_attr = torch.zeros((edge_index.size(1), 0))
+
+        return GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
     def on_finish(self):
         rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
