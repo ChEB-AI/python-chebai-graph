@@ -111,10 +111,10 @@ class GraphPropertiesMixIn(XYBaseDataModule):
                 rank_zero_info(f"Processing property {property.name}")
                 # read all property values first, then encode
                 property_values = [
-                    val
+                    self.reader.read_property(feat, property)
                     for feat in tqdm.tqdm(features)
-                    if (val := self.reader.read_property(feat, property)) is not None
                 ]
+
                 property.encoder.on_start(property_values=property_values)
                 encoded_values = [
                     enc_if_not_none(property.encoder.encode, value)
@@ -149,10 +149,10 @@ class GraphPropertiesMixIn(XYBaseDataModule):
 
     def _merge_props_into_base(self, row):
         geom_data = row["features"]
+        assert isinstance(geom_data, GeomData)
         edge_attr = geom_data.edge_attr
         x = geom_data.x
         molecule_attr = torch.empty((1, 0))
-        assert isinstance(geom_data, GeomData)
         for property in self.properties:
             property_values = row[f"{property.name}"]
             if isinstance(property_values, torch.Tensor):
@@ -233,5 +233,5 @@ class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):
     pass
 
 
-class ChEBI50GraphFGAugmentorReader(ChEBI50GraphProperties):
+class ChEBI50GraphFGAugmentorReader(GraphPropertiesMixIn, ChEBIOver50):
     READER = GraphFGAugmentorReader
