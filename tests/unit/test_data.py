@@ -35,50 +35,26 @@ class MoleculeGraph:
 
         # --- Node features: atomic numbers (C=6, O=8) ---
         # Shape of x : num_nodes x num_of_node_features
+        # fmt: off
         x = torch.tensor(
             [
-                [
-                    6
-                ],  # C0  - This feature belongs to atom/node with `0` value in edge_index
-                [
-                    6
-                ],  # C1  - This feature belongs to atom/node with `1` value in edge_index
-                [
-                    8
-                ],  # O2  - This feature belongs to atom/node with `2` value in edge_index
-                [
-                    8
-                ],  # O3  - This feature belongs to atom/node with `3` value in edge_index
-                [
-                    6
-                ],  # C4  - This feature belongs to atom/node with `4` value in edge_index
-                [
-                    6
-                ],  # C5  - This feature belongs to atom/node with `5` value in edge_index
-                [
-                    6
-                ],  # C6  - This feature belongs to atom/node with `6` value in edge_index
-                [
-                    6
-                ],  # C7  - This feature belongs to atom/node with `7` value in edge_index
-                [
-                    6
-                ],  # C8  - This feature belongs to atom/node with `8` value in edge_index
-                [
-                    6
-                ],  # C9  - This feature belongs to atom/node with `9` value in edge_index
-                [
-                    6
-                ],  # C10 - This feature belongs to atom/node with `10` value in edge_index
-                [
-                    8
-                ],  # O11 - This feature belongs to atom/node with `11` value in edge_index
-                [
-                    8
-                ],  # O12 - This feature belongs to atom/node with `12` value in edge_index
+                [6],  # C0  - This feature belongs to atom/node with 0 value in edge_index
+                [6],  # C1  - This feature belongs to atom/node with 1 value in edge_index
+                [8],  # O2  - This feature belongs to atom/node with 2 value in edge_index
+                [8],  # O3  - This feature belongs to atom/node with 3 value in edge_index
+                [6],  # C4  - This feature belongs to atom/node with 4 value in edge_index
+                [6],  # C5  - This feature belongs to atom/node with 5 value in edge_index
+                [6],  # C6  - This feature belongs to atom/node with 6 value in edge_index
+                [6],  # C7  - This feature belongs to atom/node with 7 value in edge_index
+                [6],  # C8  - This feature belongs to atom/node with 8 value in edge_index
+                [6],  # C9  - This feature belongs to atom/node with 9 value in edge_index
+                [6],  # C10 - This feature belongs to atom/node with 10 value in edge_index
+                [8],  # O11 - This feature belongs to atom/node with 11 value in edge_index
+                [8],  # O12 - This feature belongs to atom/node with 12 value in edge_index
             ],
             dtype=torch.float,
         )
+        # fmt: on
 
         # --- Edge list (bidirectional) ---
         # Shape of edge_index for undirected graph: 2 x num_of_edges;  (2x26)
