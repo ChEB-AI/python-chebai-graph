@@ -8,6 +8,7 @@ import rdkit.Chem as Chem
 import torch
 from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from torch_geometric.data import Data as GeomData
+from torch_geometric.utils import from_networkx
 
 from chebai_graph.preprocessing import properties
 from chebai_graph.preprocessing.collate import GraphCollator
