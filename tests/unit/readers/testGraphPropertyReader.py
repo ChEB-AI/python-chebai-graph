@@ -19,8 +19,7 @@ class TestGraphPropertyReader(unittest.TestCase):
         """Test that the reader correctly parses a SMILES string into a graph and matches expected aspirin structure."""
         smiles: str = "CC(=O)OC1=CC=CC=C1C(=O)O"  # Aspirin
 
-        data: GeomData = self.reader._read_data(smiles)
-        expected_data: GeomData = self.molecule_graph.get_aspirin_graph()
+        data: GeomData = self.reader._read_data(smiles)  # noqa
 
         self.assertIsInstance(
             data,
@@ -28,6 +27,19 @@ class TestGraphPropertyReader(unittest.TestCase):
             msg="The output should be an instance of torch_geometric.data.Data.",
         )
 
+        assert (
+            data.edge_index.shape[0] == 2
+        ), f"Expected edge_index to have shape [2, num_edges], but got shape {data.edge_index.shape}"
+
+        assert (
+            data.edge_index.shape[1] == data.edge_attr.shape[0]
+        ), f"Mismatch between number of edges in edge_index ({data.edge_index.shape[1]}) and edge_attr ({data.edge_attr.shape[0]})"
+
+        assert (
+            len(set(data.edge_index[0].tolist())) == data.x.shape[0]
+        ), f"Number of unique source nodes in edge_index ({len(set(data.edge_index[0].tolist()))}) does not match number of nodes in x ({data.x.shape[0]})"
+
+        expected_data: GeomData = self.molecule_graph.get_aspirin_graph()
         self.assertTrue(
             torch.equal(data.edge_index, expected_data.edge_index),
             msg=(
