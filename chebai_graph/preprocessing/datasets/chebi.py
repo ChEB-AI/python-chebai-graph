@@ -168,7 +168,7 @@ class GraphPropertiesMixIn(XYBaseDataModule):
         return GeomData(
             x=x,
             edge_index=geom_data.edge_index,
-            edge_attr=edge_attr,
+            edge_attr=torch.cat([edge_attr, edge_attr], dim=0),
             molecule_attr=molecule_attr,
         )
 
