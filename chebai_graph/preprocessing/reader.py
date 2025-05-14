@@ -8,9 +8,8 @@ import rdkit.Chem as Chem
 import torch
 from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from torch_geometric.data import Data as GeomData
-from torch_geometric.utils import from_networkx, to_undirected
 
-import chebai_graph.preprocessing.properties as properties
+from chebai_graph.preprocessing import properties
 from chebai_graph.preprocessing.collate import GraphCollator
 
 
@@ -55,12 +54,10 @@ class GraphPropertyReader(dr.ChemDataReader):
 
         x = torch.zeros((mol.GetNumAtoms(), 0))
 
-        # We need to ensure that directed edges which form a undirected edge are adjacent to each other
-        edge_index_list = [[], []]
-        for bond in mol.GetBonds():
-            edge_index_list[0].extend([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
-            edge_index_list[1].extend([bond.GetEndAtomIdx(), bond.GetBeginAtomIdx()])
-        edge_index = torch.tensor(edge_index_list, dtype=torch.long)
+        # First source to target edges, then target to source edges
+        src = [bond.GetBeginAtomIdx() for bond in mol.GetBonds()]
+        tgt = [bond.GetEndAtomIdx() for bond in mol.GetBonds()]
+        edge_index = torch.tensor([src + tgt, tgt + src], dtype=torch.long)
 
         # edge_index.shape == [2, num_edges]; edge_attr.shape == [num_edges, num_edge_features]
         edge_attr = torch.zeros((edge_index.size(1), 0))
