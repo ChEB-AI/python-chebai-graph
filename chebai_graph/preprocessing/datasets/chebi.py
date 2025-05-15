@@ -162,13 +162,17 @@ class GraphPropertiesMixIn(XYBaseDataModule):
             if isinstance(property, AtomProperty):
                 x = torch.cat([x, property_values], dim=1)
             elif isinstance(property, BondProperty):
-                edge_attr = torch.cat([edge_attr, property_values], dim=1)
+                # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
+                edge_attr = torch.cat(
+                    [edge_attr, torch.cat([property_values, property_values], dim=0)],
+                    dim=1,
+                )
             else:
                 molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
         return GeomData(
             x=x,
             edge_index=geom_data.edge_index,
-            edge_attr=torch.cat([edge_attr, edge_attr], dim=0),
+            edge_attr=edge_attr,
             molecule_attr=molecule_attr,
         )
 
