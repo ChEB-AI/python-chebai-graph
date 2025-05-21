@@ -183,7 +183,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
         # Empty features initialized; node and edge features can be added later
         x = torch.zeros((augmented_molecule["nodes"]["num_nodes"], 0))
-        edge_attr = torch.zeros((augmented_molecule["edges"]["num_edges"] * 2, 0))
+        edge_attr = torch.zeros((augmented_molecule["edges"]["num_edges"], 0))
 
         assert (
             edge_index.shape[0] == 2
@@ -257,7 +257,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
         )
 
         # Merge all edge types
-        full_edge_index = torch.cat(
+        directed_edge_index = torch.cat(
             [
                 atom_edge_index,
                 torch.tensor(fg_atom_edge_index, dtype=torch.long),
@@ -265,6 +265,11 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 torch.tensor(fg_graph_edge_index, dtype=torch.long),
             ],
             dim=1,
+        )
+        # First all directed edges from source to target are placed, then all directed edges from target to source
+        # are placed --- this is needed as it is easier to align the property values in same way
+        undirected_edge_index = torch.cat(
+            [directed_edge_index, directed_edge_index[[1, 0], :]], dim=1
         )
 
         node_info = {
@@ -278,10 +283,10 @@ class GraphFGAugmentorReader(_AugmentorReader):
             ATOM_FG_EDGE: atom_fg_edges,
             WITHIN_FG_EDGE: internal_fg_edges,
             FG_GRAPHNODE_EDGE: fg_to_graph_edges,
-            "num_edges": self._num_of_edges,
+            "num_edges": self._num_of_edges * 2,  # Undirected edges
         }
 
-        return full_edge_index, node_info, edge_info
+        return undirected_edge_index, node_info, edge_info
 
     @staticmethod
     def _annotate_atoms_and_bonds(mol: Chem.Mol) -> None:
@@ -310,8 +315,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
         # We need to ensure that directed edges which form a undirected edge are adjacent to each other
         edge_index_list = [[], []]
         for bond in mol.GetBonds():
-            edge_index_list[0].extend([bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()])
-            edge_index_list[1].extend([bond.GetEndAtomIdx(), bond.GetBeginAtomIdx()])
+            edge_index_list[0].append(bond.GetBeginAtomIdx())
+            edge_index_list[1].append(bond.GetEndAtomIdx())
         return torch.tensor(edge_index_list, dtype=torch.long)
 
     def _construct_fg_to_atom_structure(
@@ -346,8 +351,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
             # Build edge index for fg to atom nodes connections
             for atom_idx in fg_group["atom"]:
-                fg_atom_edge_index[0].extend([self._num_of_nodes, atom_idx])
-                fg_atom_edge_index[1].extend([atom_idx, self._num_of_nodes])
+                fg_atom_edge_index[0].append(self._num_of_nodes)
+                fg_atom_edge_index[1].append(atom_idx)
                 atom_fg_edges[f"{self._num_of_nodes}_{atom_idx}"] = {
                     EDGE_LEVEL: ATOM_FG_EDGE
                 }
@@ -433,8 +438,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 source_fg is not None and target_fg is not None
             ), "Each bond should have a fg node on both end"
 
-            internal_edge_index[0].extend([source_fg, target_fg])
-            internal_edge_index[1].extend([target_fg, source_fg])
+            internal_edge_index[0].append(source_fg)
+            internal_edge_index[1].append(target_fg)
             internal_fg_edges[f"{source_fg}_{target_fg}"] = {EDGE_LEVEL: WITHIN_FG_EDGE}
             self._num_of_edges += 1
 
@@ -458,8 +463,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
         graph_edge_index = [[], []]
 
         for fg_id in structured_fg_map:
-            graph_edge_index[0].extend([self._num_of_nodes, fg_id])
-            graph_edge_index[1].extend([fg_id, self._num_of_nodes])
+            graph_edge_index[0].append(self._num_of_nodes)
+            graph_edge_index[1].append(fg_id)
             fg_graph_edges[f"{self._num_of_nodes}_{fg_id}"] = {
                 EDGE_LEVEL: FG_GRAPHNODE_EDGE
             }
