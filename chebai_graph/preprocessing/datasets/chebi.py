@@ -176,9 +176,8 @@ class GraphPropertiesMixIn(XYBaseDataModule):
             molecule_attr=molecule_attr,
         )
 
-    def load_processed_data(self, kind: str = None, filename: str = None):
-        """Combine base data set with property values for atoms and bonds."""
-        base_data = super().load_processed_data(kind, filename)
+    def load_processed_data_from_file(self, filename):
+        base_data = super().load_processed_data_from_file(filename)
         base_df = pd.DataFrame(base_data)
         for property in self.properties:
             property_data = torch.load(
