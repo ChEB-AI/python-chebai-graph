@@ -1,4 +1,9 @@
 class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphFGAugmentorReader
 init_args:
   properties:
+      # Atom properties
       - chebai_graph.preprocessing.properties.AtomFunctionalGroup
+      - chebai_graph.preprocessing.properties.AtomNodeLevel
+      - chebai_graph.preprocessing.properties.AtomRingSize
+      # Bond properties
+      - chebai_graph.preprocessing.properties.BondLevel
