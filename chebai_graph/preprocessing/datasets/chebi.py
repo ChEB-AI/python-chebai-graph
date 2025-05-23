@@ -1,14 +1,15 @@
 import importlib
 import os
+from abc import ABC
 from typing import Callable, List, Optional
 
 import pandas as pd
 import torch
 import tqdm
-from chebai.preprocessing.datasets.base import XYBaseDataModule
 from chebai.preprocessing.datasets.chebi import (
     ChEBIOver50,
     ChEBIOver100,
+    ChEBIOverX,
     ChEBIOverXPartial,
 )
 from lightning_utilities.core.rank_zero import rank_zero_info
@@ -48,7 +49,7 @@ def _resolve_property(
         return getattr(graph_properties, property)()
 
 
-class GraphPropertiesMixIn(XYBaseDataModule):
+class GraphPropertiesMixIn(ChEBIOverX, ABC):
     READER = GraphPropertyReader
 
     def __init__(
