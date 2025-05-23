@@ -1,19 +1,17 @@
-import importlib
-
-from torch_geometric.utils import from_networkx
-from typing import Tuple, Mapping, Optional, List
-
-import importlib
-import networkx as nx
 import os
-import torch
-import rdkit.Chem as Chem
-import pysmiles as ps
+from typing import List, Optional
+
 import chebai.preprocessing.reader as dr
-from chebai_graph.preprocessing.collate import GraphCollator
-import chebai_graph.preprocessing.properties as properties
+import networkx as nx
+import pysmiles as ps
+import rdkit.Chem as Chem
+import torch
+from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from torch_geometric.data import Data as GeomData
-from lightning_utilities.core.rank_zero import rank_zero_warn, rank_zero_info
+from torch_geometric.utils import from_networkx
+
+from chebai_graph.preprocessing import properties
+from chebai_graph.preprocessing.collate import GraphCollator
 
 
 class GraphPropertyReader(dr.ChemDataReader):
@@ -45,7 +43,7 @@ class GraphPropertyReader(dr.ChemDataReader):
             try:
                 Chem.SanitizeMol(mol)
             except Exception as e:
-                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}")
+                rank_zero_warn(f"Rdkit failed at sanitizing {smiles} \n Error: {e}")
                 self.failed_counter += 1
         self.mol_object_buffer[smiles] = mol
         return mol
@@ -57,14 +55,14 @@ class GraphPropertyReader(dr.ChemDataReader):
 
         x = torch.zeros((mol.GetNumAtoms(), 0))
 
-        edge_attr = torch.zeros((mol.GetNumBonds(), 0))
+        # First source to target edges, then target to source edges
+        src = [bond.GetBeginAtomIdx() for bond in mol.GetBonds()]
+        tgt = [bond.GetEndAtomIdx() for bond in mol.GetBonds()]
+        edge_index = torch.tensor([src + tgt, tgt + src], dtype=torch.long)
 
-        edge_index = torch.tensor(
-            [
-                [bond.GetBeginAtomIdx() for bond in mol.GetBonds()],
-                [bond.GetEndAtomIdx() for bond in mol.GetBonds()],
-            ]
-        )
+        # edge_index.shape == [2, num_edges]; edge_attr.shape == [num_edges, num_edge_features]
+        edge_attr = torch.zeros((edge_index.size(1), 0))
+
         return GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
     def on_finish(self):

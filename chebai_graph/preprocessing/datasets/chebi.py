@@ -1,26 +1,27 @@
-from typing import Optional, List, Callable
+import importlib
+import os
+from abc import ABC
+from typing import Callable, List, Optional
 
+import pandas as pd
+import torch
+import tqdm
 from chebai.preprocessing.datasets.chebi import (
     ChEBIOver50,
     ChEBIOver100,
+    ChEBIOverX,
     ChEBIOverXPartial,
 )
-from chebai.preprocessing.datasets.base import XYBaseDataModule
 from lightning_utilities.core.rank_zero import rank_zero_info
+from torch_geometric.data.data import Data as GeomData
 
-from chebai_graph.preprocessing.reader import GraphReader, GraphPropertyReader
+import chebai_graph.preprocessing.properties as graph_properties
 from chebai_graph.preprocessing.properties import (
     AtomProperty,
     BondProperty,
     MolecularProperty,
 )
-import pandas as pd
-from torch_geometric.data.data import Data as GeomData
-import torch
-import chebai_graph.preprocessing.properties as graph_properties
-import importlib
-import os
-import tqdm
+from chebai_graph.preprocessing.reader import GraphPropertyReader, GraphReader
 
 
 class ChEBI50GraphData(ChEBIOver50):
@@ -48,7 +49,7 @@ def _resolve_property(
         return getattr(graph_properties, property)()
 
 
-class GraphPropertiesMixIn(XYBaseDataModule):
+class GraphPropertiesMixIn(ChEBIOverX, ABC):
     READER = GraphPropertyReader
 
     def __init__(
@@ -84,9 +85,11 @@ class GraphPropertiesMixIn(XYBaseDataModule):
         for file in file_names:
             # processed_dir_main only exists for ChEBI datasets
             path = os.path.join(
-                self.processed_dir_main
-                if hasattr(self, "processed_dir_main")
-                else self.raw_dir,
+                (
+                    self.processed_dir_main
+                    if hasattr(self, "processed_dir_main")
+                    else self.raw_dir
+                ),
                 file,
             )
             raw_data += list(self._load_dict(path))
@@ -94,8 +97,8 @@ class GraphPropertiesMixIn(XYBaseDataModule):
         features = [row["features"] for row in raw_data]
 
         # use vectorized version of encode function, apply only if value is present
-        enc_if_not_none = (
-            lambda encode, value: [encode(atom_v) for atom_v in value]
+        enc_if_not_none = lambda encode, value: (
+            [encode(atom_v) for atom_v in value]
             if value is not None and len(value) > 0
             else None
         )
@@ -160,7 +163,11 @@ class GraphPropertiesMixIn(XYBaseDataModule):
             if isinstance(property, AtomProperty):
                 x = torch.cat([x, property_values], dim=1)
             elif isinstance(property, BondProperty):
-                edge_attr = torch.cat([edge_attr, property_values], dim=1)
+                # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
+                edge_attr = torch.cat(
+                    [edge_attr, torch.cat([property_values, property_values], dim=0)],
+                    dim=1,
+                )
             else:
                 molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
         return GeomData(
