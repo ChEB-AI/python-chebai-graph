@@ -18,16 +18,16 @@ For training, config files from the `python-chebai` and `python-chebai-graph` re
 
 We recommend the following setup:
 
-  my_projects
-    python-chebai
-      chebai
-      configs
-      data
-      ...
-    python-chebai-graph
-      chebai_graph
-      configs
-      ...
+    my_projects
+      python-chebai
+        chebai
+        configs
+        data
+        ...
+      python-chebai-graph
+        chebai_graph
+        configs
+        ...
 
   If you run the command from the `python-chebai` directory, you can use the same data for both chebai- and chebai-graph-models (e.g., Transformers and GNNs).
   Then you have to use `{path-to-chebai} -> .` and `{path-to-chebai-graph} -> ../python-chebai-graph`.
