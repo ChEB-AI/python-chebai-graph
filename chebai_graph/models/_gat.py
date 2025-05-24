@@ -1,5 +1,7 @@
+import torch
 from torch_geometric.data import Data as GraphData
 from torch_geometric.nn.models import GAT
+from torch_scatter import scatter_add
 
 from .graph import GraphBaseNet
 
@@ -34,10 +36,28 @@ class GATModelWrapper(GraphBaseNet):
             **kwargs,
         )
 
+        self.linear_layers = torch.nn.ModuleList(
+            [
+                torch.nn.Linear(
+                    self.gnn.hidden_length + (i == 0) * self.gnn.n_molecule_properties,
+                    self.gnn.hidden_length,
+                )
+                for i in range(self._n_linear_layers - 1)
+            ]
+        )
+        self.final_layer = torch.nn.Linear(self._hidden_length, self.out_dim)
+
     def forward(self, batch):
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
         x = graph_data.x.float()
-        return self._gat.forward(
-            x=x, edge_index=graph_data.edge_index, edge_attr=graph_data.edge_attr
+        a = self._gat.forward(
+            x=x, edge_index=graph_data.edge_index.long(), edge_attr=graph_data.edge_attr
         )
+        a = scatter_add(a, graph_data.batch, dim=0)
+
+        a = torch.cat([a, graph_data.molecule_attr], dim=1)
+
+        for lin in self.linear_layers:
+            a = self.gnn.activation(lin(a))
+        a = self.final_layer(a)
