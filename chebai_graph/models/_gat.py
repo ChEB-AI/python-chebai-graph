@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch_geometric.data import Data as GraphData
 from torch_geometric.nn.models import GAT
 from torch_scatter import scatter_add
@@ -36,11 +37,14 @@ class GATModelWrapper(GraphBaseNet):
             **kwargs,
         )
 
+        self._ffn_activation = F.elu
+
         self.linear_layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(
-                    self.gnn.hidden_length + (i == 0) * self.gnn.n_molecule_properties,
-                    self.gnn.hidden_length,
+                    self._hidden_length
+                    + (self._n_molecule_properties if i == 0 else 0),
+                    self._hidden_length,
                 )
                 for i in range(self._n_linear_layers - 1)
             ]
@@ -59,5 +63,5 @@ class GATModelWrapper(GraphBaseNet):
         a = torch.cat([a, graph_data.molecule_attr], dim=1)
 
         for lin in self.linear_layers:
-            a = self.gnn.activation(lin(a))
-        a = self.final_layer(a)
+            a = self._ffn_activation(lin(a))
+        return self.final_layer(a)
