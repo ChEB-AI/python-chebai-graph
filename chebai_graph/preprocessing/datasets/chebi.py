@@ -153,7 +153,6 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
         assert isinstance(geom_data, GeomData)
         for property in self.properties:
             property_values = row[f"{property.name}"]
-            rank_zero_info(f"Merging {property.name} into base dataframe...")
             if isinstance(property_values, torch.Tensor):
                 if len(property_values.size()) == 0:
                     property_values = property_values.unsqueeze(0)
