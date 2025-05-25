@@ -107,10 +107,12 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
             if not os.path.isfile(self.get_property_path(property)):
                 rank_zero_info(f"Processing property {property.name}")
                 # read all property values first, then encode
+                rank_zero_info(f"\tReading property valeus...")
                 property_values = [
                     self.reader.read_property(feat, property)
                     for feat in tqdm.tqdm(features)
                 ]
+                rank_zero_info(f"\tEncoding property values...")
                 property.encoder.on_start(property_values=property_values)
                 encoded_values = [
                     enc_if_not_none(property.encoder.encode, value)
@@ -151,6 +153,7 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
         assert isinstance(geom_data, GeomData)
         for property in self.properties:
             property_values = row[f"{property.name}"]
+            rank_zero_info(f"Merging {property.name} into base dataframe...")
             if isinstance(property_values, torch.Tensor):
                 if len(property_values.size()) == 0:
                     property_values = property_values.unsqueeze(0)
