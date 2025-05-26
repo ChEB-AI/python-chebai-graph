@@ -55,14 +55,14 @@ class GraphPropertyReader(dr.ChemDataReader):
 
         x = torch.zeros((mol.GetNumAtoms(), 0))
 
-        edge_attr = torch.zeros((mol.GetNumBonds(), 0))
+        # First source to target edges, then target to source edges
+        src = [bond.GetBeginAtomIdx() for bond in mol.GetBonds()]
+        tgt = [bond.GetEndAtomIdx() for bond in mol.GetBonds()]
+        edge_index = torch.tensor([src + tgt, tgt + src], dtype=torch.long)
 
-        edge_index = torch.tensor(
-            [
-                [bond.GetBeginAtomIdx() for bond in mol.GetBonds()],
-                [bond.GetEndAtomIdx() for bond in mol.GetBonds()],
-            ]
-        )
+        # edge_index.shape == [2, num_edges]; edge_attr.shape == [num_edges, num_edge_features]
+        edge_attr = torch.zeros((edge_index.size(1), 0))
+
         return GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
     def on_finish(self):

@@ -157,5 +157,5 @@ class RDKit2DNormalized(MolecularProperty):
         features_normalized = generator_normalized.processMol(
             mol, Chem.MolToSmiles(mol)
         )
-        np.nan_to_num(features_normalized)
+        features_normalized = np.nan_to_num(features_normalized)
         return [features_normalized[1:]]

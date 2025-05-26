@@ -1,14 +1,15 @@
 import importlib
 import os
+from abc import ABC
 from typing import Callable, List, Optional
 
 import pandas as pd
 import torch
 import tqdm
-from chebai.preprocessing.datasets.base import XYBaseDataModule
 from chebai.preprocessing.datasets.chebi import (
     ChEBIOver50,
     ChEBIOver100,
+    ChEBIOverX,
     ChEBIOverXPartial,
 )
 from lightning_utilities.core.rank_zero import rank_zero_info
@@ -52,7 +53,7 @@ def _resolve_property(
         return getattr(graph_properties, property)()
 
 
-class GraphPropertiesMixIn(XYBaseDataModule):
+class GraphPropertiesMixIn(ChEBIOverX, ABC):
     READER = GraphPropertyReader
 
     def __init__(
@@ -110,11 +111,12 @@ class GraphPropertiesMixIn(XYBaseDataModule):
             if not os.path.isfile(self.get_property_path(property)):
                 rank_zero_info(f"Processing property {property.name}")
                 # read all property values first, then encode
+                rank_zero_info(f"\tReading property valeus...")
                 property_values = [
                     self.reader.read_property(feat, property)
                     for feat in tqdm.tqdm(features)
                 ]
-
+                rank_zero_info(f"\tEncoding property values...")
                 property.encoder.on_start(property_values=property_values)
                 encoded_values = [
                     enc_if_not_none(property.encoder.encode, value)
@@ -167,7 +169,11 @@ class GraphPropertiesMixIn(XYBaseDataModule):
             if isinstance(property, AtomProperty):
                 x = torch.cat([x, property_values], dim=1)
             elif isinstance(property, BondProperty):
-                edge_attr = torch.cat([edge_attr, property_values], dim=1)
+                # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
+                edge_attr = torch.cat(
+                    [edge_attr, torch.cat([property_values, property_values], dim=0)],
+                    dim=1,
+                )
             else:
                 molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
         return GeomData(
@@ -177,9 +183,8 @@ class GraphPropertiesMixIn(XYBaseDataModule):
             molecule_attr=molecule_attr,
         )
 
-    def load_processed_data(self, kind: str = None, filename: str = None):
-        """Combine base data set with property values for atoms and bonds."""
-        base_data = super().load_processed_data(kind, filename)
+    def load_processed_data_from_file(self, filename):
+        base_data = super().load_processed_data_from_file(filename)
         base_df = pd.DataFrame(base_data)
         for property in self.properties:
             property_data = torch.load(
