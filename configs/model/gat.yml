@@ -1,0 +1,15 @@
+class_path: chebai_graph.models.GATModelWrapper
+init_args:
+  optimizer_kwargs:
+    lr: 1e-3
+  config:
+    in_length: 256
+    hidden_length: 512
+    dropout_rate: 0.1
+    n_conv_layers: 3
+    heads: 5  # Default is one
+    # v2: True  # -- to use `torch_geometric.nn.conv.GATv2Conv` convolution layers, default is GATConv
+    n_linear_layers: 3
+    n_atom_properties: 158
+    n_bond_properties: 7
+    n_molecule_properties: 200
