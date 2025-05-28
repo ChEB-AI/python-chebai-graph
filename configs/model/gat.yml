@@ -3,11 +3,10 @@ init_args:
   optimizer_kwargs:
     lr: 1e-3
   config:
-    in_length: 256
     hidden_length: 512
     dropout_rate: 0.1
     n_conv_layers: 3
-    heads: 4  # the number of heads should be divisible by output channels (hidden channels if output channel not given)
+    heads: 8  # the number of heads should be divisible by output channels (hidden channels if output channel not given)
     # v2: True  # -- to use `torch_geometric.nn.conv.GATv2Conv` convolution layers, default is GATConv
     n_linear_layers: 3
     n_atom_properties: 158

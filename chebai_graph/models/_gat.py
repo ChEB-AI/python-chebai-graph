@@ -13,7 +13,6 @@ class GATModelWrapper(GraphBaseNet):
     def __init__(self, config: dict, **kwargs):
         super().__init__(**kwargs)
 
-        self._in_length = int(config.pop("in_length"))
         self._hidden_length = int(config.pop("hidden_length"))
         self._dropout_rate = float(config.pop("dropout_rate", 0.1))
         self._n_conv_layers = int(config.pop("n_conv_layers", 3))
@@ -22,10 +21,11 @@ class GATModelWrapper(GraphBaseNet):
         self._n_bond_properties = int(config.pop("n_bond_properties", 0))
         self._n_molecule_properties = int(config.pop("n_molecule_properties", 0))
         self._gat = GAT(
-            in_channels=self._in_length,
+            in_channels=self._n_atom_properties,
             hidden_channels=self._hidden_length,
             num_layers=self._n_conv_layers,
             dropout=self._dropout_rate,
+            edge_dim=self._n_bond_properties,
             **config,
         )
 
