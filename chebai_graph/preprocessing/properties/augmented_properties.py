@@ -47,12 +47,16 @@ class AugmentedBondProperty(BondProperty, ABC):
         # For python 3.7+, the standard dict type preserves insertion order, and is iterated over in same order
         # https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
         # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
-        prop_list.extend([self.get_bond_value(bond) for bond in fg_atom_edges])
-        prop_list.extend([self.get_bond_value(bond) for bond in fg_edges])
-        prop_list.extend([self.get_bond_value(bond) for bond in fg_graph_node_edges])
+        prop_list.extend([self.get_bond_value(bond) for bond in fg_atom_edges.values()])
+        prop_list.extend([self.get_bond_value(bond) for bond in fg_edges.values()])
+        prop_list.extend(
+            [self.get_bond_value(bond) for bond in fg_graph_node_edges.values()]
+        )
+
+        num_directed_edges = augmented_mol[self.MAIN_KEY]["num_undirected_edges"] // 2
         assert (
-            len(prop_list) == augmented_mol[self.MAIN_KEY]["num_edges"]
-        ), "Number of property values should be equal to number of edges"
+            len(prop_list) == num_directed_edges
+        ), f"Number of property values ({len(prop_list)}) should be equal to number of half the number of undirected edges i.e. must be equal to {num_directed_edges} "
 
         return prop_list
 
