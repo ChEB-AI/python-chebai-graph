@@ -85,8 +85,6 @@ class ResGatedGraphConvNetBase(GraphBaseNet):
 
     def __init__(self, config: typing.Dict, **kwargs):
         super().__init__(**kwargs)
-
-        self.in_length = config["in_length"]
         self.hidden_length = config["hidden_length"]
         self.dropout_rate = config["dropout_rate"]
         self.n_conv_layers = config["n_conv_layers"] if "n_conv_layers" in config else 3
