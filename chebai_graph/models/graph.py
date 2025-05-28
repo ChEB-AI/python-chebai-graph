@@ -1,5 +1,6 @@
 import logging
 import typing
+from abc import ABC
 
 import torch
 import torch.nn.functional as F
@@ -15,7 +16,7 @@ from chebai_graph.loss.pretraining import MaskPretrainingLoss
 logging.getLogger("pysmiles").setLevel(logging.CRITICAL)
 
 
-class GraphBaseNet(ChebaiBaseNet):
+class GraphBaseNet(ChebaiBaseNet, ABC):
     def _get_prediction_and_labels(self, data, labels, output):
         return torch.sigmoid(output), labels.int()
 
@@ -104,26 +105,26 @@ class ResGatedGraphConvNetBase(GraphBaseNet):
 
         self.activation = F.elu
         self.dropout = nn.Dropout(self.dropout_rate)
-
         self.convs = torch.nn.ModuleList([])
-        for i in range(self.n_conv_layers):
-            if i == 0:
-                self.convs.append(
-                    tgnn.ResGatedGraphConv(
-                        self.n_atom_properties,
-                        self.in_length,
-                        # dropout=self.dropout_rate,
-                        edge_dim=self.n_bond_properties,
-                    )
-                )
+
+        self.convs.append(
+            tgnn.ResGatedGraphConv(
+                self.n_atom_properties,
+                self.hidden_length,
+                # dropout=self.dropout_rate,
+                edge_dim=self.n_bond_properties,
+            )
+        )
+
+        for _ in range(self.n_conv_layers - 1):
             self.convs.append(
                 tgnn.ResGatedGraphConv(
-                    self.in_length, self.in_length, edge_dim=self.n_bond_properties
+                    self.hidden_length,
+                    self.hidden_length,
+                    # dropout=self.dropout_rate,
+                    edge_dim=self.n_bond_properties,
                 )
             )
-        self.final_conv = tgnn.ResGatedGraphConv(
-            self.in_length, self.hidden_length, edge_dim=self.n_bond_properties
-        )
 
     def forward(self, batch):
         graph_data = batch["features"][0]
@@ -136,11 +137,6 @@ class ResGatedGraphConvNetBase(GraphBaseNet):
             a = self.activation(
                 conv(a, graph_data.edge_index.long(), edge_attr=graph_data.edge_attr)
             )
-        a = self.activation(
-            self.final_conv(
-                a, graph_data.edge_index.long(), edge_attr=graph_data.edge_attr
-            )
-        )
         return a
 
 
