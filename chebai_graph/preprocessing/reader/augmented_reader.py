@@ -440,8 +440,12 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
             internal_edge_index[0].append(source_fg)
             internal_edge_index[1].append(target_fg)
-            internal_fg_edges[f"{source_fg}_{target_fg}"] = {EDGE_LEVEL: WITHIN_FG_EDGE}
-            self._num_of_edges += 1
+            edge_str = f"{source_fg}_{target_fg}"
+            if edge_str not in internal_fg_edges:
+                # If two atoms of a FG points to atom(s) belonging to another FG. In this case, only one edge is counted.
+                # Eg. In CHEBI:52723, atom idx 13 and 16 of a FG points to atom idx 18 of another FG
+                internal_fg_edges[edge_str] = {EDGE_LEVEL: WITHIN_FG_EDGE}
+                self._num_of_edges += 1
 
         return internal_edge_index, internal_fg_edges
 
