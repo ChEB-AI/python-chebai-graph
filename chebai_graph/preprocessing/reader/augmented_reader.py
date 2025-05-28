@@ -181,7 +181,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
         # Empty features initialized; node and edge features can be added later
         x = torch.zeros((augmented_molecule["nodes"]["num_nodes"], 0))
-        edge_attr = torch.zeros((augmented_molecule["edges"]["num_edges"], 0))
+        edge_attr = torch.zeros((augmented_molecule["edges"][NUM_EDGES], 0))
 
         assert (
             edge_index.shape[0] == 2
@@ -297,7 +297,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
             ATOM_FG_EDGE: atom_fg_edges,
             WITHIN_FG_EDGE: internal_fg_edges,
             FG_GRAPHNODE_EDGE: fg_to_graph_edges,
-            "num_undirected_edges": self._num_of_edges * 2,  # Undirected edges
+            NUM_EDGES: self._num_of_edges * 2,  # Undirected edges
         }
         return undirected_edge_index, node_info, edge_info
 
@@ -449,12 +449,12 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 source_fg is not None and target_fg is not None
             ), "Each bond should have a fg node on both end"
 
-            internal_edge_index[0].append(source_fg)
-            internal_edge_index[1].append(target_fg)
             edge_str = f"{source_fg}_{target_fg}"
             if edge_str not in internal_fg_edges:
                 # If two atoms of a FG points to atom(s) belonging to another FG. In this case, only one edge is counted.
                 # Eg. In CHEBI:52723, atom idx 13 and 16 of a FG points to atom idx 18 of another FG
+                internal_edge_index[0].append(source_fg)
+                internal_edge_index[1].append(target_fg)
                 internal_fg_edges[edge_str] = {EDGE_LEVEL: WITHIN_FG_EDGE}
                 self._num_of_edges += 1
 

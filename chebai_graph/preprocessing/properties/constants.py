@@ -10,3 +10,4 @@ WITHIN_FG_EDGE = "within_fg_lvl"
 ATOM_FG_EDGE = "atom_fg_lvl"
 FG_GRAPHNODE_EDGE = "fg_graphNode_lvl"
 EDGE_LEVELS = {WITHIN_ATOMS_EDGE, WITHIN_FG_EDGE, ATOM_FG_EDGE, FG_GRAPHNODE_EDGE}
+NUM_EDGES = "num_undirected_edges"

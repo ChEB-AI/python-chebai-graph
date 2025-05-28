@@ -53,7 +53,7 @@ class AugmentedBondProperty(BondProperty, ABC):
             [self.get_bond_value(bond) for bond in fg_graph_node_edges.values()]
         )
 
-        num_directed_edges = augmented_mol[self.MAIN_KEY]["num_undirected_edges"] // 2
+        num_directed_edges = augmented_mol[self.MAIN_KEY][NUM_EDGES] // 2
         assert (
             len(prop_list) == num_directed_edges
         ), f"Number of property values ({len(prop_list)}) should be equal to number of half the number of undirected edges i.e. must be equal to {num_directed_edges} "
