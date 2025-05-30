@@ -41,15 +41,31 @@ my_projects/
 
 ## Training & Pretraining
 
-### Important Note
+### ⚠️ Important Setup Instructions
 
-- Before executing the following commands, ensure you are in the `python-chebai` directory and have set the `PYTHONPATH` to the `python-chebai-graph` directory, as explained in the [PYTHONPATH Explained](#-pythonpath-explained) section below.
-- To avoid any potential error, we recommend **configuring both directories** in the `PYTHONPATH`, using following command (use **semicolon (`;`)** on Windows, and **colon (`:`)** on Linux as a separator)
-  ```bash
-      set PYTHONPATH=path/to/python-chebai;path/to/python-chebai-graph
-  ```
+Before running any training scripts, ensure your environment is correctly configured:
 
-  
+* **Either**:
+
+    Install the `python-chebai` and `python-chebai-graph` repositories as packages in your environment. To do this, navigate to the root directory of each repository and run:
+    ```bash
+    pip install .
+    ```
+    
+* **OR**
+
+    Manually set the `PYTHONPATH` environment variable if working across multiple directories (`python-chebai` or `python-chebai-graph`):
+
+    If your **current working directory** is `python-chebai`, set:
+
+    ```bash
+    export PYTHONPATH=path/to/python-chebai-graph
+    ```
+    
+    or **vice versa**.
+
+> 🔎 See the [PYTHONPATH Explained](#-pythonpath-explained) section below for more details.
+
 
 ### 🧠 Pretraining (Atom/Bond Masking on PubChem)
 
@@ -120,4 +136,4 @@ set PYTHONPATH=C:\path\to\python-chebai-graph
 echo %PYTHONPATH%
 ```
 
-> 💡 Note: This is temporary for your terminal session. To make it permanent, add it to your system environment variables.
+> 💡 **Note: This is temporary for your terminal session. To make it permanent, add it to your system environment variables.**
