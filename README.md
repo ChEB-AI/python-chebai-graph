@@ -25,6 +25,9 @@ Replace:
 - `${TORCH}` with your installed PyTorch version (e.g., `2.6.0`)
 - `${CUDA}` with e.g. `cpu`, `cu118`, or `cu121` depending on your system and CUDA version
 
+If you already have `torch` installed, make sure that `torch_scatter` and `torch_geometric` are compatible with your 
+PyTorch version and are installed with the same CUDA version.
+
 For a full list of currently available PyTorch versions and CUDA compatibility, please refer to libraries' official documentation:
 - [torch](https://pytorch.org/get-started/locally/)
 - [torch_geometric](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html#installation)
