@@ -143,11 +143,14 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
             f"{property.name}_{property.encoder.name}.pt",
         )
 
-    def setup(self, **kwargs):
-        super().setup(keep_reader=True, **kwargs)
-        self._setup_properties()
+    def _after_setup(self, **kwargs):
+        """
+        Finalize the setup process after ensuring the processed data is available.
 
-        self.reader.on_finish()
+        This method performs post-setup tasks like finalizing the reader and setting internal properties.
+        """
+        self._setup_properties()
+        super()._after_setup(**kwargs)
 
     def _merge_props_into_base(self, row):
         geom_data = row["features"]
