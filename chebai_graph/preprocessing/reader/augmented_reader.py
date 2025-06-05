@@ -391,16 +391,22 @@ class GraphFGAugmentorReader(_AugmentorReader):
                     "FG": f"RING_{ring_size}",
                     "RING": ring_size,
                 }
-            else:  # No connected has a ring size which indicates it is simple FG
+                # In this case, all atoms of Ring/Fused Ring are assigned the ring size as functional group
+                for atom_idx in fg_group["atom"]:
+                    mol.GetAtomWithIdx(atom_idx).SetProp("FG", f"RING_{ring_size}")
+
+            else:  # No connected atoms have a ring size which indicates it is simple FG
                 fg_set = {mol.GetAtomWithIdx(i).GetProp("FG") for i in fg_group["atom"]}
 
                 if "" in fg_set and len(fg_set) == 1:
+                    # TODO: Check how GraphReader handles the wildcard smiles case
                     # There will be no FGs for wildcard SMILES Eg. CHEBI:33429
                     return None
 
                 if "" in fg_set or len(fg_set) > 1:
                     raise ValueError("Invalid functional group assignment to atoms.")
 
+                # Select any one connected atom to get FG type and ring size
                 for atom_idx in fg_group["atom"]:
                     atom = mol.GetAtomWithIdx(atom_idx)
                     if atom.GetProp("FG"):
