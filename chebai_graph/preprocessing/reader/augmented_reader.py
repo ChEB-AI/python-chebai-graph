@@ -361,6 +361,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
         for fg_group in structure.values():
             fg_to_atoms_map[self._num_of_nodes] = {"atom": fg_group["atom"]}
 
+            ring_fg = set()
+            connected_atoms = []
             # Build edge index for fg to atom nodes connections
             for atom_idx in fg_group["atom"]:
                 fg_atom_edge_index[0].append(self._num_of_nodes)
@@ -370,12 +372,13 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 }
                 self._num_of_edges += 1
 
-            # Identify ring vs. functional group type
-            ring_fg = {
-                mol.GetAtomWithIdx(i).GetProp("RING")
-                for i in fg_group["atom"]
-                if mol.GetAtomWithIdx(i).GetProp("RING")
-            }
+                atom = mol.GetAtomWithIdx(
+                    atom_idx
+                )  # reference to atom in mol is returned
+                connected_atoms.append(atom)
+
+                if atom.GetProp("RING"):
+                    ring_fg.add(atom.GetProp("RING"))
 
             if len(ring_fg) > 1:
                 raise ValueError(
@@ -392,11 +395,15 @@ class GraphFGAugmentorReader(_AugmentorReader):
                     "RING": ring_size,
                 }
                 # In this case, all atoms of Ring/Fused Ring are assigned the ring size as functional group
-                for atom_idx in fg_group["atom"]:
-                    mol.GetAtomWithIdx(atom_idx).SetProp("FG", f"RING_{ring_size}")
+                for atom in connected_atoms:
+                    atom.SetProp("FG", f"RING_{ring_size}")
 
             else:  # No connected atoms have a ring size which indicates it is simple FG
-                fg_set = {mol.GetAtomWithIdx(i).GetProp("FG") for i in fg_group["atom"]}
+                fg_set = {atom.GetProp("FG") for atom in connected_atoms}
+                if not fg_set:
+                    raise ValueError(
+                        "No functional group assigned to atoms in the functional group."
+                    )
 
                 if "" in fg_set and len(fg_set) == 1:
                     # TODO: Check how GraphReader handles the wildcard smiles case
@@ -407,19 +414,19 @@ class GraphFGAugmentorReader(_AugmentorReader):
                     raise ValueError("Invalid functional group assignment to atoms.")
 
                 # Select any one connected atom to get FG type and ring size
-                for atom_idx in fg_group["atom"]:
-                    atom = mol.GetAtomWithIdx(atom_idx)
-                    if atom.GetProp("FG"):
-                        fg_nodes[self._num_of_nodes] = {
-                            NODE_LEVEL: FG_NODE_LEVEL,
-                            "FG": atom.GetProp("FG"),
-                            "RING": atom.GetProp("RING"),
-                        }
-                        break
-                else:
+                representative_atom = next(
+                    (atom for atom in connected_atoms if atom.GetProp("FG")), None
+                )
+                if representative_atom is None:
                     raise AssertionError(
                         "Expected at least one atom with a functional group."
                     )
+
+                fg_nodes[self._num_of_nodes] = {
+                    NODE_LEVEL: FG_NODE_LEVEL,
+                    "FG": representative_atom.GetProp("FG"),
+                    "RING": representative_atom.GetProp("RING"),
+                }
 
             self._num_of_nodes += 1
 
