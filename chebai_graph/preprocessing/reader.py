@@ -16,7 +16,7 @@ from torch_geometric.data import Data as GeomData
 from lightning_utilities.core.rank_zero import rank_zero_warn, rank_zero_info
 
 
-class GraphPropertyReader(dr.ChemDataReader):
+class GraphPropertyReader(dr.DataReader):
     COLLATOR = GraphCollator
 
     def __init__(
