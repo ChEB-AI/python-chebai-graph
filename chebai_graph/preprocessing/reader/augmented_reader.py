@@ -155,11 +155,11 @@ class GraphFGAugmentorReader(_AugmentorReader):
         super().__init__(*args, **kwargs)
         # Record number of functional groups using relevant part of SMILES which belong to them, as function group name
         self._cnt_fg_using_smiles = 0
-        # Record number molecules with atleast one functional group using relevant part of SMILES which belong to them, as function group name
+        # Record number molecules with at least one functional group using relevant part of SMILES which belong to them, as function group name
         self._cnt_mol_with_fg_using_smiles = 0
         # Record number of functional groups using atom symbol as functional group name
         self._cnt_fg_using_atom_symbol = 0
-        # Record number molecules with atleast one functional group using atom symbol as functional group name
+        # Record number molecules with at least one functional group using atom symbol as functional group name
         self._cnt_mol_with_fg_using_atom_symbol = 0
 
     @classmethod
@@ -186,7 +186,13 @@ class GraphFGAugmentorReader(_AugmentorReader):
         if mol is None:
             return None
 
-        returned_result = self._create_augmented_graph(mol)
+        try:
+            returned_result = self._create_augmented_graph(mol)
+        except Exception as e:
+            raise RuntimeError(
+                f"Error has occurred for following SMILES: {smiles}\n\t {e}"
+            ) from e
+
         # If the returned result is None, it indicates that the graph augmentation failed
         if returned_result is None:
             rank_zero_info(f"Failed to construct augmented graph for smiles {smiles}")
@@ -379,6 +385,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
         flag_mol_has_fg_using_smiles = False
         flag_mol_has_fg_using_atom_symbol = False
 
+        molecule_atoms_set = set()
         for fg_smiles, fg_group in structure.items():
             fg_to_atoms_map[self._num_of_nodes] = {"atom": fg_group["atom"]}
 
@@ -386,6 +393,12 @@ class GraphFGAugmentorReader(_AugmentorReader):
             connected_atoms = []
             # Build edge index for fg to atom nodes connections
             for atom_idx in fg_group["atom"]:
+                if atom_idx in molecule_atoms_set:
+                    raise ValueError(
+                        f"An atom {atom_idx} cannot belong to more than one functional group"
+                    )
+                molecule_atoms_set.add(atom_idx)
+
                 fg_atom_edge_index[0].append(self._num_of_nodes)
                 fg_atom_edge_index[1].append(atom_idx)
                 atom_fg_edges[f"{self._num_of_nodes}_{atom_idx}"] = {
