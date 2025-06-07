@@ -5,6 +5,7 @@ from typing import Optional
 import torch
 import sys
 from itertools import islice
+import inspect
 
 
 class PropertyEncoder(abc.ABC):
@@ -39,7 +40,7 @@ class IndexEncoder(PropertyEncoder):
     def __init__(self, property, indices_dir=None, **kwargs):
         super().__init__(property, **kwargs)
         if indices_dir is None:
-            indices_dir = os.path.dirname(__file__)
+            indices_dir = os.path.dirname(inspect.getfile(self.__class__))
         self.dirname = indices_dir
         # load already existing cache
         with open(self.index_path, "r") as pk:
