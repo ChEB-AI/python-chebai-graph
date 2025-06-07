@@ -1,8 +1,12 @@
+import io
+
 import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
 from jsonargparse import CLI
-from rdkit.Chem import AllChem, Mol
+from PIL import Image
+from rdkit.Chem import BondType, Mol, rdDepictor
+from rdkit.Chem.Draw import rdMolDraw2D
 from torch import Tensor
 
 from chebai_graph.preprocessing.properties.constants import *
@@ -21,6 +25,17 @@ NODE_COLOR_MAP = {
     "atom": "#9ecae1",
     "fg": "#fdae6b",
     "graph": "#d62728",
+}
+
+
+BOND_COLOR_MAP = {
+    BondType.SINGLE: "black",
+    BondType.DOUBLE: "blue",
+    BondType.TRIPLE: "green",
+    BondType.DATIVE: "red",
+    BondType.DATIVEL: "red",
+    BondType.DATIVER: "red",
+    BondType.DATIVEONE: "red",
 }
 
 
@@ -91,7 +106,7 @@ def _create_graph(
         elif undirected_edge_set & fg_graph_edges:
             edge_type = FG_GRAPHNODE_EDGE
         else:
-            raise Exception("Unexpected edge type")
+            raise ValueError("Unexpected edge type")
         G.add_edge(src, tgt, edge_type=edge_type, edge_color=EDGE_COLOR_MAP[edge_type])
 
     return G
@@ -202,10 +217,10 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
     """
     try:
         from plotly import graph_objects as go
-    except ImportError:
+    except ImportError as e:
         raise ImportError(
             "Plotly is required for 3D plotting. Install it with `pip install plotly`."
-        )
+        ) from e
 
     # Generate 3D coordinates for atoms
     AllChem.EmbedMolecule(mol)
@@ -322,6 +337,54 @@ def plot_augmented_graph(
         raise ValueError(f"Unknown plot type: {plot_type}")
 
 
+def plot_nonaugment_molecule_graph(mol: Mol, size=(800, 800)) -> None:
+    """
+    Visualize a molecule using rdkit.
+    """
+
+    print(f"Number of atoms: {mol.GetNumAtoms()}")
+    print(f"Number of bonds: {mol.GetNumBonds()}")
+    print("\nAtoms:")
+    for atom in mol.GetAtoms():
+        print(f"\tAtom index: {atom.GetIdx()}, Symbol: {atom.GetSymbol()}")
+
+    print("\nBonds:")
+    for bond in mol.GetBonds():
+        a1 = bond.GetBeginAtomIdx()
+        a2 = bond.GetEndAtomIdx()
+        btype = bond.GetBondType()
+        print(f"\tBond index: {bond.GetIdx()}, Atoms: ({a1}, {a2}), Type: {btype}")
+
+    # Generate 2D coordinates
+    rdDepictor.Compute2DCoords(mol)
+
+    # Set up drawer with high resolution
+    drawer = rdMolDraw2D.MolDraw2DCairo(*size)
+    options = drawer.drawOptions()
+
+    # Display atom indices and symbols
+    options.addAtomIndices = True
+    options.addStereoAnnotation = True
+    options.padding = 0.05  # Less whitespace
+    options.fixedBondLength = 25  # for visual clarity
+
+    drawer.DrawMolecule(mol)
+    drawer.FinishDrawing()
+
+    # Convert to image
+    png = drawer.GetDrawingText()
+    img = Image.open(io.BytesIO(png))
+
+    # Show using matplotlib
+    dpi = 300
+    plt.figure(figsize=(size[0] / dpi, size[1] / dpi), dpi=dpi)
+    plt.imshow(img)
+    plt.axis("off")
+    plt.tight_layout(pad=0)
+    # plt.title("RDKit 2D Molecule with Atom Indices", fontsize=14)
+    plt.show()
+
+
 class Main:
     """
     Command-line wrapper class for plotting augmented molecular graphs.
@@ -342,6 +405,13 @@ class Main:
                 - 3d: Hierarchical 3D-graph
         """
         mol = self._fg_reader._smiles_to_mol(smiles)  # noqa
+        if mol is None:
+            raise ValueError(f"Invalid SMILES: {smiles}")
+
+        if plot_type == "molecule_only":
+            plot_nonaugment_molecule_graph(mol)
+            return
+
         edge_index, augmented_molecule = self._fg_reader._create_augmented_graph(
             mol
         )  # noqa
@@ -355,4 +425,6 @@ if __name__ == "__main__":
     # 1-hydroxy-2-naphthoic acid -> OC(=O)c1ccc2ccccc2c1O ; CHEBI:36108 ; Fused Rings
     #  3-nitrobenzoic acid -> OC(=O)C1=CC(=CC=C1)[N+]([O-])=O ; CHEBI:231494 ; Ring + Novel atom (Nitrogen)
     # nile blue A -> [Cl-].CCN(CC)c1ccc2nc3c(cc(N)c4ccccc34)[o+]c2c1 ; CHEBI:52163 ; Fused rings + Novel atoms
-    CLI(Main)
+    # CHEBI:52723; Complicated molecule; 'O.O.[Cl-].[Cl-].C1=Cc2ccc3C=CC=[N]4c3c2[N](=C1)[Ru++]4123[N]4=CC=Cc5ccc6C=CC=[N]1c6c45.C1=Cc4ccc5C=CC=[N]2c5c4[N]3=C1'
+    # CHEBI:87627; Complicated molecule; "[Cl-].[Cl-].[Cl-].[Cl-].[Zn++].COc1cc(ccc1[N+]#N)-c1ccc([N+]#N)c(OC)c1"
+    CLI(Main, as_positional=False)
