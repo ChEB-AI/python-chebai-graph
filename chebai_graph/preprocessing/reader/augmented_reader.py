@@ -153,14 +153,10 @@ class GraphFGAugmentorReader(_AugmentorReader):
             **kwargs: Additional keyword arguments passed to the parent class.
         """
         super().__init__(*args, **kwargs)
-        # Record number of functional groups using relevant part of SMILES which belong to them, as function group name
-        self._cnt_fg_using_smiles = 0
-        # Record number molecules with at least one functional group using relevant part of SMILES which belong to them, as function group name
-        self._cnt_mol_with_fg_using_smiles = 0
-        # Record number of functional groups using atom symbol as functional group name
-        self._cnt_fg_using_atom_symbol = 0
-        # Record number molecules with at least one functional group using atom symbol as functional group name
-        self._cnt_mol_with_fg_using_atom_symbol = 0
+        # Record number of functional groups using default fg token as functional group name
+        self._num_mol_using_default_fg_token = 0
+        # Record number molecules with at least one functional group using default fg token as function group name
+        self._num_of_fg_using_default_fg_token = 0
 
     @classmethod
     def name(cls) -> str:
@@ -382,8 +378,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
         fg_nodes, atom_fg_edges = {}, {}
         # Contains augmented fg-nodes and connected atoms indices
         fg_to_atoms_map = {}
-        flag_mol_has_fg_using_smiles = False
-        flag_mol_has_fg_using_atom_symbol = False
+
+        flag_mol_has_used_default_fg = False
 
         molecule_atoms_set = set()
         for fg_smiles, fg_group in structure.items():
@@ -440,23 +436,35 @@ class GraphFGAugmentorReader(_AugmentorReader):
                     )
 
                 if "" in fg_set and len(fg_set) == 1:
-                    if len(connected_atoms) == 1:
-                        # If there is only one atom and one edge connecting this atom to its fg_atom,
-                        # the functional group will be the symbol of this atom
-                        # This special case is to handle wildcard SMILES Eg. CHEBI:33429
-                        atom = connected_atoms[0]
-                        atom.SetProp("FG", atom.GetSymbol())
-                        self._cnt_fg_using_atom_symbol += 1
-                        flag_mol_has_fg_using_atom_symbol = True
-                    else:
-                        # If there are multiple atoms connected to the functional group, and no atoms have a functional group property/name
-                        # assigned, we assign the functional group as the relevant part of SMILES which belong to the functional group
-                        # Eg. CHEBI:55388, atom idx 2 and 3  have no functional group name, so "[C-]#[C-]" is used
-                        for atom in connected_atoms:
-                            atom.SetProp("FG", fg_smiles)
+                    # ------ Commented for Future Reference: Leads to large number of functional group tokens ------------------
+                    # ------ 2533 unique FG tokens which blow up the file size of corresponding property file up 183 GB
+                    # ------ If uncommented in future, retrieve rest of the code related to this block from
+                    # ------ https://github.com/ChEB-AI/python-chebai-graph/pull/2/commits/ac8cb1e3275296f3bbb9982302c2688af63c93d1
+                    # if len(connected_atoms) == 1:
+                    #     # If there is only one atom and one edge connecting this atom to its fg_atom,
+                    #     # the functional group will be the symbol of this atom
+                    #     # This special case is to handle wildcard SMILES Eg. CHEBI:33429
+                    #     atom = connected_atoms[0]
+                    #     atom.SetProp("FG", atom.GetSymbol())
+                    #     self._cnt_fg_using_atom_symbol += 1
+                    #     flag_mol_has_fg_using_atom_symbol = True
+                    # else:
+                    #     # If there are multiple atoms connected to the functional group, and no atoms have a functional group property/name
+                    #     # assigned, we assign the functional group as the relevant part of SMILES which belong to the functional group
+                    #     # Eg. CHEBI:55388, atom idx 2 and 3  have no functional group name, so "[C-]#[C-]" is used
+                    #     for atom in connected_atoms:
+                    #         atom.SetProp("FG", fg_smiles)
+                    #
+                    #     self._cnt_fg_using_smiles += 1
+                    #     flag_mol_has_fg_using_smiles = True
+                    # -----------------------------------------------------------------------------
 
-                        self._cnt_fg_using_smiles += 1
-                        flag_mol_has_fg_using_smiles = True
+                    # Instead assign atoms with no FG to a common token to limit the number of unique FG tokens
+                    for atom in connected_atoms:
+                        atom.SetProp("FG", "No_FG_assigned")
+
+                    self._num_of_fg_using_default_fg_token += 1
+                    flag_mol_has_used_default_fg = True
 
                 if len(fg_set - {""}) > 1:
                     raise ValueError(
@@ -481,10 +489,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
             self._num_of_nodes += 1
 
-        if flag_mol_has_fg_using_smiles:
-            self._cnt_mol_with_fg_using_smiles += 1
-        if flag_mol_has_fg_using_atom_symbol:
-            self._cnt_mol_with_fg_using_atom_symbol += 1
+        if flag_mol_has_used_default_fg:
+            self._num_mol_using_default_fg_token += 1
 
         return fg_atom_edge_index, fg_nodes, atom_fg_edges, fg_to_atoms_map, bonds
 
@@ -568,10 +574,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
         summary = textwrap.dedent(
             f"""
         ==== Functional Group Summary ==================
-        - Functional groups using SMILES: {self._cnt_fg_using_smiles}
-        - Molecules with such groups (SMILES): {self._cnt_mol_with_fg_using_smiles}
-        - Functional groups using atom symbols: {self._cnt_fg_using_atom_symbol}
-        - Molecules with such groups (atom symbols): {self._cnt_mol_with_fg_using_atom_symbol}
+        - Functional groups using default FG token: {self._num_of_fg_using_default_fg_token}
+        - Molecules with at least one FG using default token: {self._num_mol_using_default_fg_token}
         ================================================
         """
         )
