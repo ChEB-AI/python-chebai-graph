@@ -17,9 +17,9 @@ class GATModelWrapper(GraphBaseNet):
         self._dropout_rate = float(config.pop("dropout_rate", 0.1))
         self._n_conv_layers = int(config.pop("n_conv_layers", 3))
         self._n_linear_layers = int(config.pop("n_linear_layers", 3))
-        self._n_atom_properties = int(config.pop("n_atom_properties", 0))
-        self._n_bond_properties = int(config.pop("n_bond_properties", 0))
-        self._n_molecule_properties = int(config.pop("n_molecule_properties", 0))
+        self._n_atom_properties = int(config.pop("n_atom_properties"))
+        self._n_bond_properties = int(config.pop("n_bond_properties"))
+        self._n_molecule_properties = int(config.pop("n_molecule_properties"))
         self._gat = GAT(
             in_channels=self._n_atom_properties,
             hidden_channels=self._hidden_length,
