@@ -1,3 +1,4 @@
+import textwrap
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple
 
@@ -142,6 +143,24 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
     The FG nodes to connected to its related atoms and graph node is connected to all FG nodes.
     """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initializes the GraphFGAugmentorReader and sets up the failure counter and molecule cache.
+
+        Args:
+            *args: Additional arguments passed to the parent class.
+            **kwargs: Additional keyword arguments passed to the parent class.
+        """
+        super().__init__(*args, **kwargs)
+        # Record number of functional groups using relevant part of SMILES which belong to them, as function group name
+        self._cnt_fg_using_smiles = 0
+        # Record number molecules with atleast one functional group using relevant part of SMILES which belong to them, as function group name
+        self._cnt_mol_with_fg_using_smiles = 0
+        # Record number of functional groups using atom symbol as functional group name
+        self._cnt_fg_using_atom_symbol = 0
+        # Record number molecules with atleast one functional group using atom symbol as functional group name
+        self._cnt_mol_with_fg_using_atom_symbol = 0
 
     @classmethod
     def name(cls) -> str:
@@ -357,6 +376,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
         fg_nodes, atom_fg_edges = {}, {}
         # Contains augmented fg-nodes and connected atoms indices
         fg_to_atoms_map = {}
+        flag_mol_has_fg_using_smiles = False
+        flag_mol_has_fg_using_atom_symbol = False
 
         for fg_smiles, fg_group in structure.items():
             fg_to_atoms_map[self._num_of_nodes] = {"atom": fg_group["atom"]}
@@ -412,12 +433,17 @@ class GraphFGAugmentorReader(_AugmentorReader):
                         # This special case is to handle wildcard SMILES Eg. CHEBI:33429
                         atom = connected_atoms[0]
                         atom.SetProp("FG", atom.GetSymbol())
+                        self._cnt_fg_using_atom_symbol += 1
+                        flag_mol_has_fg_using_atom_symbol = True
                     else:
                         # If there are multiple atoms connected to the functional group, and no atoms have a functional group property/name
-                        # assigned, we assign the functional group as the part of SMILES which belong to the functional group
+                        # assigned, we assign the functional group as the relevant part of SMILES which belong to the functional group
                         # Eg. CHEBI:55388, atom idx 2 and 3  have no functional group name, so "[C-]#[C-]" is used
                         for atom in connected_atoms:
                             atom.SetProp("FG", fg_smiles)
+
+                        self._cnt_fg_using_smiles += 1
+                        flag_mol_has_fg_using_smiles = True
 
                 if "" in fg_set and len(fg_set) > 1:
                     raise ValueError("Invalid functional group assignment to atoms.")
@@ -438,6 +464,11 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 }
 
             self._num_of_nodes += 1
+
+        if flag_mol_has_fg_using_smiles:
+            self._cnt_mol_with_fg_using_smiles += 1
+        if flag_mol_has_fg_using_atom_symbol:
+            self._cnt_mol_with_fg_using_atom_symbol += 1
 
         return fg_atom_edge_index, fg_nodes, atom_fg_edges, fg_to_atoms_map, bonds
 
@@ -514,3 +545,18 @@ class GraphFGAugmentorReader(_AugmentorReader):
         self._num_of_nodes += 1
 
         return graph_edge_index, graph_node, fg_graph_edges
+
+    def on_finish(self):
+        super().on_finish()
+
+        summary = textwrap.dedent(
+            f"""
+        ==== Functional Group Summary ==================
+        - Functional groups using SMILES: {self._cnt_fg_using_smiles}
+        - Molecules with such groups (SMILES): {self._cnt_mol_with_fg_using_smiles}
+        - Functional groups using atom symbols: {self._cnt_fg_using_atom_symbol}
+        - Molecules with such groups (atom symbols): {self._cnt_mol_with_fg_using_atom_symbol}
+        ================================================
+        """
+        )
+        rank_zero_info(summary.strip())
