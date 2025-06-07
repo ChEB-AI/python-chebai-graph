@@ -458,8 +458,11 @@ class GraphFGAugmentorReader(_AugmentorReader):
                         self._cnt_fg_using_smiles += 1
                         flag_mol_has_fg_using_smiles = True
 
-                if "" in fg_set and len(fg_set) > 1:
-                    raise ValueError("Invalid functional group assignment to atoms.")
+                if len(fg_set - {""}) > 1:
+                    raise ValueError(
+                        "Connected atoms have different function groups assigned.\n"
+                        "All Connected atoms must belong to one functional group or None"
+                    )
 
                 # Select any one connected atom to get FG type and ring size
                 representative_atom = next(
