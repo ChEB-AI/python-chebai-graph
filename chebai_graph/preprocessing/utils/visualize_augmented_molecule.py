@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from jsonargparse import CLI
 from PIL import Image
-from rdkit.Chem import BondType, Mol, rdDepictor
+from rdkit.Chem import AllChem, BondType, Mol, rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 from torch import Tensor
 
@@ -77,7 +77,7 @@ def _create_graph(
         )
 
     # Add special graph node
-    graph_node_idx = augmented_graph_nodes["num_nodes"]
+    graph_node_idx = augmented_graph_nodes["num_nodes"] - 1
     G.add_node(
         graph_node_idx,
         node_name="Graph Node",
@@ -364,6 +364,8 @@ def plot_nonaugment_molecule_graph(mol: Mol, size=(800, 800)) -> None:
 
     # Display atom indices and symbols
     options.addAtomIndices = True
+    # Show bond indices
+    options.addBondIndices = True
     options.addStereoAnnotation = True
     options.padding = 0.05  # Less whitespace
     options.fixedBondLength = 25  # for visual clarity
