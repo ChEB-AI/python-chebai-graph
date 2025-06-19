@@ -4,7 +4,6 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 from chebai.preprocessing.reader import DataReader
-from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from rdkit import Chem
 from torch_geometric.data import Data as GeomData
 
@@ -90,13 +89,13 @@ class _AugmentorReader(DataReader, ABC):
         """
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
-            rank_zero_warn(f"RDKit failed to parse {smiles} (returned None)")
+            print(f"RDKit failed to parse {smiles} (returned None)")
             self.f_cnt_for_smiles += 1
         else:
             try:
                 Chem.SanitizeMol(mol)
             except Exception as e:
-                rank_zero_warn(f"RDKit failed at sanitizing {smiles}, Error {e}")
+                print(f"RDKit failed at sanitizing {smiles}, Error {e}")
                 self.f_cnt_for_smiles += 1
         return mol
 
@@ -104,8 +103,8 @@ class _AugmentorReader(DataReader, ABC):
         """
         Finalizes the reading process and logs the number of failed SMILES and failed augmentation.
         """
-        rank_zero_info(f"Failed to read {self.f_cnt_for_smiles} SMILES in total")
-        rank_zero_info(
+        print(f"Failed to read {self.f_cnt_for_smiles} SMILES in total")
+        print(
             f"Failed to construct augmented graph for {self.f_cnt_for_aug_graph} number of SMILES"
         )
         self.mol_object_buffer = {}
@@ -191,7 +190,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
         # If the returned result is None, it indicates that the graph augmentation failed
         if returned_result is None:
-            rank_zero_info(f"Failed to construct augmented graph for smiles {smiles}")
+            print(f"Failed to construct augmented graph for smiles {smiles}")
             self.f_cnt_for_aug_graph += 1
             return None
 
@@ -579,4 +578,4 @@ class GraphFGAugmentorReader(_AugmentorReader):
         ================================================
         """
         )
-        rank_zero_info(summary.strip())
+        print(summary.strip())
