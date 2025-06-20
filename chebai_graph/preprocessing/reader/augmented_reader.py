@@ -143,24 +143,6 @@ class GraphFGAugmentorReader(_AugmentorReader):
     The FG nodes to connected to its related atoms and graph node is connected to all FG nodes.
     """
 
-    def __init__(self, *args, **kwargs):
-        """
-        Initializes the GraphFGAugmentorReader and sets up the failure counter and molecule cache.
-
-        Args:
-            *args: Additional arguments passed to the parent class.
-            **kwargs: Additional keyword arguments passed to the parent class.
-        """
-        super().__init__(*args, **kwargs)
-        # Record number of functional groups using relevant part of SMILES which belong to them, as function group name
-        self._cnt_fg_using_smiles = 0
-        # Record number molecules with at least one functional group using relevant part of SMILES which belong to them, as function group name
-        self._cnt_mol_with_fg_using_smiles = 0
-        # Record number of functional groups using atom symbol as functional group name
-        self._cnt_fg_using_atom_symbol = 0
-        # Record number molecules with at least one functional group using atom symbol as functional group name
-        self._cnt_mol_with_fg_using_atom_symbol = 0
-
     @classmethod
     def name(cls) -> str:
         """
@@ -381,14 +363,11 @@ class GraphFGAugmentorReader(_AugmentorReader):
         fg_nodes, atom_fg_edges = {}, {}
         # Contains augmented fg-nodes and connected atoms indices
         fg_to_atoms_map = {}
-        flag_mol_has_fg_using_smiles = False
-        flag_mol_has_fg_using_atom_symbol = False
 
         molecule_atoms_set = set()
-        for fg_smiles, fg_group in structure.items():
+        for _, fg_group in structure.items():
             fg_to_atoms_map[self._num_of_nodes] = {"atom": fg_group["atom"]}
 
-            ring_fg = set()
             connected_atoms = []
             # Build edge index for fg to atom nodes connections
             for atom_idx in fg_group["atom"]:
@@ -405,87 +384,81 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 }
                 self._num_of_edges += 1
 
-                atom = mol.GetAtomWithIdx(
-                    atom_idx
-                )  # reference to atom in mol is returned
+                atom = mol.GetAtomWithIdx(atom_idx)
                 connected_atoms.append(atom)
 
-                if atom.GetProp("RING"):
-                    ring_fg.add(atom.GetProp("RING"))
-
-            if len(ring_fg) > 1:
-                raise ValueError(
-                    "A functional group must not span multiple ring sizes."
-                )
-
-            if len(ring_fg) == 1:
-                # FG atoms have ring size, which indicates the FG is a Ring or Fused Rings
-                ring_size = next(iter(ring_fg))
-                fg_nodes[self._num_of_nodes] = {
-                    NODE_LEVEL: FG_NODE_LEVEL,
-                    # E.g.,  Fused Ring has size "5-6", indicating size of each connected ring in fused ring
-                    "FG": f"RING_{ring_size}",
-                    "RING": ring_size,
-                }
-                # In this case, all atoms of Ring/Fused Ring are assigned the ring size as functional group
-                for atom in connected_atoms:
-                    atom.SetProp("FG", f"RING_{ring_size}")
-
-            else:  # No connected atoms have a ring size which indicates it is simple FG
-                fg_set = {atom.GetProp("FG") for atom in connected_atoms}
-                if not fg_set:
-                    raise ValueError(
-                        "No functional group assigned to atoms in the functional group."
-                    )
-
-                if "" in fg_set and len(fg_set) == 1:
-                    if len(connected_atoms) == 1:
-                        # If there is only one atom and one edge connecting this atom to its fg_atom,
-                        # the functional group will be the symbol of this atom
-                        # This special case is to handle wildcard SMILES Eg. CHEBI:33429
-                        atom = connected_atoms[0]
-                        atom.SetProp("FG", atom.GetSymbol())
-                        self._cnt_fg_using_atom_symbol += 1
-                        flag_mol_has_fg_using_atom_symbol = True
-                    else:
-                        # If there are multiple atoms connected to the functional group, and no atoms have a functional group property/name
-                        # assigned, we assign the functional group as the relevant part of SMILES which belong to the functional group
-                        # Eg. CHEBI:55388, atom idx 2 and 3  have no functional group name, so "[C-]#[C-]" is used
-                        for atom in connected_atoms:
-                            atom.SetProp("FG", fg_smiles)
-
-                        self._cnt_fg_using_smiles += 1
-                        flag_mol_has_fg_using_smiles = True
-
-                if len(fg_set - {""}) > 1:
-                    raise ValueError(
-                        "Connected atoms have different function groups assigned.\n"
-                        "All Connected atoms must belong to one functional group or None"
-                    )
-
-                # Select any one connected atom to get FG type and ring size
-                representative_atom = next(
-                    (atom for atom in connected_atoms if atom.GetProp("FG")), None
-                )
-                if representative_atom is None:
-                    raise AssertionError(
-                        "Expected at least one atom with a functional group."
-                    )
-
-                fg_nodes[self._num_of_nodes] = {
-                    NODE_LEVEL: FG_NODE_LEVEL,
-                    "FG": representative_atom.GetProp("FG"),
-                    "RING": representative_atom.GetProp("RING"),
-                }
+            if fg_group["is_ring_fg"]:
+                self._set_ring_fg_prop(connected_atoms, fg_nodes)
+            else:
+                self._set_fg_prop(connected_atoms, fg_nodes)
 
             self._num_of_nodes += 1
 
-        if flag_mol_has_fg_using_smiles:
-            self._cnt_mol_with_fg_using_smiles += 1
-        if flag_mol_has_fg_using_atom_symbol:
-            self._cnt_mol_with_fg_using_atom_symbol += 1
-
         return fg_atom_edge_index, fg_nodes, atom_fg_edges, fg_to_atoms_map, bonds
+
+    def _set_ring_fg_prop(self, connected_atoms, fg_nodes):
+        ring_fg = {
+            atom.GetProp("RING") for atom in connected_atoms if atom.GetProp("RING")
+        }
+        if len(ring_fg) > 1:
+            raise ValueError("A functional group must not span multiple ring sizes.")
+        if len(ring_fg) == 0:
+            raise ValueError(
+                "At least one connected atoms must have a `RING` property set."
+            )
+
+        # FG atoms have ring size, which indicates the FG is a Ring or Fused Rings
+        ring_size = next(iter(ring_fg))
+        fg_nodes[self._num_of_nodes] = {
+            NODE_LEVEL: FG_NODE_LEVEL,
+            # E.g.,  Fused Ring has size "5-6", indicating size of each connected ring in fused ring
+            "FG": f"RING_{ring_size}",
+            "RING": ring_size,
+        }
+        # In this case, all atoms of Ring/Fused Ring are assigned the ring size as functional group
+        for atom in connected_atoms:
+            atom.SetProp("FG", f"RING_{ring_size}")
+
+    def _set_fg_prop(self, connected_atoms, fg_nodes):
+        fg_set = {atom.GetProp("FG") for atom in connected_atoms}
+        if not fg_set:
+            raise ValueError(
+                "No functional group assigned to atoms in the functional group."
+            )
+
+        if "" in fg_set and len(fg_set) == 1:
+            if len(connected_atoms) == 1:
+                # If there is only one atom and one edge connecting this atom to its fg_atom,
+                # the functional group will be the symbol of this atom
+                # This special case is to handle wildcard SMILES Eg. CHEBI:33429
+                atom = connected_atoms[0]
+                # TODO: needed or can we set to default fg prop `NO_FG`?
+                atom.SetProp("FG", atom.GetSymbol())
+            else:
+                # If there are multiple atoms connected to the functional group, and no atoms have a functional group property/name
+                # assigned, Eg. CHEBI:55388, atom idx 2 and 3 ([C-]#[C-]") have no functional group name, so default FG prop is used
+                for atom in connected_atoms:
+                    atom.SetProp("FG", "NO_FG")
+                    # atom.SetProp("FG", fg_smiles)
+
+        if len(fg_set - {""}) > 1:
+            raise ValueError(
+                "Connected atoms have different function groups assigned.\n"
+                "All Connected atoms must belong to one functional group or None"
+            )
+
+        # Select any one connected atom to get FG type and ring size
+        representative_atom = next(
+            (atom for atom in connected_atoms if atom.GetProp("FG")), None
+        )
+        if representative_atom is None:
+            raise AssertionError("Expected at least one atom with a functional group.")
+
+        fg_nodes[self._num_of_nodes] = {
+            NODE_LEVEL: FG_NODE_LEVEL,
+            "FG": representative_atom.GetProp("FG"),
+            "RING": 0,
+        }
 
     def _construct_fg_level_structure(
         self, fg_to_atoms_map: dict, bonds: list
