@@ -3,6 +3,7 @@ import io
 import matplotlib
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 from jsonargparse import CLI
 from PIL import Image
 from rdkit.Chem import AllChem, BondType, Mol, rdDepictor
@@ -232,14 +233,34 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
         for pos in [conf.GetAtomPosition(atom.GetIdx())]
     }
 
-    # Generate 3D layout for FG and graph nodes
-    fg_graph = _get_subgraph_by_node_type(G, "fg")
-    fg_pos_3d = nx.spring_layout(fg_graph, seed=42, dim=3)
-    fg_pos = {k: (x, y, z + 2) for k, (x, y, z) in fg_pos_3d.items()}
+    # Dictionary to store functional group node positions
+    fg_pos = {}
 
-    graph_node_graph = _get_subgraph_by_node_type(G, "graph")
-    graph_pos_3d = nx.spring_layout(graph_node_graph, seed=123, dim=3)
-    graph_pos = {k: (x, y, z + 4) for k, (x, y, z) in graph_pos_3d.items()}
+    # Loop through each functional group node in the graph
+    for fg_node in _get_subgraph_by_node_type(G, "fg").nodes():
+        # Get connected atom nodes (assuming edges are between fg and atom nodes)
+        connected_atoms = [
+            nbr
+            for nbr in G.neighbors(fg_node)
+            if G.nodes[nbr].get("node_type") == "atom"
+        ]
+
+        # Get the 2D positions of the connected atoms
+        positions = np.array([atom_pos[atom] for atom in connected_atoms])
+        x_mean, y_mean = positions[:, 0].mean(), positions[:, 1].mean()
+        fg_pos[fg_node] = (x_mean, y_mean, 2)  # z = 2 for elevation
+
+    graph_node = next(iter(_get_subgraph_by_node_type(G, "graph").nodes()))
+    graph_pos_arr = np.array(
+        [
+            fg_pos[nbr]
+            for nbr in G.neighbors(graph_node)
+            if G.nodes[nbr].get("node_type") == "fg"
+        ]
+    )
+    graph_pos = {
+        graph_node: (graph_pos_arr[:, 0].mean(), graph_pos_arr[:, 1].mean(), 4)
+    }
 
     pos = {**atom_pos, **fg_pos, **graph_pos}
 
