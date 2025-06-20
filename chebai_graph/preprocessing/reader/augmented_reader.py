@@ -367,11 +367,13 @@ class GraphFGAugmentorReader(_AugmentorReader):
         molecule_atoms_set = set()
         for _, fg_group in structure.items():
             fg_to_atoms_map[self._num_of_nodes] = {"atom": fg_group["atom"]}
+            is_ring_fg = fg_group["is_ring_fg"]
 
             connected_atoms = []
             # Build edge index for fg to atom nodes connections
             for atom_idx in fg_group["atom"]:
-                if atom_idx in molecule_atoms_set:
+                # Fused rings can have an atom which belong to more than one ring
+                if atom_idx in molecule_atoms_set and not is_ring_fg:
                     raise ValueError(
                         f"An atom {atom_idx} cannot belong to more than one functional group"
                     )
@@ -387,7 +389,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 atom = mol.GetAtomWithIdx(atom_idx)
                 connected_atoms.append(atom)
 
-            if fg_group["is_ring_fg"]:
+            if is_ring_fg:
                 self._set_ring_fg_prop(connected_atoms, fg_nodes)
             else:
                 self._set_fg_prop(connected_atoms, fg_nodes)
@@ -397,18 +399,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
         return fg_atom_edge_index, fg_nodes, atom_fg_edges, fg_to_atoms_map, bonds
 
     def _set_ring_fg_prop(self, connected_atoms, fg_nodes):
-        ring_fg = {
-            atom.GetProp("RING") for atom in connected_atoms if atom.GetProp("RING")
-        }
-        if len(ring_fg) > 1:
-            raise ValueError("A functional group must not span multiple ring sizes.")
-        if len(ring_fg) == 0:
-            raise ValueError(
-                "At least one connected atoms must have a `RING` property set."
-            )
-
         # FG atoms have ring size, which indicates the FG is a Ring or Fused Rings
-        ring_size = next(iter(ring_fg))
+        ring_size = len(connected_atoms)
         fg_nodes[self._num_of_nodes] = {
             NODE_LEVEL: FG_NODE_LEVEL,
             # E.g.,  Fused Ring has size "5-6", indicating size of each connected ring in fused ring
@@ -417,7 +409,11 @@ class GraphFGAugmentorReader(_AugmentorReader):
         }
         # In this case, all atoms of Ring/Fused Ring are assigned the ring size as functional group
         for atom in connected_atoms:
-            atom.SetProp("FG", f"RING_{ring_size}")
+            ring_prop = atom.GetProp("RING")
+            if not ring_prop:
+                raise ValueError("Atom does not have a ring size set")
+            max_ring_size = max(list(map(int, ring_prop.split("-"))))
+            atom.SetProp("FG", f"RING_{max_ring_size}")
 
     def _set_fg_prop(self, connected_atoms, fg_nodes):
         fg_set = {atom.GetProp("FG") for atom in connected_atoms}
