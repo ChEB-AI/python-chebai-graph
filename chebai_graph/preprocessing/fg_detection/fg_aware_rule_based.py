@@ -34,7 +34,7 @@ def find_connected_rings(ring, remaining_rings):
 
 
 def detect_functional_group(mol):  # type: ignore
-    AllChem.GetSymmSSSR(mol)  # type: ignore
+    AllChem.GetSymmSSSR(mol)
 
     if mol is not None:
         for atom in mol.GetAtoms():
@@ -1869,6 +1869,7 @@ def find_atom_map(smiles):
 
 def get_structure(mol):
     rings = mol.GetRingInfo().AtomRings()
+    fused_rings_groups: list[list[set[int]]] = _get_fused_rings_group(mol)
 
     splitting_bonds = set()
     for bond in mol.GetBonds():
@@ -1916,12 +1917,56 @@ def get_structure(mol):
 
     structure = {}
     for frag in smiles:
-        atom_idx, neighbor_idx = set(), set()
-        atom_idx = find_atom_map(frag)
-        neighbor_idx = find_neighbor_map(frag)
-        structure[frag] = {"atom": atom_idx, "neighbor": neighbor_idx}
+        atom_idx: set = find_atom_map(frag)
+        structure[frag] = {"atom": atom_idx, "is_ring_fg": False}
+
+        # Convert fragment SMILES back to mol to match with fused ring atom indices
+        frag_mol = Chem.MolFromSmiles(frag)
+        frag_rings = frag_mol.GetRingInfo().AtomRings()
+        if len(frag_rings) >= 1:
+            structure[frag]["is_ring_fg"] = True
+
+        if len(frag_rings) <= 1:
+            continue
+
+        if not fused_rings_groups:
+            continue
+
+        for group in fused_rings_groups:
+            flat_atoms = set().union(*group)
+            if flat_atoms.issubset(atom_idx) and len(flat_atoms) == len(atom_idx):
+                for idx, ring_atoms in enumerate(group):
+                    structure[f"{frag}_{idx+1}"] = {
+                        "atom": ring_atoms,
+                        "is_ring_fg": True,
+                    }
+                structure.pop(frag)
+                break
 
     return structure, BONDS
+
+
+def _get_fused_rings_group(mol: Chem.Mol) -> list[list[set[int]]]:
+    rings = mol.GetRingInfo().AtomRings()
+
+    fused_ring_groups = []
+    visited = set()
+
+    for i, ring1 in enumerate(rings):
+        if i in visited:
+            continue
+        fused_group = [set(ring1)]
+        visited.add(i)
+        for j, ring2 in enumerate(rings):
+            if j in visited or i == j:
+                continue
+            if len(set(ring1) & set(ring2)) >= 2:  # At least 2 shared atoms
+                fused_group.append(set(ring2))
+                visited.add(j)
+        if len(fused_group) > 1:
+            fused_ring_groups.append(fused_group)
+
+    return fused_ring_groups
 
 
 if __name__ == "__main__":
