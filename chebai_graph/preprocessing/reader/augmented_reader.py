@@ -366,7 +366,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
         molecule_atoms_set = set()
         for _, fg_group in structure.items():
-            fg_to_atoms_map[self._num_of_nodes] = {"atom": fg_group["atom"]}
+            fg_to_atoms_map[self._num_of_nodes] = fg_group
             is_ring_fg = fg_group["is_ring_fg"]
 
             connected_atoms = []
@@ -474,21 +474,14 @@ class GraphFGAugmentorReader(_AugmentorReader):
         internal_fg_edges = {}
         internal_edge_index = [[], []]
 
-        for bond in bonds:
-            source_atom, target_atom = bond[:2]
-            source_fg, target_fg = None, None
-
-            for fg_id, data in fg_to_atoms_map.items():
-                if source_atom in data["atom"]:
-                    source_fg = fg_id
-                if target_atom in data["atom"]:
-                    target_fg = fg_id
-
+        def add_fg_internal_edge(source_fg, target_fg):
             assert (
                 source_fg is not None and target_fg is not None
             ), "Each bond should have a fg node on both end"
+            assert source_fg != target_fg, "Source and Target FG should be  different"
 
-            edge_str = f"{source_fg}_{target_fg}"
+            edge_key = tuple(sorted((source_fg, target_fg)))
+            edge_str = f"{edge_key[0]}_{edge_key[1]}"
             if edge_str not in internal_fg_edges:
                 # If two atoms of a FG points to atom(s) belonging to another FG. In this case, only one edge is counted.
                 # Eg. In CHEBI:52723, atom idx 13 and 16 of a FG points to atom idx 18 of another FG
@@ -496,6 +489,33 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 internal_edge_index[1].append(target_fg)
                 internal_fg_edges[edge_str] = {EDGE_LEVEL: WITHIN_FG_EDGE}
                 self._num_of_edges += 1
+
+        for bond in bonds:
+            source_atom, target_atom = bond[:2]
+            source_fg, target_fg = None, None
+            for fg_id, data in fg_to_atoms_map.items():
+                if source_fg is None and source_atom in data["atom"]:
+                    source_fg = fg_id
+                if target_fg is None and target_atom in data["atom"]:
+                    target_fg = fg_id
+                if source_fg is not None and target_fg is not None:
+                    break
+            add_fg_internal_edge(source_fg, target_fg)
+
+        # For Rings belonging to fused rings
+        fg_nodes = list(fg_to_atoms_map.keys())
+        for i, fg_node_1 in enumerate(fg_nodes):
+            fg_map_1 = fg_to_atoms_map[fg_node_1]
+            for fg_node_2 in fg_nodes[i + 1 :]:
+                fg_map_2 = fg_to_atoms_map[fg_node_2]
+                if (
+                    (fg_node_1 == fg_node_2)
+                    or not fg_map_1["is_ring_fg"]
+                    or not fg_map_2["is_ring_fg"]
+                ):
+                    continue
+                if fg_map_1["atom"] & fg_map_2["atom"]:
+                    add_fg_internal_edge(fg_node_1, fg_node_2)
 
         return internal_edge_index, internal_fg_edges
 
@@ -529,18 +549,3 @@ class GraphFGAugmentorReader(_AugmentorReader):
         self._num_of_nodes += 1
 
         return graph_edge_index, graph_node, fg_graph_edges
-
-    def on_finish(self):
-        super().on_finish()
-
-        summary = textwrap.dedent(
-            f"""
-        ==== Functional Group Summary ==================
-        - Functional groups using SMILES: {self._cnt_fg_using_smiles}
-        - Molecules with such groups (SMILES): {self._cnt_mol_with_fg_using_smiles}
-        - Functional groups using atom symbols: {self._cnt_fg_using_atom_symbol}
-        - Molecules with such groups (atom symbols): {self._cnt_mol_with_fg_using_atom_symbol}
-        ================================================
-        """
-        )
-        print(summary.strip())
