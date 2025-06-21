@@ -1,4 +1,4 @@
-class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphFGAugmentorReader
+class_path: chebai_graph.preprocessing.datasets.ChEBI50GraphFGAugmentorReader
 init_args:
   properties:
       # Atom properties

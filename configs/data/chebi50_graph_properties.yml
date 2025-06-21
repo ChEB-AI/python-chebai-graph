@@ -1,5 +1,6 @@
-class_path: chebai_graph.preprocessing.datasets.chebi.ChEBI50GraphProperties
+class_path: chebai_graph.preprocessing.datasets.ChEBI50GraphProperties
 init_args:
+  chebi_version: 231
   properties:
       - chebai_graph.preprocessing.properties.AtomType
       - chebai_graph.preprocessing.properties.NumAtomBonds
