@@ -32,8 +32,8 @@ class MolecularProperty(ABC):
     def __str__(self):
         return self.name
 
-    def get_property_value(self, mol: Chem.rdchem.Mol | Dict):
-        raise NotImplementedError
+    @abstractmethod
+    def get_property_value(self, mol: Chem.rdchem.Mol | Dict): ...
 
 
 class AtomProperty(MolecularProperty, ABC):

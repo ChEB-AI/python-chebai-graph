@@ -21,10 +21,22 @@ from .properties import (
 )
 
 from .augmented_properties import (
-    AtomNodeLevel,
-    AtomFunctionalGroup,
-    AtomRingSize,
-    BondLevel,
+    AugAtomNodeLevel,
+    AugAtomFunctionalGroup,
+    AugAtomRingSize,
+    AugBondLevel,
+    AugAtomType,
+    AugNumAtomBonds,
+    AugAtomCharge,
+    AugAtomChirality,
+    AugAtomHybridization,
+    AugAtomNumHs,
+    AugAtomAromaticity,
+    AugBondAromaticity,
+    AugBondType,
+    AugBondInRing,
+    AugMoleculeNumRings,
+    AugRDKit2DNormalized,
 )
 
 # isort: on
@@ -46,8 +58,20 @@ __all__ = [
     "MoleculeNumRings",
     "RDKit2DNormalized",
     # -------- Augmented Molecular Properties --------
-    "AtomNodeLevel",
-    "AtomFunctionalGroup",
-    "AtomRingSize",
-    "BondLevel",
+    "AugAtomNodeLevel",
+    "AugAtomFunctionalGroup",
+    "AugAtomRingSize",
+    "AugBondLevel",
+    "AugAtomType",
+    "AugNumAtomBonds",
+    "AugAtomCharge",
+    "AugAtomChirality",
+    "AugAtomHybridization",
+    "AugAtomNumHs",
+    "AugAtomAromaticity",
+    "AugBondAromaticity",
+    "AugBondType",
+    "AugBondInRing",
+    "AugMoleculeNumRings",
+    "AugRDKit2DNormalized",
 ]

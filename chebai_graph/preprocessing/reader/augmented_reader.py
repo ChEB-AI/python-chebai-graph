@@ -396,7 +396,6 @@ class GraphFGAugmentorReader(_AugmentorReader):
         ring_size = len(connected_atoms)
         fg_nodes[self._num_of_nodes] = {
             NODE_LEVEL: FG_NODE_LEVEL,
-            # E.g.,  Fused Ring has size "5-6", indicating size of each connected ring in fused ring
             "FG": f"RING_{ring_size}",
             "RING": ring_size,
         }
@@ -405,6 +404,8 @@ class GraphFGAugmentorReader(_AugmentorReader):
             ring_prop = atom.GetProp("RING")
             if not ring_prop:
                 raise ValueError("Atom does not have a ring size set")
+            # TODO: discuss the case, should it be max or average
+            # An atom belonging to multiple rings in fused Ring has size "5-6", indicating size of each ring
             max_ring_size = max(list(map(int, ring_prop.split("-"))))
             atom.SetProp("FG", f"RING_{max_ring_size}")
 
