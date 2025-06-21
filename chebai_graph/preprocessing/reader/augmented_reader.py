@@ -1,4 +1,3 @@
-import textwrap
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple
 
@@ -8,11 +7,7 @@ from rdkit import Chem
 from torch_geometric.data import Data as GeomData
 
 from chebai_graph.preprocessing.collate import GraphCollator
-from chebai_graph.preprocessing.fg_detection.fg_aware_rule_based import (
-    detect_functional_group,
-    get_structure,
-    set_atom_map_num,
-)
+from chebai_graph.preprocessing.fg_detection.fg_aware_rule_based import get_structure
 from chebai_graph.preprocessing.properties import MolecularProperty
 from chebai_graph.preprocessing.properties.constants import *
 
@@ -354,8 +349,6 @@ class GraphFGAugmentorReader(_AugmentorReader):
         """
 
         # Rule-based algorithm to detect functional groups
-        set_atom_map_num(mol)
-        detect_functional_group(mol)
         structure, bonds = get_structure(mol)
         assert structure is not None, "Failed to detect functional groups."
 
