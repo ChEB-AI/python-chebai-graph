@@ -43,6 +43,7 @@ def set_ring_properties(mol: Chem.Mol) -> list[list[set[int]]] | None:
     ######## SET RING PROP ########
     # Get ring information
     ring_info = mol.GetRingInfo()
+    fused_rings_groups: list[list[set[int]]] = []
 
     if ring_info.NumRings() > 0:
         # Get list of atom rings
@@ -54,7 +55,6 @@ def set_ring_properties(mol: Chem.Mol) -> list[list[set[int]]] | None:
 
         # Set of rings to process
         remaining_rings = [set(ring) for ring in atom_rings]
-        fused_rings_groups: list[list[set[int]]] = []
 
         # Process each ring block
         while remaining_rings:
@@ -95,9 +95,11 @@ def detect_functional_group(mol: Chem.Mol):
     if mol is None:
         return
 
-    ######## SET FUNCTIONAL GROUP PROP ########
     for atom in mol.GetAtoms():
         atom.SetProp("FG", "")
+
+    ######## SET FUNCTIONAL GROUP PROP ########
+    for atom in mol.GetAtoms():
         atom_symbol = atom.GetSymbol()
         atom_neighbors = atom.GetNeighbors()
         atom_num_neighbors = len(atom_neighbors)
