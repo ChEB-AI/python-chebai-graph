@@ -48,7 +48,9 @@ class IndexEncoder(PropertyEncoder):
                 token.strip(): idx for idx, token in enumerate(pk)
             }
         self.index_length_start = len(self.cache)
-        self.offset = 0
+        self._unk_token_idx = 0
+        self._count_for_unk_token = 0
+        self.offset = 1
 
     @property
     def name(self):
@@ -92,9 +94,18 @@ class IndexEncoder(PropertyEncoder):
                     f"Now, the total length of the index of property {self.property.name} is {total_tokens}"
                 )
 
+        if self._count_for_unk_token > 0:
+            print(
+                f"{self.__class__.__name__} Encountered {self._count_for_unk_token} unknown tokens"
+            )
+
     def encode(self, token):
         """Returns a unique number for each token, automatically adds new tokens to the cache."""
-        if not str(token) in self.cache:
+        if token is None:
+            self._count_for_unk_token += 1
+            return torch.tensor([self._unk_token_idx])
+
+        if str(token) not in self.cache:
             self.cache[(str(token))] = len(self.cache)
         return torch.tensor([self.cache[str(token)] + self.offset])
 
@@ -105,6 +116,9 @@ class OneHotEncoder(IndexEncoder):
     def __init__(self, property, n_labels: Optional[int] = None, **kwargs):
         super().__init__(property, **kwargs)
         self._encoding_length = n_labels
+        # To undo any offset set by index encoder as its not relevant for one-hot-encoder (no offset needed for some unknown/reserved token)
+        # Also, `torch.nn.functional.one_hot` that class values must be smaller than num_classes.
+        self.offset = 0
 
     def get_encoding_length(self) -> int:
         return self._encoding_length or len(self.cache)
@@ -131,6 +145,10 @@ class OneHotEncoder(IndexEncoder):
             self.tokens_dict[token] = super().encode(token)
 
     def encode(self, token):
+        if token not in self.tokens_dict:
+            self._count_for_unk_token += 1
+            return torch.zeros(1, self.get_encoding_length(), dtype=torch.int64)
+
         return torch.nn.functional.one_hot(
             self.tokens_dict[token], num_classes=self.get_encoding_length()
         )
@@ -144,6 +162,8 @@ class AsIsEncoder(PropertyEncoder):
         return "asis"
 
     def encode(self, token):
+        if token is None:
+            return torch.tensor([0])
         return torch.tensor([token])
 
 
