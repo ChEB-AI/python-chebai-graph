@@ -10,5 +10,4 @@ init_args:
       - chebai_graph.preprocessing.properties.AugBondType
       - chebai_graph.preprocessing.properties.AugBondInRing
       - chebai_graph.preprocessing.properties.AugBondAromaticity
-      #- chebai_graph.preprocessing.properties.AugMoleculeNumRings
       - chebai_graph.preprocessing.properties.AugRDKit2DNormalized

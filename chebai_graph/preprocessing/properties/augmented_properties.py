@@ -52,10 +52,6 @@ class AugmentedAtomProperty(pr.AtomProperty, ABC):
 
         return prop_list
 
-    @abstractmethod
-    def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
-        pass
-
     def _check_modify_atom_prop_value(self, atom: Chem.rdchem.Atom | Dict, prop: str):
         value = self._get_atom_prop_value(atom, prop)
         if not value:
@@ -113,32 +109,63 @@ class AugNodeValueDefaulter(AugmentedAtomProperty, ABC):
             # Delegate to superclass method for atom
             return super().get_atom_value(atom)
         elif isinstance(atom, dict):
-            return 0
+            return None
         else:
             raise TypeError(
                 f"Expected Chem.rdchem.Atom or dict, got {type(atom).__name__}"
             )
 
 
-class AugAtomType(AugNodeValueDefaulter, pr.AtomType): ...
+class AugAtomType(AugNodeValueDefaulter, pr.AtomType):
+    # This property uses OneHotEncoder as default encoder
+    # TODO: Can we return 0 for augmented Nodes for this property? which will lead to use of one hot tensor for augmented nodes
+    # Currently, we return None which leads to zero-tensor for augmented nodes
+
+    # RDKit uses 0 as the atomic number for a "dummy atom", which usually means:
+    # A placeholder atom (e.g. [*], R#, or attachment points in SMARTS/SMILES).
+    # An undefined or wildcard atom.
+    # A pseudoatom (e.g., for certain fragments or placeholders in reaction centers).
+    ...
 
 
-class AugNumAtomBonds(AugNodeValueDefaulter, pr.NumAtomBonds): ...
+class AugNumAtomBonds(AugNodeValueDefaulter, pr.NumAtomBonds):
+    # This property uses OneHotEncoder as default encoder
+    # Default return value for this property can't be zero, 0 is used for isolated atoms in molecule. It has to be None or actual node degree.
+    # TODO: Can return actual node degree/num of connections for augmented Nodes for this property? which will lead to use of one hot tensor for augmented nodes
+    # Currently, we return None which leads to zero-tensor for augmented nodes
+    # But then the question aries shall we count only the atoms connected to a fg node, or all nodes including atoms. Consider graph node too.
+    ...
 
 
-class AugAtomCharge(AugNodeValueDefaulter, pr.AtomCharge): ...
+class AugAtomCharge(AugNodeValueDefaulter, pr.AtomCharge):
+    # This property uses OneHotEncoder as default encoder
+    # Default return value for this property can't be zero, as atoms can have 0 charge.
+    # TODO: Can return some `unk` value for augmented Nodes for this property? which will lead to use of one hot tensor for augmented nodes
+    # Currently, we return None which leads to zero-tensor for augmented nodes
+    ...
 
 
-class AugAtomChirality(AugNodeValueDefaulter, pr.AtomChirality): ...
+class AugAtomHybridization(AugNodeValueDefaulter, pr.AtomHybridization):
+    # This property uses OneHotEncoder as default encoder
+    # TODO: Can return some `HybridizationType.UNSPECIFIED` value which is 0 for augmented Nodes for this property? which will lead to use of one hot tensor for augmented nodes
+    # Check: https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.HybridizationType
+    # Currently, we return None which leads to zero-tensor for augmented nodes
+    ...
 
 
-class AugAtomHybridization(AugNodeValueDefaulter, pr.AtomHybridization): ...
+class AugAtomNumHs(AugNodeValueDefaulter, pr.AtomNumHs):
+    # This property uses OneHotEncoder as default encoder
+    # Default return value for this property can't be zero, as atoms can have 0 Hydrogen atoms attached which mean atoms is full balanced by bonding with other non-hydrogen atoms.
+    # TODO: Can return some `unk` value for augmented Nodes for this property? which will lead to use of one hot tensor for augmented nodes
+    # Currently, we return None which leads to zero-tensor for augmented nodes
+    ...
 
 
-class AugAtomNumHs(AugNodeValueDefaulter, pr.AtomNumHs): ...
-
-
-class AugAtomAromaticity(AugNodeValueDefaulter, pr.AtomAromaticity): ...
+class AugAtomAromaticity(AugNodeValueDefaulter, pr.AtomAromaticity):
+    # This property uses BoolEncoder as default encoder
+    # Currently, we return None for augmented nodes which leads to BoolEncoder setting 0 internally.
+    # This is None is right value for augmented nodes its not part of any kind of aromatic ring.
+    ...
 
 
 # --------------------- Bond Properties ------------------------------
@@ -193,10 +220,6 @@ class AugmentedBondProperty(pr.BondProperty, ABC):
 
         return prop_list
 
-    @abstractmethod
-    def get_bond_value(self, bond: Chem.rdchem.Bond | Dict):
-        pass
-
     def _check_modify_bond_prop_value(self, bond: Chem.rdchem.Bond | Dict, prop: str):
         value = self._get_bond_prop_value(bond, prop)
         if not value:
@@ -228,29 +251,39 @@ class AugBondValueDefaulter(AugmentedBondProperty, ABC):
             # Delegate to superclass method for bond
             return super().get_bond_value(bond)
         elif isinstance(bond, dict):
-            return 0
+            return None
         else:
             raise TypeError("Bond/Edge should be of type `Chem.rdchem.Bond` or `dict`.")
 
 
-class AugBondAromaticity(AugBondValueDefaulter, pr.BondAromaticity): ...
+class AugBondAromaticity(AugBondValueDefaulter, pr.BondAromaticity):
+    # This property uses BoolEncoder as default encoder
+    # Currently, we return None for augmented nodes which leads to BoolEncoder setting 0 internally.
+    # This is None is right value for augmented nodes its not part of any kind of aromatic ring.
+    ...
 
 
-class AugBondType(AugBondValueDefaulter, pr.BondType): ...
+class AugBondType(AugBondValueDefaulter, pr.BondType):
+    # This property uses OneHotEncoder as default encoder
+    # TODO: Can return some `BondType.UNSPECIFIED` value which is 0 for augmented Nodes for this property? which will lead to use of one hot tensor for augmented nodes
+    # Check: https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondType
+    # Currently, we return None which leads to zero-tensor for augmented nodes
+    ...
 
 
-class AugBondInRing(AugBondValueDefaulter, pr.BondInRing): ...
+class AugBondInRing(AugBondValueDefaulter, pr.BondInRing):
+    # This property uses BoolEncoder as default encoder
+    # Currently, we return None for augmented nodes which leads to BoolEncoder setting 0 internally.
+    # This is None is right value for augmented nodes its not part of any kind of aromatic ring.
+    ...
 
 
 # --------------------- Molecular Properties ------------------------------
 class AugmentedMolecularProperty(pr.MolecularProperty, ABC):
     def get_property_value(self, augmented_mol: Dict) -> list:
-        mol: Chem.Mol = augmented_mol[self.MAIN_KEY]["atom_nodes"]
+        mol: Chem.Mol = augmented_mol[AugmentedAtomProperty.MAIN_KEY]["atom_nodes"]
         assert isinstance(mol, Chem.Mol), "Molecule should be instance of `Chem.Mol`"
         return super().get_property_value(mol)
-
-
-class AugMoleculeNumRings(AugmentedMolecularProperty, pr.MoleculeNumRings): ...
 
 
 class AugRDKit2DNormalized(AugmentedMolecularProperty, pr.RDKit2DNormalized): ...

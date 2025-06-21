@@ -28,14 +28,12 @@ from .augmented_properties import (
     AugAtomType,
     AugNumAtomBonds,
     AugAtomCharge,
-    AugAtomChirality,
     AugAtomHybridization,
     AugAtomNumHs,
     AugAtomAromaticity,
     AugBondAromaticity,
     AugBondType,
     AugBondInRing,
-    AugMoleculeNumRings,
     AugRDKit2DNormalized,
 )
 
@@ -65,13 +63,11 @@ __all__ = [
     "AugAtomType",
     "AugNumAtomBonds",
     "AugAtomCharge",
-    "AugAtomChirality",
     "AugAtomHybridization",
     "AugAtomNumHs",
     "AugAtomAromaticity",
     "AugBondAromaticity",
     "AugBondType",
     "AugBondInRing",
-    "AugMoleculeNumRings",
     "AugRDKit2DNormalized",
 ]
