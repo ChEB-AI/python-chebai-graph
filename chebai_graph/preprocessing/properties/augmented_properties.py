@@ -71,7 +71,7 @@ class AugmentedAtomProperty(AtomProperty, ABC):
             )
 
 
-class AugAtomNodeLevel(AugmentedAtomProperty):
+class AtomNodeLevel(AugmentedAtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
@@ -79,7 +79,7 @@ class AugAtomNodeLevel(AugmentedAtomProperty):
         return self._check_modify_atom_prop_value(atom, k.NODE_LEVEL)
 
 
-class AugAtomFunctionalGroup(AugmentedAtomProperty):
+class AtomFunctionalGroup(AugmentedAtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
@@ -87,7 +87,7 @@ class AugAtomFunctionalGroup(AugmentedAtomProperty):
         return self._check_modify_atom_prop_value(atom, "FG")
 
 
-class AugAtomRingSize(AugmentedAtomProperty):
+class AtomRingSize(AugmentedAtomProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
@@ -105,7 +105,6 @@ class AugAtomRingSize(AugmentedAtomProperty):
 
 
 class AugNodeValueDefaulter(AugmentedAtomProperty, FrozenPropertyAlias, ABC):
-
     def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
         if isinstance(atom, Chem.rdchem.Atom):
             # Delegate to superclass method for atom
@@ -239,7 +238,7 @@ class AugmentedBondProperty(BondProperty, ABC):
             raise TypeError("Bond/Edge should be of type `Chem.rdchem.Bond` or `dict`.")
 
 
-class AugBondLevel(AugmentedBondProperty):
+class BondLevel(AugmentedBondProperty):
     def __init__(self, encoder: Optional[PropertyEncoder] = None):
         super().__init__(encoder or OneHotEncoder(self))
 
