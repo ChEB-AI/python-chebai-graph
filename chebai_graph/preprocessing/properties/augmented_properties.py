@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Dict, List, Optional
 
 from rdkit import Chem
@@ -6,6 +6,7 @@ from rdkit import Chem
 from chebai_graph.preprocessing.property_encoder import OneHotEncoder, PropertyEncoder
 
 from . import properties as pr
+from .base import FrozenPropertyAlias
 from .constants import *
 
 
@@ -103,7 +104,8 @@ class AugAtomRingSize(AugmentedAtomProperty):
             return 0
 
 
-class AugNodeValueDefaulter(AugmentedAtomProperty, ABC):
+class AugNodeValueDefaulter(AugmentedAtomProperty, FrozenPropertyAlias, ABC):
+
     def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
         if isinstance(atom, Chem.rdchem.Atom):
             # Delegate to superclass method for atom
@@ -245,7 +247,7 @@ class AugBondLevel(AugmentedBondProperty):
         return self._check_modify_bond_prop_value(bond, EDGE_LEVEL)
 
 
-class AugBondValueDefaulter(AugmentedBondProperty, ABC):
+class AugBondValueDefaulter(AugmentedBondProperty, FrozenPropertyAlias, ABC):
     def get_bond_value(self, bond: Chem.rdchem.Bond | Dict):
         if isinstance(bond, Chem.rdchem.Bond):
             # Delegate to superclass method for bond
