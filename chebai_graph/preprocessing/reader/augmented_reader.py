@@ -9,7 +9,7 @@ from torch_geometric.data import Data as GeomData
 from chebai_graph.preprocessing.collate import GraphCollator
 from chebai_graph.preprocessing.fg_detection.fg_aware_rule_based import get_structure
 from chebai_graph.preprocessing.properties import MolecularProperty
-from chebai_graph.preprocessing.properties.constants import *
+from chebai_graph.preprocessing.properties import constants as k
 
 
 class _AugmentorReader(DataReader, ABC):
@@ -180,7 +180,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
 
         # Empty features initialized; node and edge features can be added later
         x = torch.zeros((augmented_molecule["nodes"]["num_nodes"], 0))
-        edge_attr = torch.zeros((augmented_molecule["edges"][NUM_EDGES], 0))
+        edge_attr = torch.zeros((augmented_molecule["edges"][k.NUM_EDGES], 0))
 
         assert (
             edge_index.shape[0] == 2
@@ -286,11 +286,11 @@ class GraphFGAugmentorReader(_AugmentorReader):
             self._num_of_edges == total_edges
         ), f"Mismatch in number of edges: expected {total_edges}, got {self._num_of_edges}"
         edge_info = {
-            WITHIN_ATOMS_EDGE: mol,
-            ATOM_FG_EDGE: atom_fg_edges,
-            WITHIN_FG_EDGE: internal_fg_edges,
-            FG_GRAPHNODE_EDGE: fg_to_graph_edges,
-            NUM_EDGES: self._num_of_edges * 2,  # Undirected edges
+            k.WITHIN_ATOMS_EDGE: mol,
+            k.ATOM_FG_EDGE: atom_fg_edges,
+            k.WITHIN_FG_EDGE: internal_fg_edges,
+            k.FG_GRAPHNODE_EDGE: fg_to_graph_edges,
+            k.NUM_EDGES: self._num_of_edges * 2,  # Undirected edges
         }
         return undirected_edge_index, node_info, edge_info
 
@@ -303,9 +303,9 @@ class GraphFGAugmentorReader(_AugmentorReader):
             mol (Chem.Mol): RDKit molecule.
         """
         for atom in mol.GetAtoms():
-            atom.SetProp(NODE_LEVEL, ATOM_NODE_LEVEL)
+            atom.SetProp(k.NODE_LEVEL, k.ATOM_NODE_LEVEL)
         for bond in mol.GetBonds():
-            bond.SetProp(EDGE_LEVEL, WITHIN_ATOMS_EDGE)
+            bond.SetProp(k.EDGE_LEVEL, k.WITHIN_ATOMS_EDGE)
 
     @staticmethod
     def _generate_atom_level_edge_index(mol: Chem.Mol) -> torch.Tensor:
@@ -375,7 +375,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 fg_atom_edge_index[0].append(self._num_of_nodes)
                 fg_atom_edge_index[1].append(atom_idx)
                 atom_fg_edges[f"{self._num_of_nodes}_{atom_idx}"] = {
-                    EDGE_LEVEL: ATOM_FG_EDGE
+                    k.EDGE_LEVEL: k.ATOM_FG_EDGE
                 }
                 self._num_of_edges += 1
 
@@ -395,7 +395,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
         # FG atoms have ring size, which indicates the FG is a Ring or Fused Rings
         ring_size = len(connected_atoms)
         fg_nodes[self._num_of_nodes] = {
-            NODE_LEVEL: FG_NODE_LEVEL,
+            k.NODE_LEVEL: k.FG_NODE_LEVEL,
             "FG": f"RING_{ring_size}",
             "RING": ring_size,
         }
@@ -445,7 +445,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
             raise AssertionError("Expected at least one atom with a functional group.")
 
         fg_nodes[self._num_of_nodes] = {
-            NODE_LEVEL: FG_NODE_LEVEL,
+            k.NODE_LEVEL: k.FG_NODE_LEVEL,
             "FG": representative_atom.GetProp("FG"),
             "RING": 0,
         }
@@ -481,7 +481,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 # Eg. In CHEBI:52723, atom idx 13 and 16 of a FG points to atom idx 18 of another FG
                 internal_edge_index[0].append(source_fg)
                 internal_edge_index[1].append(target_fg)
-                internal_fg_edges[edge_str] = {EDGE_LEVEL: WITHIN_FG_EDGE}
+                internal_fg_edges[edge_str] = {k.EDGE_LEVEL: k.WITHIN_FG_EDGE}
                 self._num_of_edges += 1
 
         for bond in bonds:
@@ -528,7 +528,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 - Graph-level node attribute
                 - FG to Graph Edge attributes
         """
-        graph_node = {NODE_LEVEL: GRAPH_NODE_LEVEL, "FG": "graph_fg", "RING": "0"}
+        graph_node = {k.NODE_LEVEL: k.GRAPH_NODE_LEVEL, "FG": "graph_fg", "RING": "0"}
 
         fg_graph_edges = {}
         graph_edge_index = [[], []]
@@ -537,7 +537,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
             graph_edge_index[0].append(self._num_of_nodes)
             graph_edge_index[1].append(fg_id)
             fg_graph_edges[f"{self._num_of_nodes}_{fg_id}"] = {
-                EDGE_LEVEL: FG_GRAPHNODE_EDGE
+                k.EDGE_LEVEL: k.FG_GRAPHNODE_EDGE
             }
             self._num_of_edges += 1
         self._num_of_nodes += 1

@@ -21,10 +21,10 @@ from .properties import (
 )
 
 from .augmented_properties import (
-    AugAtomNodeLevel,
-    AugAtomFunctionalGroup,
-    AugAtomRingSize,
-    AugBondLevel,
+    AtomNodeLevel,
+    AtomFunctionalGroup,
+    AtomRingSize,
+    BondLevel,
     AugAtomType,
     AugNumAtomBonds,
     AugAtomCharge,
@@ -56,10 +56,10 @@ __all__ = [
     "MoleculeNumRings",
     "RDKit2DNormalized",
     # -------- Augmented Molecular Properties --------
-    "AugAtomNodeLevel",
-    "AugAtomFunctionalGroup",
-    "AugAtomRingSize",
-    "AugBondLevel",
+    "AtomNodeLevel",
+    "AtomFunctionalGroup",
+    "AtomRingSize",
+    "BondLevel",
     "AugAtomType",
     "AugNumAtomBonds",
     "AugAtomCharge",
