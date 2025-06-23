@@ -5,13 +5,13 @@ from rdkit import Chem
 
 from chebai_graph.preprocessing.property_encoder import OneHotEncoder, PropertyEncoder
 
+from . import constants as k
 from . import properties as pr
-from .base import FrozenPropertyAlias
-from .constants import *
+from .base import AtomProperty, BondProperty, FrozenPropertyAlias
 
 
 # --------------------- Atom Properties -----------------------------
-class AugmentedAtomProperty(pr.AtomProperty, ABC):
+class AugmentedAtomProperty(AtomProperty, ABC):
     MAIN_KEY = "nodes"
 
     def get_property_value(self, augmented_mol: Dict):
@@ -76,7 +76,7 @@ class AugAtomNodeLevel(AugmentedAtomProperty):
         super().__init__(encoder or OneHotEncoder(self))
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
-        return self._check_modify_atom_prop_value(atom, NODE_LEVEL)
+        return self._check_modify_atom_prop_value(atom, k.NODE_LEVEL)
 
 
 class AugAtomFunctionalGroup(AugmentedAtomProperty):
@@ -171,7 +171,7 @@ class AugAtomAromaticity(AugNodeValueDefaulter, pr.AtomAromaticity):
 
 
 # --------------------- Bond Properties ------------------------------
-class AugmentedBondProperty(pr.BondProperty, ABC):
+class AugmentedBondProperty(BondProperty, ABC):
     MAIN_KEY = "edges"
 
     def get_property_value(self, augmented_mol: Dict) -> List:
@@ -180,21 +180,21 @@ class AugmentedBondProperty(pr.BondProperty, ABC):
                 f"Key `{self.MAIN_KEY}` should be present in augmented molecule dict"
             )
 
-        missing_keys = EDGE_LEVELS - augmented_mol[self.MAIN_KEY].keys()
+        missing_keys = k.EDGE_LEVELS - augmented_mol[self.MAIN_KEY].keys()
         if missing_keys:
             raise KeyError(f"Missing keys {missing_keys} in augmented molecule nodes")
 
-        atom_molecule: Chem.Mol = augmented_mol[self.MAIN_KEY][WITHIN_ATOMS_EDGE]
+        atom_molecule: Chem.Mol = augmented_mol[self.MAIN_KEY][k.WITHIN_ATOMS_EDGE]
         if not isinstance(atom_molecule, Chem.Mol):
             raise TypeError(
-                f'augmented_mol["{self.MAIN_KEY}"]["{WITHIN_ATOMS_EDGE}"] must be an instance of rdkit.Chem.Mol'
+                f'augmented_mol["{self.MAIN_KEY}"]["{k.WITHIN_ATOMS_EDGE}"] must be an instance of rdkit.Chem.Mol'
             )
 
         prop_list = [self.get_bond_value(bond) for bond in atom_molecule.GetBonds()]
 
-        fg_atom_edges = augmented_mol[self.MAIN_KEY][ATOM_FG_EDGE]
-        fg_edges = augmented_mol[self.MAIN_KEY][WITHIN_FG_EDGE]
-        fg_graph_node_edges = augmented_mol[self.MAIN_KEY][FG_GRAPHNODE_EDGE]
+        fg_atom_edges = augmented_mol[self.MAIN_KEY][k.ATOM_FG_EDGE]
+        fg_edges = augmented_mol[self.MAIN_KEY][k.WITHIN_FG_EDGE]
+        fg_graph_node_edges = augmented_mol[self.MAIN_KEY][k.FG_GRAPHNODE_EDGE]
 
         if (
             not isinstance(fg_atom_edges, dict)
@@ -202,7 +202,7 @@ class AugmentedBondProperty(pr.BondProperty, ABC):
             or not isinstance(fg_graph_node_edges, dict)
         ):
             raise TypeError(
-                f'augmented_mol["{self.MAIN_KEY}"](["{ATOM_FG_EDGE}"]/["{WITHIN_FG_EDGE}"]/["{FG_GRAPHNODE_EDGE}"]) '
+                f'augmented_mol["{self.MAIN_KEY}"](["{k.ATOM_FG_EDGE}"]/["{k.WITHIN_FG_EDGE}"]/["{k.FG_GRAPHNODE_EDGE}"]) '
                 f"must be an instance of dict containing its properties"
             )
 
@@ -215,7 +215,7 @@ class AugmentedBondProperty(pr.BondProperty, ABC):
             [self.get_bond_value(bond) for bond in fg_graph_node_edges.values()]
         )
 
-        num_directed_edges = augmented_mol[self.MAIN_KEY][NUM_EDGES] // 2
+        num_directed_edges = augmented_mol[self.MAIN_KEY][k.NUM_EDGES] // 2
         assert (
             len(prop_list) == num_directed_edges
         ), f"Number of property values ({len(prop_list)}) should be equal to number of half the number of undirected edges i.e. must be equal to {num_directed_edges} "
@@ -244,7 +244,7 @@ class AugBondLevel(AugmentedBondProperty):
         super().__init__(encoder or OneHotEncoder(self))
 
     def get_bond_value(self, bond: Chem.rdchem.Bond | Dict):
-        return self._check_modify_bond_prop_value(bond, EDGE_LEVEL)
+        return self._check_modify_bond_prop_value(bond, k.EDGE_LEVEL)
 
 
 class AugBondValueDefaulter(AugmentedBondProperty, FrozenPropertyAlias, ABC):
