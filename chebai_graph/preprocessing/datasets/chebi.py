@@ -178,11 +178,16 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
                 )
             else:
                 molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
+
+        is_atom_node = (
+            geom_data.is_atom_node if hasattr(geom_data, "is_atom_node") else None
+        )
         return GeomData(
             x=x,
             edge_index=geom_data.edge_index,
             edge_attr=edge_attr,
             molecule_attr=molecule_attr,
+            is_atom_node=is_atom_node,
         )
 
     def load_processed_data_from_file(self, filename):

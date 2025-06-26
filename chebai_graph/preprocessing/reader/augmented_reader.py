@@ -1,3 +1,4 @@
+import sys
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple
 
@@ -179,7 +180,12 @@ class GraphFGAugmentorReader(_AugmentorReader):
         self.mol_object_buffer[smiles] = augmented_molecule
 
         # Empty features initialized; node and edge features can be added later
-        x = torch.zeros((augmented_molecule["nodes"]["num_nodes"], 0))
+        NUM_NODES = augmented_molecule["nodes"]["num_nodes"]
+        assert (
+            NUM_NODES is not None and NUM_NODES > 1
+        ), "Num of nodes in augmented graph should be more than 1"
+
+        x = torch.zeros((NUM_NODES, 0))
         edge_attr = torch.zeros((augmented_molecule["edges"][k.NUM_EDGES], 0))
 
         assert (
@@ -194,7 +200,14 @@ class GraphFGAugmentorReader(_AugmentorReader):
             len(set(edge_index[0].tolist())) == x.shape[0]
         ), f"Number of unique source nodes in edge_index ({len(set(edge_index[0].tolist()))}) does not match number of nodes in x ({x.shape[0]})"
 
-        return GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        # Create a boolean mask: True for atom, False for augmented
+        is_atom_mask = torch.zeros(NUM_NODES, dtype=torch.bool)
+        NUM_ATOM_NODES = augmented_molecule["nodes"]["atom_nodes"].GetNumAtoms()
+        is_atom_mask[:NUM_ATOM_NODES] = True
+
+        return GeomData(
+            x=x, edge_index=edge_index, edge_attr=edge_attr, is_atom_node=is_atom_mask
+        )
 
     def _create_augmented_graph(self, mol: Chem.Mol) -> Tuple[torch.Tensor, dict]:
         """
@@ -267,6 +280,14 @@ class GraphFGAugmentorReader(_AugmentorReader):
         assert (
             self._num_of_nodes == total_atoms
         ), f"Mismatch in number of nodes: expected {total_atoms}, got {self._num_of_nodes}"
+        assert sys.version_info >= (
+            3,
+            7,
+        ), "This code requires Python 3.7 or higher."
+        # For python 3.7+, the standard dict type preserves insertion order, and is iterated over in same order
+        # https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
+        # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
+        # Order preservation is necessary to to create `is_atom_node` mask
         node_info = {
             "atom_nodes": mol,
             "fg_nodes": fg_nodes,
