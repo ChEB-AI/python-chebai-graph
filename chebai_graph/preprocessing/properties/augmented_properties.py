@@ -145,6 +145,14 @@ class IsHydrogenBondAcceptorFG(AugmentedAtomProperty):
         return fg in self._hydrogen_bond_acceptor
 
 
+class IsFGAlkyl(AugmentedAtomProperty):
+    def __init__(self, encoder: Optional[PropertyEncoder] = None):
+        super().__init__(encoder or BoolEncoder(self))
+
+    def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
+        return int(self._check_modify_atom_prop_value(atom, "is_alkyl"))
+
+
 class AugNodeValueDefaulter(AugmentedAtomProperty, FrozenPropertyAlias, ABC):
     def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
         if isinstance(atom, Chem.rdchem.Atom):

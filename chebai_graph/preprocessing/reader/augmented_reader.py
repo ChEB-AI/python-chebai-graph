@@ -1,3 +1,4 @@
+import re
 import sys
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple
@@ -379,9 +380,10 @@ class GraphFGAugmentorReader(_AugmentorReader):
         fg_to_atoms_map = {}
 
         molecule_atoms_set = set()
-        for _, fg_group in structure.items():
+        for fg_smiles, fg_group in structure.items():
             fg_to_atoms_map[self._num_of_nodes] = fg_group
             is_ring_fg = fg_group["is_ring_fg"]
+            is_alkyl = 0
 
             connected_atoms = []
             # Build edge index for fg to atom nodes connections
@@ -406,7 +408,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
             if is_ring_fg:
                 self._set_ring_fg_prop(connected_atoms, fg_nodes)
             else:
-                self._set_fg_prop(connected_atoms, fg_nodes)
+                self._set_fg_prop(connected_atoms, fg_nodes, fg_smiles)
 
             self._num_of_nodes += 1
 
@@ -419,6 +421,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
             k.NODE_LEVEL: k.FG_NODE_LEVEL,
             "FG": f"RING_{ring_size}",
             "RING": ring_size,
+            "is_alkyl": "0",
         }
         # In this case, all atoms of Ring/Fused Ring are assigned the ring size as functional group
         for atom in connected_atoms:
@@ -429,8 +432,9 @@ class GraphFGAugmentorReader(_AugmentorReader):
             # An atom belonging to multiple rings in fused Ring has size "5-6", indicating size of each ring
             max_ring_size = max(list(map(int, ring_prop.split("-"))))
             atom.SetProp("FG", f"RING_{max_ring_size}")
+            atom.SetProp("is_alkyl", "0")
 
-    def _set_fg_prop(self, connected_atoms, fg_nodes):
+    def _set_fg_prop(self, connected_atoms, fg_nodes, fg_smiles):
         fg_set = {atom.GetProp("FG") for atom in connected_atoms}
         if not fg_set:
             raise ValueError(
@@ -458,10 +462,15 @@ class GraphFGAugmentorReader(_AugmentorReader):
                 "All Connected atoms must belong to one functional group or None"
             )
 
-        # Select any one connected atom to get FG type and ring size
-        representative_atom = next(
-            (atom for atom in connected_atoms if atom.GetProp("FG")), None
-        )
+        check = re.sub(r"[CH\-\(\)\[\]/\\@]", "", fg_smiles)
+        is_alkyl = "1" if len(check) == 0 else "0"
+
+        representative_atom = None
+        for atom in connected_atoms:
+            if atom.GetProp("FG"):
+                representative_atom = atom
+            atom.SetProp("is_alkyl", is_alkyl)
+
         if representative_atom is None:
             raise AssertionError("Expected at least one atom with a functional group.")
 
@@ -469,6 +478,7 @@ class GraphFGAugmentorReader(_AugmentorReader):
             k.NODE_LEVEL: k.FG_NODE_LEVEL,
             "FG": representative_atom.GetProp("FG"),
             "RING": 0,
+            "is_alkyl": is_alkyl,
         }
 
     def _construct_fg_level_structure(
