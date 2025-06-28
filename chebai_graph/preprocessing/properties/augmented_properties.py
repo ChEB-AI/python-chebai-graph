@@ -3,7 +3,11 @@ from typing import Dict, List, Optional
 
 from rdkit import Chem
 
-from chebai_graph.preprocessing.property_encoder import OneHotEncoder, PropertyEncoder
+from chebai_graph.preprocessing.property_encoder import (
+    BoolEncoder,
+    OneHotEncoder,
+    PropertyEncoder,
+)
 
 from . import constants as k
 from . import properties as pr
@@ -102,6 +106,43 @@ class AtomRingSize(AugmentedAtomProperty):
             return max(ring_sizes)
         else:
             return 0
+
+
+class IsHydrogenBondDonorFG(AugmentedAtomProperty):
+    def __init__(self, encoder: Optional[PropertyEncoder] = None):
+        super().__init__(encoder or BoolEncoder(self))
+        # fmt: off
+        # https://github.com/thaonguyen217/farm_molecular_representation/blob/main/src/(6)gen_FG_KG.py#L26-L31
+        self._hydrogen_bond_donor: set[str] = {
+            'hydroxyl', 'hydroperoxy', 'primary_amine', 'secondary_amine',
+            'hydrazone', 'primary_ketimine', 'secondary_ketimine', 'primary_aldimine',
+            'amide', 'sulfhydryl', 'sulfonic_acid', 'thiolester', 'hemiacetal',
+            'hemiketal', 'carboxyl', 'aldoxime', 'ketoxime'
+        }
+        # fmt: on
+
+    def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
+        fg = self._check_modify_atom_prop_value(atom, "FG")
+        return fg in self._hydrogen_bond_donor
+
+
+class IsHydrogenBondAcceptorFG(AugmentedAtomProperty):
+    def __init__(self, encoder: Optional[PropertyEncoder] = None):
+        super().__init__(encoder or BoolEncoder(self))
+        # fmt: off
+        # https://github.com/thaonguyen217/farm_molecular_representation/blob/main/src/(6)gen_FG_KG.py#L33-L39
+        self._hydrogen_bond_acceptor: set[str] = {
+            'ether', 'peroxy', 'haloformyl', 'ketone', 'aldehyde', 'carboxylate',
+            'carboxyl', 'ester', 'ketal', 'carbonate_ester', 'carboxylic_anhydride',
+            'primary_amine', 'secondary_amine', 'tertiary_amine', '4_ammonium_ion',
+            'hydrazone', 'primary_ketimine', 'secondary_ketimine', 'primary_aldimine',
+            'amide', 'sulfhydryl', 'sulfonic_acid', 'thiolester', 'aldoxime', 'ketoxime'
+        }
+        # fmt: on
+
+    def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
+        fg = self._check_modify_atom_prop_value(atom, "FG")
+        return fg in self._hydrogen_bond_acceptor
 
 
 class AugNodeValueDefaulter(AugmentedAtomProperty, FrozenPropertyAlias, ABC):
