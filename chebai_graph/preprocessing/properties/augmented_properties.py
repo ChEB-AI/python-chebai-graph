@@ -154,12 +154,14 @@ class IsFGAlkyl(AugmentedAtomProperty):
 
 
 class AugNodeValueDefaulter(AugmentedAtomProperty, FrozenPropertyAlias, ABC):
+    DEFAULT_PROP_VAL = None
+
     def get_atom_value(self, atom: Chem.rdchem.Atom | Dict):
         if isinstance(atom, Chem.rdchem.Atom):
             # Delegate to superclass method for atom
             return super().get_atom_value(atom)
         elif isinstance(atom, dict):
-            return None
+            return self.DEFAULT_PROP_VAL
         else:
             raise TypeError(
                 f"Expected Chem.rdchem.Atom or dict, got {type(atom).__name__}"
@@ -176,6 +178,7 @@ class AugAtomType(AugNodeValueDefaulter, pr.AtomType):
     # An undefined or wildcard atom.
     # A pseudoatom (e.g., for certain fragments or placeholders in reaction centers).
     ...
+    DEFAULT_PROP_VAL = 0
 
 
 class AugNumAtomBonds(AugNodeValueDefaulter, pr.NumAtomBonds):
@@ -185,6 +188,7 @@ class AugNumAtomBonds(AugNodeValueDefaulter, pr.NumAtomBonds):
     # Currently, we return None which leads to zero-tensor for augmented nodes
     # But then the question aries shall we count only the atoms connected to a fg node, or all nodes including atoms. Consider graph node too.
     ...
+    DEFAULT_PROP_VAL = "unk"
 
 
 class AugAtomCharge(AugNodeValueDefaulter, pr.AtomCharge):
@@ -193,6 +197,7 @@ class AugAtomCharge(AugNodeValueDefaulter, pr.AtomCharge):
     # TODO: Can return some `unk` value for augmented Nodes for this property? which will lead to use of one hot tensor for augmented nodes
     # Currently, we return None which leads to zero-tensor for augmented nodes
     ...
+    DEFAULT_PROP_VAL = "unk"
 
 
 class AugAtomHybridization(AugNodeValueDefaulter, pr.AtomHybridization):
@@ -201,6 +206,7 @@ class AugAtomHybridization(AugNodeValueDefaulter, pr.AtomHybridization):
     # Check: https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.HybridizationType
     # Currently, we return None which leads to zero-tensor for augmented nodes
     ...
+    DEFAULT_PROP_VAL = Chem.rdchem.HybridizationType.UNSPECIFIED
 
 
 class AugAtomNumHs(AugNodeValueDefaulter, pr.AtomNumHs):
@@ -209,6 +215,7 @@ class AugAtomNumHs(AugNodeValueDefaulter, pr.AtomNumHs):
     # TODO: Can return some `unk` value for augmented Nodes for this property? which will lead to use of one hot tensor for augmented nodes
     # Currently, we return None which leads to zero-tensor for augmented nodes
     ...
+    DEFAULT_PROP_VAL = "unk"
 
 
 class AugAtomAromaticity(AugNodeValueDefaulter, pr.AtomAromaticity):
@@ -296,12 +303,14 @@ class BondLevel(AugmentedBondProperty):
 
 
 class AugBondValueDefaulter(AugmentedBondProperty, FrozenPropertyAlias, ABC):
+    DEFAULT_PROP_VAL = None
+
     def get_bond_value(self, bond: Chem.rdchem.Bond | Dict):
         if isinstance(bond, Chem.rdchem.Bond):
             # Delegate to superclass method for bond
             return super().get_bond_value(bond)
         elif isinstance(bond, dict):
-            return None
+            return self.DEFAULT_PROP_VAL
         else:
             raise TypeError("Bond/Edge should be of type `Chem.rdchem.Bond` or `dict`.")
 
@@ -319,6 +328,7 @@ class AugBondType(AugBondValueDefaulter, pr.BondType):
     # Check: https://www.rdkit.org/docs/source/rdkit.Chem.rdchem.html#rdkit.Chem.rdchem.BondType
     # Currently, we return None which leads to zero-tensor for augmented nodes
     ...
+    DEFAULT_PROP_VAL = Chem.rdchem.BondType.UNSPECIFIED
 
 
 class AugBondInRing(AugBondValueDefaulter, pr.BondInRing):
@@ -336,4 +346,6 @@ class AugmentedMolecularProperty(pr.MolecularProperty, ABC):
         return super().get_property_value(mol)
 
 
-class AugRDKit2DNormalized(AugmentedMolecularProperty, pr.RDKit2DNormalized): ...
+class AugRDKit2DNormalized(
+    AugmentedMolecularProperty, FrozenPropertyAlias, pr.RDKit2DNormalized
+): ...
