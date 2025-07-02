@@ -4,7 +4,7 @@ from .base import (
     GraphNodeFGNodePoolingNet,
     GraphNodePoolingNet,
 )
-from .model_wrappers import ResGatedModelWrapper
+from .resgated import ResGatedModelWrapper
 
 
 class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedModelWrapper):

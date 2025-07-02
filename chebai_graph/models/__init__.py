@@ -5,9 +5,11 @@ from .augmented import (
     ResGatedGraphNodeFGNodePoolGraphPred,
     ResGatedGraphNodePoolGraphPred,
 )
+from .resgated import ResGatedGraphPred
 
 __all__ = [
     "GATModelWrapper",
+    "ResGatedGraphPred",
     "ResGatedAugNodePoolGraphPred",
     "ResGatedGraphNodeFGNodePoolGraphPred",
     "ResGatedGraphNodePoolGraphPred",

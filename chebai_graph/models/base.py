@@ -58,6 +58,15 @@ class GraphNetWrapper(GraphBaseNet, ABC):
 
         return torch.nn.Sequential(*layers)
 
+    def forward(self, batch):
+        graph_data = batch["features"][0]
+        assert isinstance(graph_data, GraphData)
+        a = self.gnn(batch)
+        a = scatter_add(a, graph_data.batch, dim=0)
+        a = torch.cat([a, graph_data.molecule_attr], dim=1)
+
+        return self.lin_sequential(a)
+
 
 class AugmentedNodePoolingNet(GraphNetWrapper, ABC):
     def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):

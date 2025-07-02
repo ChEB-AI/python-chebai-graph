@@ -1,10 +1,12 @@
+from abc import ABC
+
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torch_geometric import nn as tgnn
 from torch_geometric.data import Data as GraphData
 
-from .base import GraphBaseNet
+from .base import GraphBaseNet, GraphNetWrapper
 
 
 class ResGatedGraphConvNetBase(GraphBaseNet):
@@ -62,3 +64,12 @@ class ResGatedGraphConvNetBase(GraphBaseNet):
             )
         )
         return a
+
+
+class ResGatedModelWrapper(GraphNetWrapper, ABC):
+    def _get_gnn(self, config):
+        return ResGatedGraphConvNetBase(config=config)
+
+
+class ResGatedGraphPred(GraphNetWrapper, ResGatedModelWrapper):
+    NAME = "ResGatedGraphPred"
