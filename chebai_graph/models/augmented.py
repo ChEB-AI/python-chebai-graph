@@ -1,7 +1,9 @@
 from .base import (
     AugmentedNodePoolingNet,
     FGNodePoolingNet,
+    FGNodePoolingNoGraphNodeNet,
     GraphNodeFGNodePoolingNet,
+    GraphNodeNoFGNodePoolingNet,
     GraphNodePoolingNet,
 )
 from .resgated import ResGatedGraphPred
@@ -31,3 +33,19 @@ class ResGatedGraphNodeFGNodePoolGraphPred(
     """GNN for graph-level prediction for augmented graphs"""
 
     NAME = "ResGatedGraphNodeFGNodePoolGraphPred"
+
+
+class ResGatedGraphNodeNoFGNodeGraphPred(
+    GraphNodeNoFGNodePoolingNet, ResGatedGraphPred
+):
+    """GNN for graph-level prediction for augmented graphs without FG nodes"""
+
+    NAME = "ResGatedGraphNodeNoFGNodeGraphPred"
+
+
+class ResGatedFGNodeNoGraphNodeGraphPred(
+    FGNodePoolingNoGraphNodeNet, ResGatedGraphPred
+):
+    """GNN for graph-level prediction for augmented graphs without FG nodes"""
+
+    NAME = "ResGatedFGNodeNoGraphNodeGraphPred"
