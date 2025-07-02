@@ -3,8 +3,6 @@ import typing
 
 import torch
 import torch.nn.functional as F
-from chebai.models.base import ChebaiBaseNet
-from chebai.preprocessing.structures import XYData
 from torch import nn
 from torch_geometric import nn as tgnn
 from torch_geometric.data import Data as GraphData
@@ -12,15 +10,9 @@ from torch_scatter import scatter_add, scatter_mean
 
 from chebai_graph.loss.pretraining import MaskPretrainingLoss
 
+from .base import GraphBaseNet
+
 logging.getLogger("pysmiles").setLevel(logging.CRITICAL)
-
-
-class GraphBaseNet(ChebaiBaseNet):
-    def _get_prediction_and_labels(self, data, labels, output):
-        return torch.sigmoid(output), labels.int()
-
-    def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor:
-        return batch.y.float() if batch.y is not None else None
 
 
 class JCIGraphNet(GraphBaseNet):
@@ -246,8 +238,7 @@ class ResGatedAugmentedGraphPred(GraphBaseNet):
 
         for lin in self.linear_layers:
             a = self.gnn.activation(lin(graph_vector))
-        a = self.final_layer(a)
-        return a
+        return self.final_layer(a)
 
 
 class ResGatedGraphConvNetPretrain(GraphBaseNet):
