@@ -15,11 +15,25 @@ class GraphBaseNet(ChebaiBaseNet, ABC):
         return batch.y.float() if batch.y is not None else None
 
 
+class GraphModelBase(torch.nn.Module, ABC):
+    """Base class for graph-based models with a configuration dictionary."""
+
+    def __init__(self, config: dict, **kwargs):
+        super().__init__(**kwargs)
+        self.hidden_length = int(config["hidden_length"])
+        self.dropout_rate = float(config["dropout_rate"])
+        self.n_conv_layers = int(config["n_conv_layers"])
+        self.n_atom_properties = int(config["n_atom_properties"])
+        self.n_bond_properties = int(config["n_bond_properties"])
+
+
 class GraphNetWrapper(GraphBaseNet, ABC):
     def __init__(self, config: dict, n_linear_layers, n_molecule_properties, **kwargs):
         super().__init__(**kwargs)
         self.gnn = self._get_gnn(config)
-        gnn_out_dim = config["out_dim"] if "out_dim" in config else config["hidden_dim"]
+        gnn_out_dim = (
+            config["out_dim"] if "out_dim" in config else config["hidden_length"]
+        )
         self.activation = torch.nn.ELU
         self.lin_input_dim = self._get_lin_seq_input_dim(
             gnn_out_dim=gnn_out_dim,
@@ -64,7 +78,6 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         a = self.gnn(batch)
         a = scatter_add(a, graph_data.batch, dim=0)
         a = torch.cat([a, graph_data.molecule_attr], dim=1)
-
         return self.lin_sequential(a)
 
 

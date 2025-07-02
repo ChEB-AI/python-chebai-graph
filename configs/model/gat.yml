@@ -1,14 +1,15 @@
-class_path: chebai_graph.models.GATModelWrapper
+class_path: chebai_graph.models.GATGraphPred
 init_args:
   optimizer_kwargs:
     lr: 1e-3
   config:
     hidden_length: 512
-    dropout_rate: 0.1
+    dropout_rate: 0
     n_conv_layers: 3
     heads: 8  # the number of heads should be divisible by output channels (hidden channels if output channel not given)
-    # v2: True  # -- to use `torch_geometric.nn.conv.GATv2Conv` convolution layers, default is GATConv
-    n_linear_layers: 3
+    v2: False  # set True to use `torch_geometric.nn.conv.GATv2Conv` convolution layers, default is GATConv
     n_atom_properties: 158
     n_bond_properties: 7
-    n_molecule_properties: 200
+
+  n_molecule_properties: 200
+  n_linear_layers: 3

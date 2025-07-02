@@ -1,28 +1,20 @@
-from abc import ABC
-
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torch_geometric import nn as tgnn
 from torch_geometric.data import Data as GraphData
 
-from .base import GraphBaseNet, GraphNetWrapper
+from .base import GraphModelBase, GraphNetWrapper
 
 
-class ResGatedGraphConvNetBase(GraphBaseNet):
+class ResGatedGraphConvNetBase(GraphModelBase):
     """GNN that supports edge attributes"""
 
     NAME = "ResGatedGraphConvNetBase"
 
-    def __init__(self, config: dict, **kwargs):
-        super().__init__(**kwargs)
-
-        self.in_length = config["in_length"]
-        self.hidden_length = config["hidden_length"]
-        self.dropout_rate = config["dropout_rate"]
-        self.n_conv_layers = config["n_conv_layers"]
-        self.n_atom_properties = int(config["n_atom_properties"])
-        self.n_bond_properties = int(config["n_bond_properties"])
+    def __init__(self, config, **kwargs):
+        super().__init__(config=config, **kwargs)
+        self.in_length = int(config["in_length"])
 
         self.activation = F.elu
         self.dropout = nn.Dropout(self.dropout_rate)
@@ -66,10 +58,8 @@ class ResGatedGraphConvNetBase(GraphBaseNet):
         return a
 
 
-class ResGatedModelWrapper(GraphNetWrapper, ABC):
+class ResGatedGraphPred(GraphNetWrapper):
+    NAME = "ResGatedGraphPred"
+
     def _get_gnn(self, config):
         return ResGatedGraphConvNetBase(config=config)
-
-
-class ResGatedGraphPred(GraphNetWrapper, ResGatedModelWrapper):
-    NAME = "ResGatedGraphPred"

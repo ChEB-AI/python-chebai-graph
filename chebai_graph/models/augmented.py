@@ -4,29 +4,29 @@ from .base import (
     GraphNodeFGNodePoolingNet,
     GraphNodePoolingNet,
 )
-from .resgated import ResGatedModelWrapper
+from .resgated import ResGatedGraphPred
 
 
-class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedModelWrapper):
+class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedGraphPred):
     """GNN for graph-level prediction for augmented graphs"""
 
     NAME = "ResGatedAugNodePoolGraphPred"
 
 
-class ResGatedGraphNodePoolGraphPred(GraphNodePoolingNet, ResGatedModelWrapper):
+class ResGatedGraphNodePoolGraphPred(GraphNodePoolingNet, ResGatedGraphPred):
     """GNN for graph-level prediction for augmented graphs"""
 
     NAME = "ResGatedGraphNodePoolGraphPred"
 
 
-class ResGatedFGNodePoolGraphPred(FGNodePoolingNet, ResGatedModelWrapper):
+class ResGatedFGNodePoolGraphPred(FGNodePoolingNet, ResGatedGraphPred):
     """GNN for graph-level prediction for augmented graphs"""
 
     NAME = "ResGatedFGNodePoolGraphPred"
 
 
 class ResGatedGraphNodeFGNodePoolGraphPred(
-    GraphNodeFGNodePoolingNet, ResGatedModelWrapper
+    GraphNodeFGNodePoolingNet, ResGatedGraphPred
 ):
     """GNN for graph-level prediction for augmented graphs"""
 

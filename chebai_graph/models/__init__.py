@@ -1,14 +1,14 @@
-from ._gat import GATModelWrapper
 from .augmented import (
     ResGatedAugNodePoolGraphPred,
     ResGatedFGNodePoolGraphPred,
     ResGatedGraphNodeFGNodePoolGraphPred,
     ResGatedGraphNodePoolGraphPred,
 )
+from .gat import GATGraphPred
 from .resgated import ResGatedGraphPred
 
 __all__ = [
-    "GATModelWrapper",
+    "GATGraphPred",
     "ResGatedGraphPred",
     "ResGatedAugNodePoolGraphPred",
     "ResGatedGraphNodeFGNodePoolGraphPred",
