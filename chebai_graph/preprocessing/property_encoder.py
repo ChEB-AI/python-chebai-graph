@@ -125,7 +125,7 @@ class OneHotEncoder(IndexEncoder):
 
     @property
     def name(self):
-        return f"one_hot"
+        return "one_hot"
 
     def on_start(self, property_values):
         """To get correct number of classes during encoding, cache unique tokens beforehand"""

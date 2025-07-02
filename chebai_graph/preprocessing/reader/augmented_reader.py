@@ -383,7 +383,6 @@ class GraphFGAugmentorReader(_AugmentorReader):
         for fg_smiles, fg_group in structure.items():
             fg_to_atoms_map[self._num_of_nodes] = fg_group
             is_ring_fg = fg_group["is_ring_fg"]
-            is_alkyl = 0
 
             connected_atoms = []
             # Build edge index for fg to atom nodes connections

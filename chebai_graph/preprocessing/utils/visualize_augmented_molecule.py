@@ -10,16 +10,16 @@ from rdkit.Chem import AllChem, BondType, Mol, rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 from torch import Tensor
 
-from chebai_graph.preprocessing.properties.constants import *
+from chebai_graph.preprocessing.properties import constants as k
 from chebai_graph.preprocessing.reader import GraphFGAugmentorReader
 
 matplotlib.use("TkAgg")
 
 EDGE_COLOR_MAP = {
-    WITHIN_ATOMS_EDGE: "#1f77b4",
-    ATOM_FG_EDGE: "#9467bd",
-    WITHIN_FG_EDGE: "#ff7f0e",
-    FG_GRAPHNODE_EDGE: "#2ca02c",
+    k.WITHIN_ATOMS_EDGE: "#1f77b4",
+    k.ATOM_FG_EDGE: "#9467bd",
+    k.WITHIN_FG_EDGE: "#ff7f0e",
+    k.FG_GRAPHNODE_EDGE: "#2ca02c",
 }
 
 NODE_COLOR_MAP = {
@@ -90,22 +90,22 @@ def _create_graph(
     src_nodes, tgt_nodes = edge_index.tolist()
     with_atom_edges = {
         f"{bond.GetBeginAtomIdx()}_{bond.GetEndAtomIdx()}"
-        for bond in augmented_graph_edges[WITHIN_ATOMS_EDGE].GetBonds()
+        for bond in augmented_graph_edges[k.WITHIN_ATOMS_EDGE].GetBonds()
     }
-    atom_fg_edges = set(augmented_graph_edges[ATOM_FG_EDGE])
-    within_fg_edges = set(augmented_graph_edges[WITHIN_FG_EDGE])
-    fg_graph_edges = set(augmented_graph_edges[FG_GRAPHNODE_EDGE])
+    atom_fg_edges = set(augmented_graph_edges[k.ATOM_FG_EDGE])
+    within_fg_edges = set(augmented_graph_edges[k.WITHIN_FG_EDGE])
+    fg_graph_edges = set(augmented_graph_edges[k.FG_GRAPHNODE_EDGE])
 
     for src, tgt in zip(src_nodes, tgt_nodes):
         undirected_edge_set = {f"{src}_{tgt}", f"{tgt}_{src}"}
         if undirected_edge_set & with_atom_edges:
-            edge_type = WITHIN_ATOMS_EDGE
+            edge_type = k.WITHIN_ATOMS_EDGE
         elif undirected_edge_set & atom_fg_edges:
-            edge_type = ATOM_FG_EDGE
+            edge_type = k.ATOM_FG_EDGE
         elif undirected_edge_set & within_fg_edges:
-            edge_type = WITHIN_FG_EDGE
+            edge_type = k.WITHIN_FG_EDGE
         elif undirected_edge_set & fg_graph_edges:
-            edge_type = FG_GRAPHNODE_EDGE
+            edge_type = k.FG_GRAPHNODE_EDGE
         else:
             raise ValueError("Unexpected edge type")
         G.add_edge(src, tgt, edge_type=edge_type, edge_color=EDGE_COLOR_MAP[edge_type])
@@ -266,10 +266,10 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
 
     # Collect edges by type
     edge_type_to_edges = {
-        WITHIN_ATOMS_EDGE: [],
-        ATOM_FG_EDGE: [],
-        WITHIN_FG_EDGE: [],
-        FG_GRAPHNODE_EDGE: [],
+        k.WITHIN_ATOMS_EDGE: [],
+        k.ATOM_FG_EDGE: [],
+        k.WITHIN_FG_EDGE: [],
+        k.FG_GRAPHNODE_EDGE: [],
     }
     for src, tgt, data in G.edges(data=True):
         edge_type_to_edges[data["edge_type"]].append((src, tgt))
