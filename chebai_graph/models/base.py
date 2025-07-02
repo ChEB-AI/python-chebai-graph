@@ -20,15 +20,17 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         super().__init__(**kwargs)
         self.gnn = self._get_gnn(config)
         gnn_out_dim = config["out_dim"] if "out_dim" in config else config["hidden_dim"]
-
+        self.activation = torch.nn.ELU
         self.lin_input_dim = self._get_lin_seq_input_dim(
             gnn_out_dim=gnn_out_dim,
             n_molecule_properties=n_molecule_properties,
         )
 
+        lin_hidden_dim = kwargs.get("lin_hidden_dim", gnn_out_dim)
         self.lin_sequential: torch.nn.Sequential = self._get_linear_module_list(
             n_linear_layers=n_linear_layers,
             in_dim=self.lin_input_dim,
+            hidden_dim=lin_hidden_dim,
             out_dim=self.out_dim,
         )
 
@@ -48,8 +50,10 @@ class GraphNetWrapper(GraphBaseNet, ABC):
             layers.append(torch.nn.Linear(in_dim, out_dim))
         else:
             layers.append(torch.nn.Linear(in_dim, hidden_dim))
+            layers.append(self.activation())
             for _ in range(n_linear_layers - 2):
                 layers.append(torch.nn.Linear(hidden_dim, hidden_dim))
+                layers.append(self.activation())
             layers.append(torch.nn.Linear(hidden_dim, out_dim))
 
         return torch.nn.Sequential(*layers)
@@ -80,7 +84,7 @@ class AugmentedNodePoolingNet(GraphNetWrapper, ABC):
             augmented_node_embeddings, augmented_node_batch, dim=0
         )
 
-        # Concatenate both
+        # Concatenate all
         graph_vector = torch.cat(
             [
                 graph_vec_atoms,
@@ -118,7 +122,7 @@ class GraphNodePoolingNet(GraphNetWrapper, ABC):
             remaining_node_embedding, remaining_node_batch, dim=0
         )
 
-        # Concatenate both
+        # Concatenate all
         graph_vector = torch.cat(
             [
                 remaining_nodes_vec,
@@ -159,7 +163,7 @@ class GraphNodeAugmentedNodePoolingNet(GraphNetWrapper, ABC):
         atom_vec = scatter_add(atom_embeddings, atom_batch, dim=0)
         fg_node_vec = scatter_add(fg_node_embeddings, fg_node_batch, dim=0)
 
-        # Concatenate both
+        # Concatenate all
         graph_vector = torch.cat(
             [
                 atom_vec,
