@@ -205,9 +205,15 @@ class GraphFGAugmentorReader(_AugmentorReader):
         is_atom_mask = torch.zeros(NUM_NODES, dtype=torch.bool)
         NUM_ATOM_NODES = augmented_molecule["nodes"]["atom_nodes"].GetNumAtoms()
         is_atom_mask[:NUM_ATOM_NODES] = True
+        is_graph_node = torch.zeros(NUM_NODES, dtype=torch.bool)
+        is_graph_node[-1] = True
 
         return GeomData(
-            x=x, edge_index=edge_index, edge_attr=edge_attr, is_atom_node=is_atom_mask
+            x=x,
+            edge_index=edge_index,
+            edge_attr=edge_attr,
+            is_atom_node=is_atom_mask,
+            is_graph_node=is_graph_node,
         )
 
     def _create_augmented_graph(self, mol: Chem.Mol) -> Tuple[torch.Tensor, dict]:
