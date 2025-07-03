@@ -94,24 +94,24 @@ class AugmentedNodePoolingNet(GraphNetWrapper, ABC):
 
         node_embeddings = self.gnn(batch)
 
-        atom_embeddings = node_embeddings[is_atom_node]
-        atom_batch = graph_data.batch[is_atom_node]
+        atoms_embeddings = node_embeddings[is_atom_node]
+        atoms_batch = graph_data.batch[is_atom_node]
 
-        augmented_node_embeddings = node_embeddings[is_augmented_node]
-        augmented_node_batch = graph_data.batch[is_augmented_node]
+        augmented_nodes_embeddings = node_embeddings[is_augmented_node]
+        augmented_nodes_batch = graph_data.batch[is_augmented_node]
 
         # Scatter add separately
-        graph_vec_atoms = scatter_add(atom_embeddings, atom_batch, dim=0)
-        graph_vec_augmented_nodes = scatter_add(
-            augmented_node_embeddings, augmented_node_batch, dim=0
+        atoms_vec = scatter_add(atoms_embeddings, atoms_batch, dim=0)
+        aug_nodes_vec = scatter_add(
+            augmented_nodes_embeddings, augmented_nodes_batch, dim=0
         )
 
         # Concatenate all
         graph_vector = torch.cat(
             [
-                graph_vec_atoms,
+                atoms_vec,
                 graph_data.molecule_attr,
-                graph_vec_augmented_nodes,
+                aug_nodes_vec,
             ],
             dim=1,
         )
@@ -135,13 +135,13 @@ class GraphNodePoolingNet(GraphNetWrapper, ABC):
         graph_node_embedding = node_embeddings[is_graph_node]
         graph_node_batch = graph_data.batch[is_graph_node]
 
-        remaining_node_embedding = node_embeddings[is_not_graph_node]
-        remaining_node_batch = graph_data.batch[is_not_graph_node]
+        remaining_nodes_embedding = node_embeddings[is_not_graph_node]
+        remaining_nodes_batch = graph_data.batch[is_not_graph_node]
 
         # Scatter add separately
         graph_node_vec = scatter_add(graph_node_embedding, graph_node_batch, dim=0)
         remaining_nodes_vec = scatter_add(
-            remaining_node_embedding, remaining_node_batch, dim=0
+            remaining_nodes_embedding, remaining_nodes_batch, dim=0
         )
 
         # Concatenate all
@@ -172,24 +172,24 @@ class FGNodePoolingNet(GraphNetWrapper, ABC):
 
         node_embeddings = self.gnn(batch)
 
-        remaining_node_embedding = node_embeddings[is_remaining_node]
-        remaining_node_batch = graph_data.batch[is_remaining_node]
+        remaining_nodes_embedding = node_embeddings[is_remaining_node]
+        remaining_nodes_batch = graph_data.batch[is_remaining_node]
 
-        fg_node_embeddings = node_embeddings[is_fg_node]
-        fg_node_batch = graph_data.batch[is_fg_node]
+        fg_nodes_embeddings = node_embeddings[is_fg_node]
+        fg_nodes_batch = graph_data.batch[is_fg_node]
 
         # Scatter add separately
-        remaining_node_vec = scatter_add(
-            remaining_node_embedding, remaining_node_batch, dim=0
+        remaining_nodes_vec = scatter_add(
+            remaining_nodes_embedding, remaining_nodes_batch, dim=0
         )
-        fg_node_vec = scatter_add(fg_node_embeddings, fg_node_batch, dim=0)
+        fg_nodes_vec = scatter_add(fg_nodes_embeddings, fg_nodes_batch, dim=0)
 
         # Concatenate all
         graph_vector = torch.cat(
             [
-                remaining_node_vec,
+                remaining_nodes_vec,
                 graph_data.molecule_attr,
-                fg_node_vec,
+                fg_nodes_vec,
             ],
             dim=1,
         )
@@ -214,23 +214,23 @@ class GraphNodeFGNodePoolingNet(GraphNetWrapper, ABC):
         graph_node_embedding = node_embeddings[is_graph_node]
         graph_node_batch = graph_data.batch[is_graph_node]
 
-        atom_embeddings = node_embeddings[is_atom_node]
-        atom_batch = graph_data.batch[is_atom_node]
+        atoms_embeddings = node_embeddings[is_atom_node]
+        atoms_batch = graph_data.batch[is_atom_node]
 
-        fg_node_embeddings = node_embeddings[is_fg_node]
-        fg_node_batch = graph_data.batch[is_fg_node]
+        fg_nodes_embeddings = node_embeddings[is_fg_node]
+        fg_nodes_batch = graph_data.batch[is_fg_node]
 
         # Scatter add separately
         graph_node_vec = scatter_add(graph_node_embedding, graph_node_batch, dim=0)
-        atom_vec = scatter_add(atom_embeddings, atom_batch, dim=0)
-        fg_node_vec = scatter_add(fg_node_embeddings, fg_node_batch, dim=0)
+        atoms_vec = scatter_add(atoms_embeddings, atoms_batch, dim=0)
+        fg_nodes_vec = scatter_add(fg_nodes_embeddings, fg_nodes_batch, dim=0)
 
         # Concatenate all
         graph_vector = torch.cat(
             [
-                atom_vec,
+                atoms_vec,
                 graph_data.molecule_attr,
-                fg_node_vec,
+                fg_nodes_vec,
                 graph_node_vec,
             ],
             dim=1,
@@ -255,22 +255,22 @@ class FGNodePoolingNoGraphNodeNet(GraphNetWrapper, ABC):
 
         node_embeddings = self.gnn(batch)
 
-        atom_embeddings = node_embeddings[is_atom_node]
-        atom_batch = graph_data.batch[is_atom_node]
+        atoms_embeddings = node_embeddings[is_atom_node]
+        atoms_batch = graph_data.batch[is_atom_node]
 
-        fg_node_embeddings = node_embeddings[is_fg_node]
-        fg_node_batch = graph_data.batch[is_fg_node]
+        fg_nodes_embeddings = node_embeddings[is_fg_node]
+        fg_nodes_batch = graph_data.batch[is_fg_node]
 
         # Scatter add separately
-        atom_vec = scatter_add(atom_embeddings, atom_batch, dim=0)
-        fg_node_vec = scatter_add(fg_node_embeddings, fg_node_batch, dim=0)
+        atoms_vec = scatter_add(atoms_embeddings, atoms_batch, dim=0)
+        fg_nodes_vec = scatter_add(fg_nodes_embeddings, fg_nodes_batch, dim=0)
 
         # Concatenate all
         graph_vector = torch.cat(
             [
-                atom_vec,
+                atoms_vec,
                 graph_data.molecule_attr,
-                fg_node_vec,
+                fg_nodes_vec,
             ],
             dim=1,
         )
@@ -296,21 +296,74 @@ class GraphNodeNoFGNodePoolingNet(GraphNetWrapper, ABC):
         graph_node_embedding = node_embeddings[is_graph_node]
         graph_node_batch = graph_data.batch[is_graph_node]
 
-        atom_embeddings = node_embeddings[is_atom_node]
-        atom_batch = graph_data.batch[is_atom_node]
+        atoms_embeddings = node_embeddings[is_atom_node]
+        atoms_batch = graph_data.batch[is_atom_node]
 
         # Scatter add separately
         graph_node_vec = scatter_add(graph_node_embedding, graph_node_batch, dim=0)
-        atom_vec = scatter_add(atom_embeddings, atom_batch, dim=0)
+        atoms_vec = scatter_add(atoms_embeddings, atoms_batch, dim=0)
 
         # Concatenate all
         graph_vector = torch.cat(
             [
-                atom_vec,
+                atoms_vec,
                 graph_data.molecule_attr,
                 graph_node_vec,
             ],
             dim=1,
         )
+
+        return self.lin_sequential(graph_vector)
+
+
+class AugmentedOnlyPoolingNet(GraphNetWrapper, ABC):
+    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
+        return gnn_out_dim + n_molecule_properties
+
+    def forward(self, batch):
+        graph_data = batch["features"][0]
+        is_atom_node = graph_data.is_atom_node.bool()
+        augmented_nodes_embeddings = self.gnn(batch)[~is_atom_node]
+        augmented_nodes_batch = graph_data.batch[~is_atom_node]
+
+        aug_nodes_vec = scatter_add(
+            augmented_nodes_embeddings, augmented_nodes_batch, dim=0
+        )
+        graph_vector = torch.cat([aug_nodes_vec, graph_data.molecule_attr], dim=1)
+
+        return self.lin_sequential(graph_vector)
+
+
+class FGOnlyPoolingNet(GraphNetWrapper, ABC):
+    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
+        return gnn_out_dim + n_molecule_properties
+
+    def forward(self, batch):
+        graph_data = batch["features"][0]
+        is_graph_node = graph_data.is_graph_node.bool()
+        is_atom_node = graph_data.is_atom_node.bool()
+        is_fg_node = (~is_atom_node) & (~is_graph_node)
+        fg_nodes_embeddings = self.gnn(batch)[~is_fg_node]
+        fg_nodes_batch = graph_data.batch[~is_fg_node]
+
+        fg_nodes_vec = scatter_add(fg_nodes_embeddings, fg_nodes_batch, dim=0)
+        graph_vector = torch.cat([fg_nodes_vec, graph_data.molecule_attr], dim=1)
+
+        return self.lin_sequential(graph_vector)
+
+
+class GraphNodeOnlyPoolingNet(GraphNetWrapper, ABC):
+    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
+        return gnn_out_dim + n_molecule_properties
+
+    def forward(self, batch):
+        graph_data = batch["features"][0]
+        is_graph_node = graph_data.is_graph_node.bool()
+
+        graph_node_embedding = self.gnn(batch)[~is_graph_node]
+        graph_node_batch = graph_data.batch[~is_graph_node]
+
+        graph_node_vec = scatter_add(graph_node_embedding, graph_node_batch, dim=0)
+        graph_vector = torch.cat([graph_node_vec, graph_data.molecule_attr], dim=1)
 
         return self.lin_sequential(graph_vector)
