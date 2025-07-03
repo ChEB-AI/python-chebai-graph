@@ -1,9 +1,12 @@
 from .augmented import (
     ResGatedAugNodePoolGraphPred,
+    ResGatedAugOnlyPoolGraphPred,
     ResGatedFGNodeNoGraphNodeGraphPred,
     ResGatedFGNodePoolGraphPred,
+    ResGatedFGOnlyPoolGraphPred,
     ResGatedGraphNodeFGNodePoolGraphPred,
     ResGatedGraphNodeNoFGNodeGraphPred,
+    ResGatedGraphNodeOnlyPoolGraphPred,
     ResGatedGraphNodePoolGraphPred,
 )
 from .gat import GATGraphPred
@@ -18,4 +21,7 @@ __all__ = [
     "ResGatedGraphNodePoolGraphPred",
     "ResGatedGraphNodeNoFGNodeGraphPred",
     "ResGatedFGNodePoolGraphPred",
+    "ResGatedAugOnlyPoolGraphPred",
+    "ResGatedGraphNodeOnlyPoolGraphPred",
+    "ResGatedFGOnlyPoolGraphPred",
 ]
