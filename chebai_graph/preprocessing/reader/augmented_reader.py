@@ -1,7 +1,7 @@
 import re
 import sys
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 import torch
 from chebai.preprocessing.reader import DataReader
@@ -195,7 +195,6 @@ class _AugmentorReader(DataReader, ABC):
 
         return undirected_edge_index, augmented_molecule
 
-    @abstractmethod
     def _augment_graph_structure(self, mol: Chem.Mol) -> dict:
         """
         Constructs the full augmented graph structure from a molecule.
@@ -209,7 +208,36 @@ class _AugmentorReader(DataReader, ABC):
                 - Augmented graph node attributes
                 - Augmented graph edge attributes.
         """
-        pass
+        self._idx_of_node = mol.GetNumAtoms()
+        self._idx_of_edge = mol.GetNumBonds()
+
+        self._annotate_atoms_and_bonds(mol)
+        atom_edge_index = self._generate_atom_level_edge_index(mol)
+
+        total_atoms = mol.GetNumAtoms()
+        assert (
+            self._idx_of_node == total_atoms
+        ), f"Mismatch in number of nodes: expected {total_atoms}, got {self._idx_of_node}"
+
+        node_info = {
+            "atom_nodes": mol,
+            "num_nodes": self._idx_of_node,
+        }
+
+        total_edges = mol.GetNumBonds()
+        assert (
+            self._idx_of_edge == total_edges
+        ), f"Mismatch in number of edges: expected {total_edges}, got {self._idx_of_edge}"
+        edge_info = {
+            k.WITHIN_ATOMS_EDGE: mol,
+        }
+
+        return {
+            "directed_edge_index": atom_edge_index,
+            "node_info": node_info,
+            "edge_info": edge_info,
+            "graph_meta_info": {},
+        }
 
     def on_finish(self) -> None:
         """
@@ -247,7 +275,7 @@ class _AugmentorReader(DataReader, ABC):
         return property.get_property_value(augmented_mol)
 
 
-class AtomsFGReader(_AugmentorReader):
+class AtomsFGReader_NoFGEdges_NoGraphNode(_AugmentorReader):
     def _augment_graph_structure(
         self, mol: Chem.Mol
     ) -> tuple[torch.Tensor, dict, dict]:
@@ -263,11 +291,8 @@ class AtomsFGReader(_AugmentorReader):
                 - Augmented graph node attributes
                 - Augmented graph edge attributes.
         """
-        self._idx_of_node = mol.GetNumAtoms()
-        self._idx_of_edge = mol.GetNumBonds()
-
-        self._annotate_atoms_and_bonds(mol)
-        atom_edge_index = self._generate_atom_level_edge_index(mol)
+        augmented_mol = super()._augment_graph_structure(mol)
+        atom_edge_index = augmented_mol["directed_edge_index"]
 
         # Create FG-level structure and edges
         fg_atom_edge_index, fg_nodes, atom_fg_edges, fg_to_atoms_map, fg_bonds = (
@@ -282,36 +307,26 @@ class AtomsFGReader(_AugmentorReader):
             ],
             dim=1,
         )
+        augmented_mol["directed_edge_index"] = directed_edge_index
 
         total_atoms = sum([mol.GetNumAtoms(), len(fg_nodes)])
         assert (
             self._idx_of_node == total_atoms
         ), f"Mismatch in number of nodes: expected {total_atoms}, got {self._idx_of_node}"
-
-        node_info = {
-            "atom_nodes": mol,
-            "fg_nodes": fg_nodes,
-            "num_nodes": self._idx_of_node,
-        }
+        augmented_mol["node_info"]["fg_nodes"] = fg_nodes
+        augmented_mol["node_info"]["num_nodes"] = self._idx_of_node
 
         total_edges = sum([mol.GetNumBonds(), len(atom_fg_edges)])
         assert (
             self._idx_of_edge == total_edges
         ), f"Mismatch in number of edges: expected {total_edges}, got {self._idx_of_edge}"
-        edge_info = {
-            k.WITHIN_ATOMS_EDGE: mol,
-            k.ATOM_FG_EDGE: atom_fg_edges,
-            k.NUM_EDGES: self._idx_of_edge,
-        }
-        return {
-            "directed_edge_index": directed_edge_index,
-            "node_info": node_info,
-            "edge_info": edge_info,
-            "graph_meta_info": {
-                "fg_to_atoms_map": fg_to_atoms_map,
-                "fg_bonds": fg_bonds,
-            },
-        }
+        augmented_mol["edge_info"][k.ATOM_FG_EDGE] = atom_fg_edges
+        augmented_mol["edge_info"][k.NUM_EDGES] = self._idx_of_edge
+
+        augmented_mol["graph_meta_info"]["fg_to_atoms_map"] = fg_to_atoms_map
+        augmented_mol["graph_meta_info"]["fg_bonds"] = fg_bonds
+
+        return augmented_mol
 
     @staticmethod
     def _annotate_atoms_and_bonds(mol: Chem.Mol) -> None:
@@ -478,7 +493,7 @@ class AtomsFGReader(_AugmentorReader):
         }
 
 
-class AtomFGWithFGEdgesReader(AtomsFGReader):
+class AtomFGReader_WithFGEdges_NoGraphNode(AtomsFGReader_NoFGEdges_NoGraphNode):
     def _augment_graph_structure(
         self, mol: Chem.Mol
     ) -> tuple[torch.Tensor, dict, dict]:
@@ -575,7 +590,7 @@ class AtomFGWithFGEdgesReader(AtomsFGReader):
         return internal_edge_index, internal_fg_edges
 
 
-class AtomFGWithFGEdgesAndGraphNodeReader(AtomFGWithFGEdgesReader):
+class _AddGraphNode(_AugmentorReader):
     def _read_data(self, smiles):
         geom_data = super()._read_data(smiles)
         if geom_data is None:
@@ -586,15 +601,13 @@ class AtomFGWithFGEdgesAndGraphNodeReader(AtomFGWithFGEdgesReader):
         geom_data.is_graph_node = is_graph_node
         return geom_data
 
-    def _augment_graph_structure(
-        self, mol: Chem.Mol
+    def _add_graph_node_and_edges_to_nodes(
+        self,
+        augmented_struct: dict,
+        nodes_ids: dict[int, Any] | set[int],
     ) -> tuple[torch.Tensor, dict, dict]:
-        augmented_struct = super()._augment_graph_structure(mol)
-        graph_meta_info = augmented_struct["graph_meta_info"]
-        fg_to_atoms_map = graph_meta_info["fg_to_atoms_map"]
-
         fg_graph_edge_index, graph_node, fg_to_graph_edges = (
-            self._construct_fg_to_graph_node_structure(fg_to_atoms_map)
+            self._construct_nodes_to_graph_node_structure(nodes_ids)
         )
 
         augmented_struct["edge_info"][k.FG_GRAPHNODE_EDGE] = fg_to_graph_edges
@@ -618,8 +631,8 @@ class AtomFGWithFGEdgesAndGraphNodeReader(AtomFGWithFGEdgesReader):
         )
         return augmented_struct
 
-    def _construct_fg_to_graph_node_structure(
-        self, fg_to_atoms_map: dict
+    def _construct_nodes_to_graph_node_structure(
+        self, nodes_ids: dict
     ) -> tuple[list[list[int]], dict, dict]:
         """
         Constructs edges between functional group nodes and a global graph-level node.
@@ -635,24 +648,50 @@ class AtomFGWithFGEdgesAndGraphNodeReader(AtomFGWithFGEdgesReader):
         """
         graph_node = {k.NODE_LEVEL: k.GRAPH_NODE_LEVEL, "FG": "graph_fg", "RING": "0"}
 
-        fg_graph_edges = {}
+        graph_to_nodes_edges = {}
         graph_edge_index = [[], []]
 
-        for fg_id in fg_to_atoms_map:
+        for fg_id in nodes_ids:
             graph_edge_index[0].append(self._idx_of_node)
             graph_edge_index[1].append(fg_id)
-            fg_graph_edges[f"{self._idx_of_node}_{fg_id}"] = {
+            graph_to_nodes_edges[f"{self._idx_of_node}_{fg_id}"] = {
                 k.EDGE_LEVEL: k.FG_GRAPHNODE_EDGE
             }
             self._idx_of_edge += 1
         self._idx_of_node += 1
 
-        return graph_edge_index, graph_node, fg_graph_edges
+        return graph_edge_index, graph_node, graph_to_nodes_edges
 
 
-class AtomFGWithNoFGEdgesWithGraphNodeReader(_AugmentorReader):
-    pass
+class AtomFGReader_WithFGEdges_WithGraphNode(
+    AtomFGReader_WithFGEdges_NoGraphNode, _AddGraphNode
+):
+    def _augment_graph_structure(
+        self, mol: Chem.Mol
+    ) -> tuple[torch.Tensor, dict, dict]:
+        augmented_struct = super()._augment_graph_structure(mol)
+        fg_to_atoms_map = augmented_struct["graph_meta_info"]["fg_to_atoms_map"]
+        return self._add_graph_node_and_edges_to_nodes(
+            augmented_struct, fg_to_atoms_map
+        )
 
 
-class AtomWithGraphNodeOnlyReader(_AugmentorReader):
-    pass
+class AtomFGReader_NoFGEdges_WithGraphNode(
+    AtomsFGReader_NoFGEdges_NoGraphNode, _AddGraphNode
+):
+    def _augment_graph_structure(
+        self, mol: Chem.Mol
+    ) -> tuple[torch.Tensor, dict, dict]:
+        augmented_struct = super()._augment_graph_structure(mol)
+        fg_to_atoms_map = augmented_struct["graph_meta_info"]["fg_to_atoms_map"]
+        return self._add_graph_node_and_edges_to_nodes(
+            augmented_struct, fg_to_atoms_map
+        )
+
+
+class AtomReader_WithGraphNodeOnly(_AddGraphNode):
+    def _augment_graph_structure(self, mol):
+        augmented_struct = super()._augment_graph_structure(mol)
+        molecule: Chem.Mol = augmented_struct["node_info"]["atom_nodes"]
+        atom_ids = {atom.GetIdx() for atom in molecule.GetAtoms()}
+        return self._add_graph_node_and_edges_to_nodes(augmented_struct, atom_ids)
