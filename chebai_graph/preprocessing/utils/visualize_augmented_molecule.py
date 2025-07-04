@@ -11,7 +11,7 @@ from rdkit.Chem.Draw import rdMolDraw2D
 from torch import Tensor
 
 from chebai_graph.preprocessing.properties import constants as k
-from chebai_graph.preprocessing.reader import GraphFGAugmentorReader
+from chebai_graph.preprocessing.reader import AtomFGWithFGEdgesAndGraphNodeReader
 
 matplotlib.use("TkAgg")
 
@@ -414,7 +414,7 @@ class Main:
     """
 
     def __init__(self):
-        self._fg_reader = GraphFGAugmentorReader()
+        self._fg_reader = AtomFGWithFGEdgesAndGraphNodeReader()
 
     def plot(self, smiles: str = "OC(=O)c1ccccc1O", plot_type: str = "simple") -> None:
         """
