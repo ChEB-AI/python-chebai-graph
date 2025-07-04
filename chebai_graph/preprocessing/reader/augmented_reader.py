@@ -1,6 +1,6 @@
 import re
 import sys
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any, Optional
 
 import torch
@@ -58,19 +58,6 @@ class _AugmentorReader(DataReader, ABC):
             str: Name of the augmentor.
         """
         return f"{cls.__name__}".lower()
-
-    @abstractmethod
-    def _create_augmented_graph(self, mol: Chem.Mol) -> tuple[torch.Tensor, dict]:
-        """
-        Augments a molecule represented by a SMILES string.
-
-        Args:
-            mol (Chem.Mol): RDKIT molecule.
-
-        Returns:
-            Tuple[torch.Tensor, Dict]: Graph edge index and augmented molecule information
-        """
-        pass
 
     def _read_data(self, smiles: str) -> GeomData | None:
         """
@@ -230,6 +217,7 @@ class _AugmentorReader(DataReader, ABC):
         ), f"Mismatch in number of edges: expected {total_edges}, got {self._idx_of_edge}"
         edge_info = {
             k.WITHIN_ATOMS_EDGE: mol,
+            k.NUM_EDGES: self._idx_of_edge,
         }
 
         return {
@@ -238,6 +226,37 @@ class _AugmentorReader(DataReader, ABC):
             "edge_info": edge_info,
             "graph_meta_info": {},
         }
+
+    @staticmethod
+    def _annotate_atoms_and_bonds(mol: Chem.Mol) -> None:
+        """
+        Annotates each atom and bond with node and edge with certain properties.
+
+        Args:
+            mol (Chem.Mol): RDKit molecule.
+        """
+        for atom in mol.GetAtoms():
+            atom.SetProp(k.NODE_LEVEL, k.ATOM_NODE_LEVEL)
+        for bond in mol.GetBonds():
+            bond.SetProp(k.EDGE_LEVEL, k.WITHIN_ATOMS_EDGE)
+
+    @staticmethod
+    def _generate_atom_level_edge_index(mol: Chem.Mol) -> torch.Tensor:
+        """
+        Generates bidirectional atom-level edge index tensor.
+
+        Args:
+            mol (Chem.Mol): RDKit molecule.
+
+        Returns:
+            torch.Tensor: Directed edge index tensor.
+        """
+        # We need to ensure that directed edges which form a undirected edge are adjacent to each other
+        edge_index_list = [[], []]
+        for bond in mol.GetBonds():
+            edge_index_list[0].append(bond.GetBeginAtomIdx())
+            edge_index_list[1].append(bond.GetEndAtomIdx())
+        return torch.tensor(edge_index_list, dtype=torch.long)
 
     def on_finish(self) -> None:
         """
@@ -327,37 +346,6 @@ class AtomsFGReader_NoFGEdges_NoGraphNode(_AugmentorReader):
         augmented_mol["graph_meta_info"]["fg_bonds"] = fg_bonds
 
         return augmented_mol
-
-    @staticmethod
-    def _annotate_atoms_and_bonds(mol: Chem.Mol) -> None:
-        """
-        Annotates each atom and bond with node and edge with certain properties.
-
-        Args:
-            mol (Chem.Mol): RDKit molecule.
-        """
-        for atom in mol.GetAtoms():
-            atom.SetProp(k.NODE_LEVEL, k.ATOM_NODE_LEVEL)
-        for bond in mol.GetBonds():
-            bond.SetProp(k.EDGE_LEVEL, k.WITHIN_ATOMS_EDGE)
-
-    @staticmethod
-    def _generate_atom_level_edge_index(mol: Chem.Mol) -> torch.Tensor:
-        """
-        Generates bidirectional atom-level edge index tensor.
-
-        Args:
-            mol (Chem.Mol): RDKit molecule.
-
-        Returns:
-            torch.Tensor: Directed edge index tensor.
-        """
-        # We need to ensure that directed edges which form a undirected edge are adjacent to each other
-        edge_index_list = [[], []]
-        for bond in mol.GetBonds():
-            edge_index_list[0].append(bond.GetBeginAtomIdx())
-            edge_index_list[1].append(bond.GetEndAtomIdx())
-        return torch.tensor(edge_index_list, dtype=torch.long)
 
     def _construct_fg_to_atom_structure(
         self, mol: Chem.Mol
@@ -606,12 +594,12 @@ class _AddGraphNode(_AugmentorReader):
         augmented_struct: dict,
         nodes_ids: dict[int, Any] | set[int],
     ) -> tuple[torch.Tensor, dict, dict]:
-        fg_graph_edge_index, graph_node, fg_to_graph_edges = (
+        nodes_graph_edge_index, graph_node, nodes_to_graph_edges = (
             self._construct_nodes_to_graph_node_structure(nodes_ids)
         )
 
-        augmented_struct["edge_info"][k.FG_GRAPHNODE_EDGE] = fg_to_graph_edges
-        augmented_struct["edge_info"][k.NUM_EDGES] += len(fg_to_graph_edges)
+        augmented_struct["edge_info"][k.FG_GRAPHNODE_EDGE] = nodes_to_graph_edges
+        augmented_struct["edge_info"][k.NUM_EDGES] += len(nodes_to_graph_edges)
         assert (
             self._idx_of_edge == augmented_struct["edge_info"][k.NUM_EDGES]
         ), f"Mismatch in number of edges: expected {self._idx_of_edge}, got {augmented_struct['edge_info'][k.NUM_EDGES]}"
@@ -625,7 +613,7 @@ class _AddGraphNode(_AugmentorReader):
         augmented_struct["directed_edge_index"] = torch.cat(
             [
                 augmented_struct["directed_edge_index"],
-                torch.tensor(fg_graph_edge_index, dtype=torch.long),
+                torch.tensor(nodes_graph_edge_index, dtype=torch.long),
             ],
             dim=1,
         )

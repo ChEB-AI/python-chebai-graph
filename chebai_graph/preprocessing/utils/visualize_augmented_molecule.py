@@ -11,7 +11,13 @@ from rdkit.Chem.Draw import rdMolDraw2D
 from torch import Tensor
 
 from chebai_graph.preprocessing.properties import constants as k
-from chebai_graph.preprocessing.reader import AtomFGReader_WithFGEdges_WithGraphNode
+from chebai_graph.preprocessing.reader import (
+    AtomFGReader_NoFGEdges_WithGraphNode,
+    AtomFGReader_WithFGEdges_NoGraphNode,
+    AtomFGReader_WithFGEdges_WithGraphNode,
+    AtomReader_WithGraphNodeOnly,
+    AtomsFGReader_NoFGEdges_NoGraphNode,
+)
 
 matplotlib.use("TkAgg")
 
@@ -37,6 +43,14 @@ BOND_COLOR_MAP = {
     BondType.DATIVEL: "red",
     BondType.DATIVER: "red",
     BondType.DATIVEONE: "red",
+}
+
+READER = {
+    "n_fge_w_gn": AtomFGReader_NoFGEdges_WithGraphNode,
+    "w_fge_w_gn": AtomFGReader_WithFGEdges_WithGraphNode,
+    "w_fge_n_gn": AtomFGReader_WithFGEdges_NoGraphNode,
+    "n_fge_n_gn": AtomsFGReader_NoFGEdges_NoGraphNode,
+    "atom_w_gn": AtomReader_WithGraphNodeOnly,
 }
 
 
@@ -68,23 +82,24 @@ def _create_graph(
         )
 
     # Add functional group (FG) nodes
-    fg_nodes = augmented_graph_nodes["fg_nodes"]
-    for fg_idx, fg_props in fg_nodes.items():
-        G.add_node(
-            fg_idx,
-            node_name=f"FG:{fg_props['FG']}",
-            node_type="fg",
-            node_color=NODE_COLOR_MAP["fg"],
-        )
+    if "fg_nodes" in augmented_graph_nodes:
+        fg_nodes = augmented_graph_nodes["fg_nodes"]
+        for fg_idx, fg_props in fg_nodes.items():
+            G.add_node(
+                fg_idx,
+                node_name=f"FG:{fg_props['FG']}",
+                node_type="fg",
+                node_color=NODE_COLOR_MAP["fg"],
+            )
 
-    # Add special graph node
-    graph_node_idx = augmented_graph_nodes["num_nodes"] - 1
-    G.add_node(
-        graph_node_idx,
-        node_name="Graph Node",
-        node_type="graph",
-        node_color=NODE_COLOR_MAP["graph"],
-    )
+    if "graph_node" in augmented_graph_nodes:
+        graph_node_idx = augmented_graph_nodes["num_nodes"] - 1
+        G.add_node(
+            graph_node_idx,
+            node_name="Graph Node",
+            node_type="graph",
+            node_color=NODE_COLOR_MAP["graph"],
+        )
 
     # Decode edge types and add edges with proper color and type
     src_nodes, tgt_nodes = edge_index.tolist()
@@ -92,9 +107,22 @@ def _create_graph(
         f"{bond.GetBeginAtomIdx()}_{bond.GetEndAtomIdx()}"
         for bond in augmented_graph_edges[k.WITHIN_ATOMS_EDGE].GetBonds()
     }
-    atom_fg_edges = set(augmented_graph_edges[k.ATOM_FG_EDGE])
-    within_fg_edges = set(augmented_graph_edges[k.WITHIN_FG_EDGE])
-    fg_graph_edges = set(augmented_graph_edges[k.FG_GRAPHNODE_EDGE])
+
+    atom_fg_edges = (
+        set(augmented_graph_edges[k.ATOM_FG_EDGE])
+        if k.ATOM_FG_EDGE in augmented_graph_edges
+        else set()
+    )
+    within_fg_edges = (
+        set(augmented_graph_edges[k.WITHIN_FG_EDGE])
+        if k.WITHIN_FG_EDGE in augmented_graph_edges
+        else set()
+    )
+    fg_graph_edges = (
+        set(augmented_graph_edges[k.FG_GRAPHNODE_EDGE])
+        if k.FG_GRAPHNODE_EDGE in augmented_graph_edges
+        else set()
+    )
 
     for src, tgt in zip(src_nodes, tgt_nodes):
         undirected_edge_set = {f"{src}_{tgt}", f"{tgt}_{src}"}
@@ -127,7 +155,7 @@ def _get_subgraph_by_node_type(G: nx.Graph, node_type: str) -> nx.Graph:
     selected_nodes = [
         n for n, attr in G.nodes(data=True) if attr.get("node_type") == node_type
     ]
-    return G.subgraph(selected_nodes).copy()
+    return G.subgraph(selected_nodes).copy() if selected_nodes else None
 
 
 def _draw_hierarchy(G: nx.Graph, mol: Mol) -> None:
@@ -235,32 +263,53 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
 
     # Dictionary to store functional group node positions
     fg_pos = {}
+    fg_subgraph = _get_subgraph_by_node_type(G, "fg")
+    if fg_subgraph:
+        # Loop through each functional group node in the graph
+        for fg_node in fg_subgraph.nodes():
+            # Get connected atom nodes (assuming edges are between fg and atom nodes)
+            connected_atoms = [
+                nbr
+                for nbr in G.neighbors(fg_node)
+                if G.nodes[nbr].get("node_type") == "atom"
+            ]
 
-    # Loop through each functional group node in the graph
-    for fg_node in _get_subgraph_by_node_type(G, "fg").nodes():
-        # Get connected atom nodes (assuming edges are between fg and atom nodes)
-        connected_atoms = [
-            nbr
-            for nbr in G.neighbors(fg_node)
-            if G.nodes[nbr].get("node_type") == "atom"
-        ]
+            # Get the 2D positions of the connected atoms
+            positions = np.array([atom_pos[atom] for atom in connected_atoms])
+            x_mean, y_mean = positions[:, 0].mean(), positions[:, 1].mean()
+            fg_pos[fg_node] = (x_mean, y_mean, 2)  # z = 2 for elevation
 
-        # Get the 2D positions of the connected atoms
-        positions = np.array([atom_pos[atom] for atom in connected_atoms])
-        x_mean, y_mean = positions[:, 0].mean(), positions[:, 1].mean()
-        fg_pos[fg_node] = (x_mean, y_mean, 2)  # z = 2 for elevation
+    graph_pos = {}
+    graph_subgraph = _get_subgraph_by_node_type(G, "graph")
+    if graph_subgraph:
+        graph_node = next(iter(graph_subgraph.nodes()))
+        neighbor_type = {
+            G.nodes[nbr].get("node_type") for nbr in G.neighbors(graph_node)
+        }
+        assert neighbor_type < {
+            "fg",
+            "atom",
+        }, f"Graph node {graph_node} must only connect to one type of node: {neighbor_type}"
 
-    graph_node = next(iter(_get_subgraph_by_node_type(G, "graph").nodes()))
-    graph_pos_arr = np.array(
-        [
-            fg_pos[nbr]
-            for nbr in G.neighbors(graph_node)
-            if G.nodes[nbr].get("node_type") == "fg"
-        ]
-    )
-    graph_pos = {
-        graph_node: (graph_pos_arr[:, 0].mean(), graph_pos_arr[:, 1].mean(), 4)
-    }
+        if "fg" in neighbor_type:
+            graph_pos_arr = np.array(
+                [
+                    fg_pos[nbr]
+                    for nbr in G.neighbors(graph_node)
+                    if G.nodes[nbr].get("node_type") == "fg"
+                ]
+            )
+        else:
+            graph_pos_arr = np.array(
+                [
+                    atom_pos[nbr]
+                    for nbr in G.neighbors(graph_node)
+                    if G.nodes[nbr].get("node_type") == "atom"
+                ]
+            )
+        graph_pos = {
+            graph_node: (graph_pos_arr[:, 0].mean(), graph_pos_arr[:, 1].mean(), 4)
+        }
 
     pos = {**atom_pos, **fg_pos, **graph_pos}
 
@@ -413,10 +462,12 @@ class Main:
     Command-line wrapper class for plotting augmented molecular graphs.
     """
 
-    def __init__(self):
-        self._fg_reader = AtomFGReader_WithFGEdges_WithGraphNode()
-
-    def plot(self, smiles: str = "OC(=O)c1ccccc1O", plot_type: str = "simple") -> None:
+    @staticmethod
+    def plot(
+        smiles: str = "OC(=O)c1ccccc1O",
+        plot_type: str = "simple",
+        reader: str = "w_fge_w_gn",
+    ) -> None:
         """
         Plot an augmented molecular graph from SMILES.
 
@@ -427,7 +478,8 @@ class Main:
                 - h: Hierarchical 2D-graph with separate plane for each node type
                 - 3d: Hierarchical 3D-graph
         """
-        mol = self._fg_reader._smiles_to_mol(smiles)  # noqa
+        fg_reader = READER[reader]()
+        mol = fg_reader._smiles_to_mol(smiles)
         if mol is None:
             raise ValueError(f"Invalid SMILES: {smiles}")
 
@@ -435,9 +487,7 @@ class Main:
             plot_nonaugment_molecule_graph(mol)
             return
 
-        edge_index, augmented_molecule = self._fg_reader._create_augmented_graph(
-            mol
-        )  # noqa
+        edge_index, augmented_molecule = fg_reader._create_augmented_graph(mol)
         plot_augmented_graph(edge_index, augmented_molecule, mol, plot_type)
 
 
