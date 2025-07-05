@@ -22,7 +22,11 @@ from chebai_graph.preprocessing.properties import (
     MolecularProperty,
 )
 from chebai_graph.preprocessing.reader import (
-    GraphFGAugmentorReader,
+    AtomFGReader_NoFGEdges_WithGraphNode,
+    AtomFGReader_WithFGEdges_NoGraphNode,
+    AtomFGReader_WithFGEdges_WithGraphNode,
+    AtomReader_WithGraphNodeOnly,
+    AtomsFGReader_NoFGEdges_NoGraphNode,
     GraphPropertyReader,
     GraphReader,
 )
@@ -178,20 +182,11 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
                 )
             else:
                 molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
-
-        is_atom_node = (
-            geom_data.is_atom_node if hasattr(geom_data, "is_atom_node") else None
-        )
-        is_graph_node = (
-            geom_data.is_graph_node if hasattr(geom_data, "is_graph_node") else None
-        )
         return GeomData(
             x=x,
             edge_index=geom_data.edge_index,
             edge_attr=edge_attr,
             molecule_attr=molecule_attr,
-            is_atom_node=is_atom_node,
-            is_graph_node=is_graph_node,
         )
 
     def load_processed_data_from_file(self, filename):
@@ -249,5 +244,55 @@ class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):
     pass
 
 
-class ChEBI50GraphFGAugmentorReader(GraphPropertiesMixIn, ChEBIOver50):
-    READER = GraphFGAugmentorReader
+class AugGraphPropMixIn_NoGraphNode(GraphPropertiesMixIn, ABC):
+    READER = None
+
+    def _merge_props_into_base(self, row):
+        data = super()._merge_props_into_base(row)
+        geom_data = row["features"]
+        assert isinstance(geom_data, GeomData) and isinstance(data, GeomData)
+
+        is_atom_node = geom_data.is_atom_node
+        assert is_atom_node is not None, "is_atom_node must be set in the geom_data"
+        data.is_atom_node = is_atom_node
+        return data
+
+
+class AugGraphPropMixIn_WithGraphNode(AugGraphPropMixIn_NoGraphNode, ABC):
+    READER = None
+
+    def _merge_props_into_base(self, row):
+        data = super()._merge_props_into_base(row)
+        return self._add_graph_node_mask(data, row)
+
+    def _add_graph_node_mask(self, data: GeomData, row) -> GeomData:
+        """
+        Add a mask for graph nodes to the data.
+        This is used to distinguish between atom nodes and graph nodes.
+        """
+        geom_data = row["features"]
+        assert isinstance(geom_data, GeomData) and isinstance(data, GeomData)
+        is_graph_node = geom_data.is_graph_node
+        assert is_graph_node is not None, "is_graph_node must be set in the geom_data"
+        data.is_graph_node = is_graph_node
+        return data
+
+
+class ChEBI50_WFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
+    READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI50_NFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
+    READER = AtomFGReader_NoFGEdges_WithGraphNode
+
+
+class ChEBI50_WFGE_NGN_GraphProp(AugGraphPropMixIn_NoGraphNode, ChEBIOver50):
+    READER = AtomFGReader_WithFGEdges_NoGraphNode
+
+
+class ChEBI50_NFGE_NGN_GraphProp(AugGraphPropMixIn_NoGraphNode, ChEBIOver50):
+    READER = AtomsFGReader_NoFGEdges_NoGraphNode
+
+
+class ChEBI50_Atom_WGNOnly_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
+    READER = AtomReader_WithGraphNodeOnly
