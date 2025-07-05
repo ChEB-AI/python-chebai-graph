@@ -1,3 +1,4 @@
+import sys
 from abc import ABC
 from typing import Dict, List, Optional
 
@@ -13,6 +14,15 @@ from . import constants as k
 from . import properties as pr
 from .base import AtomProperty, BondProperty, FrozenPropertyAlias
 
+# For python 3.7+, the standard dict type preserves insertion order, and is iterated over in same order
+# https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
+# https://mail.python.org/pipermail/python-dev/2017-December/151283.html
+assert sys.version_info >= (
+    3,
+    7,
+), "This code requires Python 3.7 or higher."
+# Order preservation is necessary to to create `prop_list`
+
 
 # --------------------- Atom Properties -----------------------------
 class AugmentedAtomProperty(AtomProperty, ABC):
@@ -24,9 +34,7 @@ class AugmentedAtomProperty(AtomProperty, ABC):
                 f"Key `{self.MAIN_KEY}` should be present in augmented molecule dict"
             )
 
-        missing_keys = {"atom_nodes", "fg_nodes", "graph_node"} - augmented_mol[
-            self.MAIN_KEY
-        ].keys()
+        missing_keys = {"atom_nodes"} - augmented_mol[self.MAIN_KEY].keys()
         if missing_keys:
             raise KeyError(f"Missing keys {missing_keys} in augmented molecule nodes")
 
@@ -35,26 +43,29 @@ class AugmentedAtomProperty(AtomProperty, ABC):
             raise TypeError(
                 f'augmented_mol["{self.MAIN_KEY}"]["atom_nodes"] must be an instance of rdkit.Chem.Mol'
             )
-
         prop_list = [self.get_atom_value(atom) for atom in atom_molecule.GetAtoms()]
 
-        fg_nodes = augmented_mol[self.MAIN_KEY]["fg_nodes"]
-        graph_node = augmented_mol[self.MAIN_KEY]["graph_node"]
-        if not isinstance(fg_nodes, dict) or not isinstance(graph_node, dict):
-            raise TypeError(
-                f'augmented_mol["{self.MAIN_KEY}"](["fg_nodes"]/["graph_node"]) must be an instance of dict '
-                f"containing its properties"
-            )
+        if "fg_nodes" in augmented_mol[self.MAIN_KEY]:
+            fg_nodes = augmented_mol[self.MAIN_KEY]["fg_nodes"]
+            if not isinstance(fg_nodes, dict):
+                raise TypeError(
+                    f'augmented_mol["{self.MAIN_KEY}"](["fg_nodes"]) must be an instance of dict '
+                    f"containing its properties"
+                )
+            prop_list.extend([self.get_atom_value(atom) for atom in fg_nodes.values()])
 
-        # For python 3.7+, the standard dict type preserves insertion order, and is iterated over in same order
-        # https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
-        # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
-        prop_list.extend([self.get_atom_value(atom) for atom in fg_nodes.values()])
-        prop_list.append(self.get_atom_value(graph_node))
+        if "graph_node" in augmented_mol[self.MAIN_KEY]:
+            graph_node = augmented_mol[self.MAIN_KEY]["graph_node"]
+            if not isinstance(graph_node, dict):
+                raise TypeError(
+                    f'augmented_mol["{self.MAIN_KEY}"](["graph_node"]) must be an instance of dict '
+                    f"containing its properties"
+                )
+            prop_list.append(self.get_atom_value(graph_node))
+
         assert (
             len(prop_list) == augmented_mol[self.MAIN_KEY]["num_nodes"]
         ), "Number of property values should be equal to number of nodes"
-
         return prop_list
 
     def _check_modify_atom_prop_value(self, atom: Chem.rdchem.Atom | Dict, prop: str):
@@ -228,7 +239,7 @@ class AugmentedBondProperty(BondProperty, ABC):
                 f"Key `{self.MAIN_KEY}` should be present in augmented molecule dict"
             )
 
-        missing_keys = k.EDGE_LEVELS - augmented_mol[self.MAIN_KEY].keys()
+        missing_keys = {k.WITHIN_ATOMS_EDGE} - augmented_mol[self.MAIN_KEY].keys()
         if missing_keys:
             raise KeyError(f"Missing keys {missing_keys} in augmented molecule nodes")
 
@@ -237,31 +248,38 @@ class AugmentedBondProperty(BondProperty, ABC):
             raise TypeError(
                 f'augmented_mol["{self.MAIN_KEY}"]["{k.WITHIN_ATOMS_EDGE}"] must be an instance of rdkit.Chem.Mol'
             )
-
         prop_list = [self.get_bond_value(bond) for bond in atom_molecule.GetBonds()]
 
-        fg_atom_edges = augmented_mol[self.MAIN_KEY][k.ATOM_FG_EDGE]
-        fg_edges = augmented_mol[self.MAIN_KEY][k.WITHIN_FG_EDGE]
-        fg_graph_node_edges = augmented_mol[self.MAIN_KEY][k.FG_GRAPHNODE_EDGE]
-
-        if (
-            not isinstance(fg_atom_edges, dict)
-            or not isinstance(fg_edges, dict)
-            or not isinstance(fg_graph_node_edges, dict)
-        ):
-            raise TypeError(
-                f'augmented_mol["{self.MAIN_KEY}"](["{k.ATOM_FG_EDGE}"]/["{k.WITHIN_FG_EDGE}"]/["{k.FG_GRAPHNODE_EDGE}"]) '
-                f"must be an instance of dict containing its properties"
+        if k.ATOM_FG_EDGE in augmented_mol[self.MAIN_KEY]:
+            fg_atom_edges = augmented_mol[self.MAIN_KEY][k.ATOM_FG_EDGE]
+            if not isinstance(fg_atom_edges, dict):
+                raise TypeError(
+                    f"augmented_mol['{self.MAIN_KEY}'](['{k.ATOM_FG_EDGE}'])"
+                    f"must be an instance of dict containing its properties"
+                )
+            prop_list.extend(
+                [self.get_bond_value(bond) for bond in fg_atom_edges.values()]
             )
 
-        # For python 3.7+, the standard dict type preserves insertion order, and is iterated over in same order
-        # https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
-        # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
-        prop_list.extend([self.get_bond_value(bond) for bond in fg_atom_edges.values()])
-        prop_list.extend([self.get_bond_value(bond) for bond in fg_edges.values()])
-        prop_list.extend(
-            [self.get_bond_value(bond) for bond in fg_graph_node_edges.values()]
-        )
+        if k.WITHIN_FG_EDGE in augmented_mol[self.MAIN_KEY]:
+            fg_edges = augmented_mol[self.MAIN_KEY][k.WITHIN_FG_EDGE]
+            if not isinstance(fg_edges, dict):
+                raise TypeError(
+                    f"augmented_mol['{self.MAIN_KEY}'](['{k.WITHIN_FG_EDGE}'])"
+                    f"must be an instance of dict containing its properties"
+                )
+            prop_list.extend([self.get_bond_value(bond) for bond in fg_edges.values()])
+
+        if k.TO_GRAPHNODE_EDGE in augmented_mol[self.MAIN_KEY]:
+            fg_graph_node_edges = augmented_mol[self.MAIN_KEY][k.TO_GRAPHNODE_EDGE]
+            if not isinstance(fg_graph_node_edges, dict):
+                raise TypeError(
+                    f"augmented_mol['{self.MAIN_KEY}'](['{k.TO_GRAPHNODE_EDGE}'])"
+                    f"must be an instance of dict containing its properties"
+                )
+            prop_list.extend(
+                [self.get_bond_value(bond) for bond in fg_graph_node_edges.values()]
+            )
 
         num_directed_edges = augmented_mol[self.MAIN_KEY][k.NUM_EDGES] // 2
         assert (

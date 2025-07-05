@@ -598,7 +598,7 @@ class _AddGraphNode(_AugmentorReader):
             self._construct_nodes_to_graph_node_structure(nodes_ids)
         )
 
-        augmented_struct["edge_info"][k.FG_GRAPHNODE_EDGE] = nodes_to_graph_edges
+        augmented_struct["edge_info"][k.TO_GRAPHNODE_EDGE] = nodes_to_graph_edges
         augmented_struct["edge_info"][k.NUM_EDGES] += len(nodes_to_graph_edges)
         assert (
             self._idx_of_edge == augmented_struct["edge_info"][k.NUM_EDGES]
@@ -643,7 +643,7 @@ class _AddGraphNode(_AugmentorReader):
             graph_edge_index[0].append(self._idx_of_node)
             graph_edge_index[1].append(fg_id)
             graph_to_nodes_edges[f"{self._idx_of_node}_{fg_id}"] = {
-                k.EDGE_LEVEL: k.FG_GRAPHNODE_EDGE
+                k.EDGE_LEVEL: k.TO_GRAPHNODE_EDGE
             }
             self._idx_of_edge += 1
         self._idx_of_node += 1

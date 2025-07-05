@@ -25,7 +25,7 @@ EDGE_COLOR_MAP = {
     k.WITHIN_ATOMS_EDGE: "#1f77b4",
     k.ATOM_FG_EDGE: "#9467bd",
     k.WITHIN_FG_EDGE: "#ff7f0e",
-    k.FG_GRAPHNODE_EDGE: "#2ca02c",
+    k.TO_GRAPHNODE_EDGE: "#2ca02c",
 }
 
 NODE_COLOR_MAP = {
@@ -119,8 +119,8 @@ def _create_graph(
         else set()
     )
     fg_graph_edges = (
-        set(augmented_graph_edges[k.FG_GRAPHNODE_EDGE])
-        if k.FG_GRAPHNODE_EDGE in augmented_graph_edges
+        set(augmented_graph_edges[k.TO_GRAPHNODE_EDGE])
+        if k.TO_GRAPHNODE_EDGE in augmented_graph_edges
         else set()
     )
 
@@ -133,7 +133,7 @@ def _create_graph(
         elif undirected_edge_set & within_fg_edges:
             edge_type = k.WITHIN_FG_EDGE
         elif undirected_edge_set & fg_graph_edges:
-            edge_type = k.FG_GRAPHNODE_EDGE
+            edge_type = k.TO_GRAPHNODE_EDGE
         else:
             raise ValueError("Unexpected edge type")
         G.add_edge(src, tgt, edge_type=edge_type, edge_color=EDGE_COLOR_MAP[edge_type])
@@ -318,7 +318,7 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
         k.WITHIN_ATOMS_EDGE: [],
         k.ATOM_FG_EDGE: [],
         k.WITHIN_FG_EDGE: [],
-        k.FG_GRAPHNODE_EDGE: [],
+        k.TO_GRAPHNODE_EDGE: [],
     }
     for src, tgt, data in G.edges(data=True):
         edge_type_to_edges[data["edge_type"]].append((src, tgt))
