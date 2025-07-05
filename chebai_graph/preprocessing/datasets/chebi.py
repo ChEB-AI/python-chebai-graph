@@ -1,7 +1,6 @@
-import importlib
 import os
 from abc import ABC
-from typing import Callable, List, Optional
+from collections.abc import Callable
 
 import pandas as pd
 import torch
@@ -15,7 +14,6 @@ from chebai.preprocessing.datasets.chebi import (
 from lightning_utilities.core.rank_zero import rank_zero_info
 from torch_geometric.data.data import Data as GeomData
 
-import chebai_graph.preprocessing.properties as graph_properties
 from chebai_graph.preprocessing.properties import (
     AtomProperty,
     BondProperty,
@@ -31,42 +29,40 @@ from chebai_graph.preprocessing.reader import (
     GraphReader,
 )
 
+from .utils import resolve_property
+
 
 class ChEBI50GraphData(ChEBIOver50):
+    """ChEBI dataset with at least 50 samples per class, using GraphReader."""
+
     READER = GraphReader
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
 
-def _resolve_property(
-    property,  #: str | properties.MolecularProperty
-) -> MolecularProperty:
-    # if property is given as a string, try to resolve as a class path
-    if isinstance(property, MolecularProperty):
-        return property
-    try:
-        # split class_path into module-part and class name
-        last_dot = property.rindex(".")
-        module_name = property[:last_dot]
-        class_name = property[last_dot + 1 :]
-        module = importlib.import_module(module_name)
-        return getattr(module, class_name)()
-    except ValueError:
-        # if only a class name is given, assume the module is chebai_graph.processing.properties
-        return getattr(graph_properties, property)()
-
-
 class GraphPropertiesMixIn(ChEBIOverX, ABC):
+    """Mixin for adding molecular property encodings to graph-based ChEBI datasets."""
+
     READER = GraphPropertyReader
 
     def __init__(
-        self, properties: Optional[List], transform: Optional[Callable] = None, **kwargs
+        self,
+        properties: list | None = None,
+        transform: Callable | None = None,
+        **kwargs,
     ):
+        """
+        Initialize GraphPropertiesMixIn.
+
+        Args:
+            properties: Optional list of MolecularProperty class paths or instances.
+            transform: Optional transformation applied to each data sample.
+        """
         super().__init__(**kwargs)
         # atom_properties and bond_properties are given as lists containing class_paths
         if properties is not None:
-            properties = [_resolve_property(prop) for prop in properties]
+            properties = [resolve_property(prop) for prop in properties]
             properties = sorted(
                 properties, key=lambda prop: self.get_property_path(prop)
             )
@@ -81,7 +77,13 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
         )
         self.transform = transform
 
-    def _setup_properties(self):
+    def _setup_properties(self) -> None:
+        """
+        Process and cache molecular properties to disk.
+
+        Returns:
+            None
+        """
         raw_data = []
         os.makedirs(self.processed_properties_dir, exist_ok=True)
 
@@ -101,14 +103,16 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
                 file,
             )
             raw_data += list(self._load_dict(path))
+
         idents = [row["ident"] for row in raw_data]
         features = [row["features"] for row in raw_data]
 
         def enc_if_not_none(encode, value):
-            if value is not None and len(value) > 0:
-                return [encode(atom_v) for atom_v in value]
-            else:
-                return None
+            return (
+                [encode(v) for v in value]
+                if value is not None and len(value) > 0
+                else None
+            )
 
         for property in self.properties:
             if not os.path.isfile(self.get_property_path(property)):
@@ -137,30 +141,53 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
                 property.on_finish()
 
     @property
-    def processed_properties_dir(self):
+    def processed_properties_dir(self) -> str:
         return os.path.join(self.processed_dir, "properties")
 
-    def get_property_path(self, property: MolecularProperty):
+    def get_property_path(self, property: MolecularProperty) -> str:
+        """
+        Construct the cache path for a given molecular property.
+
+        Args:
+            property: Instance of a MolecularProperty.
+
+        Returns:
+            Path to the cached property file.
+        """
         return os.path.join(
             self.processed_properties_dir,
             f"{property.name}_{property.encoder.name}.pt",
         )
 
-    def _after_setup(self, **kwargs):
+    def _after_setup(self, **kwargs) -> None:
         """
-        Finalize the setup process after ensuring the processed data is available.
+        Finalize setup after ensuring properties are processed.
 
-        This method performs post-setup tasks like finalizing the reader and setting internal properties.
+        Args:
+            **kwargs: Additional keyword arguments passed to superclass.
+
+        Returns:
+            None
         """
         self._setup_properties()
         super()._after_setup(**kwargs)
 
-    def _merge_props_into_base(self, row):
+    def _merge_props_into_base(self, row: pd.Series) -> GeomData:
+        """
+        Merge encoded molecular properties into the GeomData object.
+
+        Args:
+            row: A dictionary containing 'features' and encoded properties.
+
+        Returns:
+            A GeomData object with merged features.
+        """
         geom_data = row["features"]
         assert isinstance(geom_data, GeomData)
         edge_attr = geom_data.edge_attr
         x = geom_data.x
         molecule_attr = torch.empty((1, 0))
+
         for property in self.properties:
             property_values = row[f"{property.name}"]
             if isinstance(property_values, torch.Tensor):
@@ -172,6 +199,7 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
                 property_values = torch.zeros(
                     (0, property.encoder.get_encoding_length())
                 )
+
             if isinstance(property, AtomProperty):
                 x = torch.cat([x, property_values], dim=1)
             elif isinstance(property, BondProperty):
@@ -182,6 +210,7 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
                 )
             else:
                 molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
+
         return GeomData(
             x=x,
             edge_index=geom_data.edge_index,
@@ -189,9 +218,19 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
             molecule_attr=molecule_attr,
         )
 
-    def load_processed_data_from_file(self, filename):
+    def load_processed_data_from_file(self, filename: str) -> list[dict]:
+        """
+        Load dataset and merge cached properties into base features.
+
+        Args:
+            filename: The path to the file to load.
+
+        Returns:
+            List of data entries, each a dictionary.
+        """
         base_data = super().load_processed_data_from_file(filename)
         base_df = pd.DataFrame(base_data)
+
         for property in self.properties:
             property_data = torch.load(
                 self.get_property_path(property), weights_only=False
@@ -218,36 +257,40 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
         prop_lengths = [
             (prop.name, prop.encoder.get_encoding_length()) for prop in self.properties
         ]
-
         rank_zero_info(
-            f"Finished loading dataset from properties."
-            f"\nEncoding lengths are: "
-            f"{prop_lengths}"
-            f"\nIf you train a model with these properties and encodings, "
-            f"use n_atom_properties: {sum([prop.encoder.get_encoding_length() for prop in self.properties if isinstance(prop, AtomProperty)])}, "
-            f"n_bond_properties: {sum([prop.encoder.get_encoding_length() for prop in self.properties if isinstance(prop, BondProperty)])} "
-            f"and n_molecule_properties: {sum([prop.encoder.get_encoding_length() for prop in self.properties if not (isinstance(prop, AtomProperty) or isinstance(prop, BondProperty))])}"
+            f"Finished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n"
+            f"Use n_atom_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, AtomProperty))}, "
+            f"n_bond_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, BondProperty))}, "
+            f"n_molecule_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if not isinstance(p, (AtomProperty, BondProperty)))}"
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
 
 
 class ChEBI50GraphProperties(GraphPropertiesMixIn, ChEBIOver50):
+    """ChEBIOver50 dataset with molecular property encodings."""
+
     pass
 
 
 class ChEBI100GraphProperties(GraphPropertiesMixIn, ChEBIOver100):
+    """ChEBIOver100 dataset with molecular property encodings."""
+
     pass
 
 
 class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):
+    """Partial version of ChEBIOver50 with molecular properties."""
+
     pass
 
 
 class AugGraphPropMixIn_NoGraphNode(GraphPropertiesMixIn, ABC):
+    """Mixin for augmented graph data without additional graph nodes."""
+
     READER = None
 
-    def _merge_props_into_base(self, row):
+    def _merge_props_into_base(self, row: pd.Series) -> GeomData:
         data = super()._merge_props_into_base(row)
         geom_data = row["features"]
         assert isinstance(geom_data, GeomData) and isinstance(data, GeomData)
@@ -259,16 +302,24 @@ class AugGraphPropMixIn_NoGraphNode(GraphPropertiesMixIn, ABC):
 
 
 class AugGraphPropMixIn_WithGraphNode(AugGraphPropMixIn_NoGraphNode, ABC):
+    """Mixin for augmented graph data with graph-level nodes."""
+
     READER = None
 
-    def _merge_props_into_base(self, row):
+    def _merge_props_into_base(self, row: pd.Series) -> GeomData:
         data = super()._merge_props_into_base(row)
         return self._add_graph_node_mask(data, row)
 
     def _add_graph_node_mask(self, data: GeomData, row) -> GeomData:
         """
-        Add a mask for graph nodes to the data.
-        This is used to distinguish between atom nodes and graph nodes.
+        Add a graph node mask to the GeomData object.
+
+        Args:
+            data: A GeomData object with features.
+            row: A dictionary containing 'features' and other metadata.
+
+        Returns:
+            Modified GeomData with graph node mask added.
         """
         geom_data = row["features"]
         assert isinstance(geom_data, GeomData) and isinstance(data, GeomData)
@@ -279,20 +330,30 @@ class AugGraphPropMixIn_WithGraphNode(AugGraphPropMixIn_NoGraphNode, ABC):
 
 
 class ChEBI50_WFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
+    """ChEBIOver50 with with FG nodes and FG edges and graph node."""
+
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
 class ChEBI50_NFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
+    """ChEBIOver50 with FG nodes but without FG edges, with graph node."""
+
     READER = AtomFGReader_NoFGEdges_WithGraphNode
 
 
 class ChEBI50_WFGE_NGN_GraphProp(AugGraphPropMixIn_NoGraphNode, ChEBIOver50):
+    """ChEBIOver50 with FG nodes and FG edges, no graph node."""
+
     READER = AtomFGReader_WithFGEdges_NoGraphNode
 
 
 class ChEBI50_NFGE_NGN_GraphProp(AugGraphPropMixIn_NoGraphNode, ChEBIOver50):
+    """ChEBIOver50 with FG nodes but without FG edges or graph node."""
+
     READER = AtomsFGReader_NoFGEdges_NoGraphNode
 
 
 class ChEBI50_Atom_WGNOnly_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
+    """ChEBIOver50 with atom-level nodes and graph node only."""
+
     READER = AtomReader_WithGraphNodeOnly
