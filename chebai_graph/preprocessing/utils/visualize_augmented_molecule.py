@@ -477,6 +477,12 @@ class Main:
                 - simple : 2D graph with all nodes on same plane
                 - h: Hierarchical 2D-graph with separate plane for each node type
                 - 3d: Hierarchical 3D-graph
+            reader (str): Reader type for graph augmentation. Options:
+                - 'n_fge_w_gn': FG nodes without FG edges, with a graph node.
+                - 'w_fge_w_gn': FG nodes with FG edges, with a graph node.
+                - 'w_fge_n_gn': FG nodes with FG edges, no graph node.
+                - 'n_fge_n_gn': FG nodes without FG edges, no graph node.
+                - 'atom_w_gn': Atom nodes only, connected to a graph node.
         """
         fg_reader = READER[reader]()
         mol = fg_reader._smiles_to_mol(smiles)
