@@ -1,12 +1,10 @@
 import os
-from typing import List, Optional
 
 import chebai.preprocessing.reader as dr
 import networkx as nx
 import pysmiles as ps
 import rdkit.Chem as Chem
 import torch
-from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from torch_geometric.data import Data as GeomData
 from torch_geometric.utils import from_networkx
 
@@ -21,34 +19,64 @@ class GraphPropertyReader(dr.DataReader):
         self,
         *args,
         **kwargs,
-    ):
+    ) -> None:
+        """
+        Initialize GraphPropertyReader.
+
+        Args:
+            *args: Positional arguments forwarded to the base class.
+            **kwargs: Keyword arguments forwarded to the base class.
+        """
         super().__init__(*args, **kwargs)
         self.failed_counter = 0
-        self.mol_object_buffer = {}
+        self.mol_object_buffer: dict[str, Chem.rdchem.Mol | None] = {}
 
     @classmethod
-    def name(cls):
+    def name(cls) -> str:
+        """
+        Get the name identifier of the reader.
+
+        Returns:
+            str: The name of the reader.
+        """
         return "graph_properties"
 
-    def _smiles_to_mol(self, smiles: str) -> Optional[Chem.rdchem.Mol]:
-        """Load smiles into rdkit, store object in buffer"""
+    def _smiles_to_mol(self, smiles: str) -> Chem.rdchem.Mol | None:
+        """
+        Load SMILES string into an RDKit molecule object and cache it.
+
+        Args:
+            smiles (str): The SMILES string to parse.
+
+        Returns:
+            Chem.rdchem.Mol | None: Parsed molecule object or None if parsing failed.
+        """
         if smiles in self.mol_object_buffer:
             return self.mol_object_buffer[smiles]
 
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
-            rank_zero_warn(f"RDKit failed to at parsing {smiles} (returned None)")
+            print(f"RDKit failed to at parsing {smiles} (returned None)")
             self.failed_counter += 1
         else:
             try:
                 Chem.SanitizeMol(mol)
             except Exception as e:
-                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}, \n Error: {e}")
+                print(f"Rdkit failed at sanitizing {smiles}, \n Error: {e}")
                 self.failed_counter += 1
         self.mol_object_buffer[smiles] = mol
         return mol
 
-    def _read_data(self, raw_data):
+    def _read_data(self, raw_data: str) -> GeomData | None:
+        """
+        Convert raw SMILES string data into a PyTorch Geometric Data object.
+
+        Args:
+            raw_data (str): SMILES string.
+
+        Returns:
+            GeomData | None: Graph data object or None if molecule parsing failed.
+        """
         mol = self._smiles_to_mol(raw_data)
         if mol is None:
             return None
@@ -65,11 +93,24 @@ class GraphPropertyReader(dr.DataReader):
 
         return GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
-    def on_finish(self):
-        rank_zero_info(f"Failed to read {self.failed_counter} SMILES in total")
+    def on_finish(self) -> None:
+        """
+        Called after reading is done to log information and clean up.
+        """
+        print(f"Failed to read {self.failed_counter} SMILES in total")
         self.mol_object_buffer = {}
 
-    def read_property(self, smiles: str, property: MolecularProperty) -> Optional[List]:
+    def read_property(self, smiles: str, property: MolecularProperty) -> list | None:
+        """
+        Read a molecular property for a given SMILES string.
+
+        Args:
+            smiles (str): SMILES string of the molecule.
+            property (MolecularProperty): Property extractor to apply.
+
+        Returns:
+            list | None: Property values or None if molecule parsing failed.
+        """
         mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
@@ -82,23 +123,45 @@ class GraphReader(dr.ChemDataReader):
 
     COLLATOR = GraphCollator
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
+        """
+        Initialize GraphReader.
+
+        Args:
+            *args: Positional arguments forwarded to the base class.
+            **kwargs: Keyword arguments forwarded to the base class.
+        """
         super().__init__(*args, **kwargs)
         self.dirname = os.path.dirname(__file__)
 
     @classmethod
-    def name(cls):
+    def name(cls) -> str:
+        """
+        Get the name identifier of the reader.
+
+        Returns:
+            str: The name of the reader.
+        """
         return "graph"
 
-    def _read_data(self, raw_data) -> Optional[GeomData]:
+    def _read_data(self, raw_data: str) -> GeomData | None:
+        """
+        Convert a SMILES string into a PyTorch Geometric Data object with atom tokens and bond order attributes.
+
+        Args:
+            raw_data (str): SMILES string.
+
+        Returns:
+            GeomData | None: Graph data object or None if parsing failed.
+        """
         # raw_data is a SMILES string
         try:
             mol = ps.read_smiles(raw_data)
         except ValueError:
             return None
         assert isinstance(mol, nx.Graph)
-        d = {}
-        de = {}
+        d: dict[int, int] = {}
+        de: dict[tuple[int, int], int] = {}
         for node in mol.nodes:
             n = mol.nodes[node]
             try:
@@ -127,5 +190,14 @@ class GraphReader(dr.ChemDataReader):
         data = from_networkx(mol)
         return data
 
-    def collate(self, list_of_tuples):
+    def collate(self, list_of_tuples: list) -> any:
+        """
+        Collate a list of samples into a batch.
+
+        Args:
+            list_of_tuples (list): List of data tuples to collate.
+
+        Returns:
+            Any: Collated batch (type depends on collator).
+        """
         return self.collator(list_of_tuples)
