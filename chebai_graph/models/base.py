@@ -8,17 +8,54 @@ from torch_scatter import scatter_add
 
 
 class GraphBaseNet(ChebaiBaseNet, ABC):
-    def _get_prediction_and_labels(self, data, labels, output):
+    """
+    Base class for graph-based prediction networks.
+    """
+
+    def _get_prediction_and_labels(
+        self, data: XYData, labels: torch.Tensor, output: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Apply sigmoid activation to outputs and return processed labels.
+
+        Args:
+            data (XYData): Input batch data.
+            labels (torch.Tensor): Ground-truth labels.
+            output (torch.Tensor): Raw model output.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: Tuple of (predictions, labels).
+        """
         return torch.sigmoid(output), labels.int()
 
-    def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor:
+    def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor | None:
+        """
+        Process labels from XYData batch.
+
+        Returns:
+            torch.Tensor | None: Processed labels if present, else None.
+        """
         return batch.y.float() if batch.y is not None else None
 
 
 class GraphModelBase(torch.nn.Module, ABC):
-    """Base class for graph-based models with a configuration dictionary."""
+    """
+    Abstract base class for graph models with configurable architecture.
+    """
 
-    def __init__(self, config: dict, **kwargs):
+    def __init__(self, config: dict, **kwargs) -> None:
+        """
+        Initialize model hyperparameters from configuration.
+
+        Args:
+            config (dict): Configuration dictionary with keys:
+                - 'hidden_length'
+                - 'dropout_rate'
+                - 'n_conv_layers'
+                - 'n_atom_properties'
+                - 'n_bond_properties'
+            **kwargs: Additional keyword arguments for torch.nn.Module.
+        """
         super().__init__(**kwargs)
         self.hidden_length = int(config["hidden_length"])
         self.dropout_rate = float(config["dropout_rate"])
@@ -28,7 +65,22 @@ class GraphModelBase(torch.nn.Module, ABC):
 
 
 class GraphNetWrapper(GraphBaseNet, ABC):
-    def __init__(self, config: dict, n_linear_layers, n_molecule_properties, **kwargs):
+    """
+    Base wrapper class for GNNs with linear layers for property prediction.
+    """
+
+    def __init__(
+        self, config: dict, n_linear_layers: int, n_molecule_properties: int, **kwargs
+    ) -> None:
+        """
+        Initialize the GNN and linear layers.
+
+        Args:
+            config (dict): Model configuration.
+            n_linear_layers (int): Number of linear layers.
+            n_molecule_properties (int): Number of molecular-level features.
+            **kwargs: Additional arguments.
+        """
         super().__init__(**kwargs)
         self.gnn = self._get_gnn(config)
         gnn_out_dim = (
@@ -49,13 +101,52 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         )
 
     @abstractmethod
-    def _get_gnn(self, config):
+    def _get_gnn(self, config: dict) -> torch.nn.Module:
+        """
+        Create the graph neural network.
+
+        Args:
+            config (dict): Configuration dictionary.
+
+        Returns:
+            torch.nn.Module: Instantiated GNN module.
+        """
         pass
 
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
+    def _get_lin_seq_input_dim(
+        self, gnn_out_dim: int, n_molecule_properties: int
+    ) -> int:
+        """
+        Compute input dimension for the linear layers.
+
+        Args:
+            gnn_out_dim (int): Output dimension of GNN.
+            n_molecule_properties (int): Number of molecule-level features.
+
+        Returns:
+            int: Total input dimension.
+        """
         return gnn_out_dim + n_molecule_properties
 
-    def _get_linear_module_list(self, n_linear_layers, in_dim, hidden_dim, out_dim):
+    def _get_linear_module_list(
+        self,
+        n_linear_layers: int,
+        in_dim: int,
+        hidden_dim: int,
+        out_dim: int,
+    ) -> torch.nn.Sequential:
+        """
+        Construct a sequential module of linear layers.
+
+        Args:
+            n_linear_layers (int): Number of linear layers.
+            in_dim (int): Input dimension.
+            hidden_dim (int): Hidden dimension.
+            out_dim (int): Output dimension.
+
+        Returns:
+            torch.nn.Sequential: Linear layers with activations.
+        """
         if n_linear_layers < 1:
             raise ValueError("n_linear_layers must be at least 1")
 
@@ -72,7 +163,16 @@ class GraphNetWrapper(GraphBaseNet, ABC):
 
         return torch.nn.Sequential(*layers)
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
+        """
+        Forward pass through GNN, pooling and linear layers.
+
+        Args:
+            batch (dict): Input batch with graph features.
+
+        Returns:
+            torch.Tensor: Predicted output.
+        """
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
         a = self.gnn(batch)
@@ -82,171 +182,134 @@ class GraphNetWrapper(GraphBaseNet, ABC):
 
 
 class AugmentedNodePoolingNet(GraphNetWrapper, ABC):
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
-        # atom_embeddings + molecule attributes + augmented_node_embeddings
+    """
+    Pooling using atom and augmented node embeddings.
+    """
+
+    def _get_lin_seq_input_dim(
+        self, gnn_out_dim: int, n_molecule_properties: int
+    ) -> int:
+        """
+        Include augmented node embeddings in input dimension.
+            - atom_embeddings + molecule attributes + augmented_node_embeddings
+        Returns:
+            int: Total input dimension.
+        """
         return gnn_out_dim + n_molecule_properties + gnn_out_dim
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
+        """
+        Forward pass with separate pooling for atom and augmented nodes.
+
+        Args:
+            batch (dict): Input batch.
+
+        Returns:
+            torch.Tensor: Predicted output.
+        """
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
-        is_atom_node = graph_data.is_atom_node.bool()  # Boolean mask: shape [num_nodes]
+        is_atom_node = graph_data.is_atom_node.bool()
         is_augmented_node = ~is_atom_node
 
         node_embeddings = self.gnn(batch)
-
         atoms_embeddings = node_embeddings[is_atom_node]
         atoms_batch = graph_data.batch[is_atom_node]
 
         augmented_nodes_embeddings = node_embeddings[is_augmented_node]
         augmented_nodes_batch = graph_data.batch[is_augmented_node]
 
-        # Scatter add separately
         atoms_vec = scatter_add(atoms_embeddings, atoms_batch, dim=0)
         aug_nodes_vec = scatter_add(
             augmented_nodes_embeddings, augmented_nodes_batch, dim=0
         )
 
-        # Concatenate all
         graph_vector = torch.cat(
-            [
-                atoms_vec,
-                graph_data.molecule_attr,
-                aug_nodes_vec,
-            ],
-            dim=1,
+            [atoms_vec, graph_data.molecule_attr, aug_nodes_vec], dim=1
         )
-
         return self.lin_sequential(graph_vector)
 
 
 class GraphNodePoolingNet(GraphNetWrapper, ABC):
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
-        # all_nodes_embeddings_except_graph_node + molecule attributes + graph_node_embedding
+    """
+    Pooling using non-graph nodes and graph node embeddings.
+    """
+
+    def _get_lin_seq_input_dim(
+        self, gnn_out_dim: int, n_molecule_properties: int
+    ) -> int:
+        """
+        Return input dimension including graph node embeddings.
+            - all_nodes_embeddings_except_graph_node + molecule attributes + graph_node_embedding
+
+        Returns:
+            int: Total input dimension.
+        """
         return gnn_out_dim + n_molecule_properties + gnn_out_dim
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
+        """
+        Forward pass with separate pooling for graph and other nodes.
+
+        Args:
+            batch (dict): Input batch.
+
+        Returns:
+            torch.Tensor: Predicted output.
+        """
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
         is_graph_node = graph_data.is_graph_node.bool()
         is_not_graph_node = ~is_graph_node
 
         node_embeddings = self.gnn(batch)
-
         graph_node_embedding = node_embeddings[is_graph_node]
         graph_node_batch = graph_data.batch[is_graph_node]
 
         remaining_nodes_embedding = node_embeddings[is_not_graph_node]
         remaining_nodes_batch = graph_data.batch[is_not_graph_node]
 
-        # Scatter add separately
         graph_node_vec = scatter_add(graph_node_embedding, graph_node_batch, dim=0)
         remaining_nodes_vec = scatter_add(
             remaining_nodes_embedding, remaining_nodes_batch, dim=0
         )
 
-        # Concatenate all
         graph_vector = torch.cat(
-            [
-                remaining_nodes_vec,
-                graph_data.molecule_attr,
-                graph_node_vec,
-            ],
-            dim=1,
+            [remaining_nodes_vec, graph_data.molecule_attr, graph_node_vec], dim=1
         )
-
-        return self.lin_sequential(graph_vector)
-
-
-class FGNodePoolingNet(GraphNetWrapper, ABC):
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
-        # all_nodes_embeddings_except_fg_nodes + molecule attributes + fg_node_embedding
-        return gnn_out_dim + n_molecule_properties + gnn_out_dim
-
-    def forward(self, batch):
-        graph_data = batch["features"][0]
-        assert isinstance(graph_data, GraphData)
-        is_graph_node = graph_data.is_graph_node.bool()
-        is_atom_node = graph_data.is_atom_node.bool()
-        is_fg_node = (~is_atom_node) & (~is_graph_node)
-        is_remaining_node = ~is_fg_node
-
-        node_embeddings = self.gnn(batch)
-
-        remaining_nodes_embedding = node_embeddings[is_remaining_node]
-        remaining_nodes_batch = graph_data.batch[is_remaining_node]
-
-        fg_nodes_embeddings = node_embeddings[is_fg_node]
-        fg_nodes_batch = graph_data.batch[is_fg_node]
-
-        # Scatter add separately
-        remaining_nodes_vec = scatter_add(
-            remaining_nodes_embedding, remaining_nodes_batch, dim=0
-        )
-        fg_nodes_vec = scatter_add(fg_nodes_embeddings, fg_nodes_batch, dim=0)
-
-        # Concatenate all
-        graph_vector = torch.cat(
-            [
-                remaining_nodes_vec,
-                graph_data.molecule_attr,
-                fg_nodes_vec,
-            ],
-            dim=1,
-        )
-
-        return self.lin_sequential(graph_vector)
-
-
-class GraphNodeFGNodePoolingNet(GraphNetWrapper, ABC):
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
-        # atom_embeddings + molecule attributes + functional_group_node_embeddings + graph_node_embeddings
-        return gnn_out_dim + n_molecule_properties + gnn_out_dim + gnn_out_dim
-
-    def forward(self, batch):
-        graph_data = batch["features"][0]
-        assert isinstance(graph_data, GraphData)
-        is_graph_node = graph_data.is_graph_node.bool()
-        is_atom_node = graph_data.is_atom_node.bool()
-        is_fg_node = (~is_atom_node) & (~is_graph_node)
-
-        node_embeddings = self.gnn(batch)
-
-        graph_node_embedding = node_embeddings[is_graph_node]
-        graph_node_batch = graph_data.batch[is_graph_node]
-
-        atoms_embeddings = node_embeddings[is_atom_node]
-        atoms_batch = graph_data.batch[is_atom_node]
-
-        fg_nodes_embeddings = node_embeddings[is_fg_node]
-        fg_nodes_batch = graph_data.batch[is_fg_node]
-
-        # Scatter add separately
-        graph_node_vec = scatter_add(graph_node_embedding, graph_node_batch, dim=0)
-        atoms_vec = scatter_add(atoms_embeddings, atoms_batch, dim=0)
-        fg_nodes_vec = scatter_add(fg_nodes_embeddings, fg_nodes_batch, dim=0)
-
-        # Concatenate all
-        graph_vector = torch.cat(
-            [
-                atoms_vec,
-                graph_data.molecule_attr,
-                fg_nodes_vec,
-                graph_node_vec,
-            ],
-            dim=1,
-        )
-
         return self.lin_sequential(graph_vector)
 
 
 class FGNodePoolingNoGraphNodeNet(GraphNetWrapper, ABC):
-    """Graph Node not considered here in any computation"""
+    """
+    Graph Node not considered here in any computation.
+    """
 
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
-        # atom_embeddings + molecule attributes + functional_group_node_embeddings
+    def _get_lin_seq_input_dim(
+        self, gnn_out_dim: int, n_molecule_properties: int
+    ) -> int:
+        """
+        Compute input dimension including:
+        - atom_embeddings
+        - molecule attributes
+        - functional_group_node_embeddings
+
+        Returns:
+            int: Total input dimension.
+        """
         return gnn_out_dim + n_molecule_properties + gnn_out_dim
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
+        """
+        Forward pass pooling atoms and functional group nodes.
+        Graph nodes are ignored.
+
+        Args:
+            batch (dict): Input batch.
+
+        Returns:
+            torch.Tensor: Predicted output.
+        """
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
         is_graph_node = graph_data.is_graph_node.bool()
@@ -261,31 +324,46 @@ class FGNodePoolingNoGraphNodeNet(GraphNetWrapper, ABC):
         fg_nodes_embeddings = node_embeddings[is_fg_node]
         fg_nodes_batch = graph_data.batch[is_fg_node]
 
-        # Scatter add separately
         atoms_vec = scatter_add(atoms_embeddings, atoms_batch, dim=0)
         fg_nodes_vec = scatter_add(fg_nodes_embeddings, fg_nodes_batch, dim=0)
 
-        # Concatenate all
         graph_vector = torch.cat(
-            [
-                atoms_vec,
-                graph_data.molecule_attr,
-                fg_nodes_vec,
-            ],
-            dim=1,
+            [atoms_vec, graph_data.molecule_attr, fg_nodes_vec], dim=1
         )
 
         return self.lin_sequential(graph_vector)
 
 
 class GraphNodeNoFGNodePoolingNet(GraphNetWrapper, ABC):
-    """Functional Group Nodes not considered here in any computation"""
+    """
+    Functional Group Nodes not considered here in any computation.
+    """
 
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
-        # atom_embeddings + molecule attributes + graph_node_embeddings
+    def _get_lin_seq_input_dim(
+        self, gnn_out_dim: int, n_molecule_properties: int
+    ) -> int:
+        """
+        Compute input dimension including:
+        - atom_embeddings
+        - molecule attributes
+        - graph_node_embeddings
+
+        Returns:
+            int: Total input dimension.
+        """
         return gnn_out_dim + n_molecule_properties + gnn_out_dim
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
+        """
+        Forward pass pooling atoms and graph nodes.
+        Functional group nodes are ignored.
+
+        Args:
+            batch (dict): Input batch.
+
+        Returns:
+            torch.Tensor: Predicted output.
+        """
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
         is_graph_node = graph_data.is_graph_node.bool()
@@ -299,28 +377,42 @@ class GraphNodeNoFGNodePoolingNet(GraphNetWrapper, ABC):
         atoms_embeddings = node_embeddings[is_atom_node]
         atoms_batch = graph_data.batch[is_atom_node]
 
-        # Scatter add separately
         graph_node_vec = scatter_add(graph_node_embedding, graph_node_batch, dim=0)
         atoms_vec = scatter_add(atoms_embeddings, atoms_batch, dim=0)
 
-        # Concatenate all
         graph_vector = torch.cat(
-            [
-                atoms_vec,
-                graph_data.molecule_attr,
-                graph_node_vec,
-            ],
-            dim=1,
+            [atoms_vec, graph_data.molecule_attr, graph_node_vec], dim=1
         )
 
         return self.lin_sequential(graph_vector)
 
 
 class AugmentedOnlyPoolingNet(GraphNetWrapper, ABC):
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
+    """
+    Only augmented node embeddings are pooled.
+    """
+
+    def _get_lin_seq_input_dim(
+        self, gnn_out_dim: int, n_molecule_properties: int
+    ) -> int:
+        """
+        Return input dimension using only augmented node embeddings.
+
+        Returns:
+            int: Total input dimension.
+        """
         return gnn_out_dim + n_molecule_properties
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
+        """
+        Forward pass pooling only augmented nodes.
+
+        Args:
+            batch (dict): Input batch.
+
+        Returns:
+            torch.Tensor: Predicted output.
+        """
         graph_data = batch["features"][0]
         is_atom_node = graph_data.is_atom_node.bool()
         augmented_nodes_embeddings = self.gnn(batch)[~is_atom_node]
@@ -335,10 +427,31 @@ class AugmentedOnlyPoolingNet(GraphNetWrapper, ABC):
 
 
 class FGOnlyPoolingNet(GraphNetWrapper, ABC):
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
+    """
+    Only functional group node embeddings are pooled.
+    """
+
+    def _get_lin_seq_input_dim(
+        self, gnn_out_dim: int, n_molecule_properties: int
+    ) -> int:
+        """
+        Return input dimension using only FG node embeddings.
+
+        Returns:
+            int: Total input dimension.
+        """
         return gnn_out_dim + n_molecule_properties
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
+        """
+        Forward pass pooling only functional group nodes.
+
+        Args:
+            batch (dict): Input batch.
+
+        Returns:
+            torch.Tensor: Predicted output.
+        """
         graph_data = batch["features"][0]
         is_graph_node = graph_data.is_graph_node.bool()
         is_atom_node = graph_data.is_atom_node.bool()
@@ -353,10 +466,31 @@ class FGOnlyPoolingNet(GraphNetWrapper, ABC):
 
 
 class GraphNodeOnlyPoolingNet(GraphNetWrapper, ABC):
-    def _get_lin_seq_input_dim(self, gnn_out_dim, n_molecule_properties):
+    """
+    Only graph node embeddings are pooled.
+    """
+
+    def _get_lin_seq_input_dim(
+        self, gnn_out_dim: int, n_molecule_properties: int
+    ) -> int:
+        """
+        Return input dimension using only graph node embeddings.
+
+        Returns:
+            int: Total input dimension.
+        """
         return gnn_out_dim + n_molecule_properties
 
-    def forward(self, batch):
+    def forward(self, batch: dict) -> torch.Tensor:
+        """
+        Forward pass pooling only graph nodes.
+
+        Args:
+            batch (dict): Input batch.
+
+        Returns:
+            torch.Tensor: Predicted output.
+        """
         graph_data = batch["features"][0]
         is_graph_node = graph_data.is_graph_node.bool()
 
