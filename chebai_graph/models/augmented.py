@@ -13,60 +13,96 @@ from .resgated import ResGatedGraphPred
 
 
 class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedGraphPred):
-    """GNN for graph-level prediction for augmented graphs"""
+    """
+    Combines:
+    - AugmentedNodePoolingNet: Pools atom and augmented node embeddings with molecule attributes.
+    - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
 
-    NAME = "ResGatedAugNodePoolGraphPred"
+    ...
 
 
 class ResGatedGraphNodePoolGraphPred(GraphNodePoolingNet, ResGatedGraphPred):
-    """GNN for graph-level prediction for augmented graphs"""
+    """
+    Combines:
+    - GraphNodePoolingNet: Pools atom and graph node embeddings with molecule attributes.
+    - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
 
-    NAME = "ResGatedGraphNodePoolGraphPred"
+    ...
 
 
 class ResGatedFGNodePoolGraphPred(FGNodePoolingNet, ResGatedGraphPred):
-    """GNN for graph-level prediction for augmented graphs"""
+    """
+    Combines:
+    - FGNodePoolingNet: Pools functional group nodes and other nodes with molecule attributes.
+    - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
 
-    NAME = "ResGatedFGNodePoolGraphPred"
+    ...
 
 
 class ResGatedGraphNodeFGNodePoolGraphPred(
     GraphNodeFGNodePoolingNet, ResGatedGraphPred
 ):
-    """GNN for graph-level prediction for augmented graphs"""
+    """
+    Combines:
+    - GraphNodeFGNodePoolingNet: Pools atom, functional group, and graph nodes with molecule attributes.
+    - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
 
-    NAME = "ResGatedGraphNodeFGNodePoolGraphPred"
+    ...
 
 
 class ResGatedGraphNodeNoFGNodeGraphPred(
     GraphNodeNoFGNodePoolingNet, ResGatedGraphPred
 ):
-    """GNN for graph-level prediction for augmented graphs without FG nodes"""
+    """
+    Combines:
+    - GraphNodeNoFGNodePoolingNet: Pools atom and graph nodes, excluding functional groups.
+    - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
 
-    NAME = "ResGatedGraphNodeNoFGNodeGraphPred"
+    ...
 
 
 class ResGatedFGNodeNoGraphNodeGraphPred(
     FGNodePoolingNoGraphNodeNet, ResGatedGraphPred
 ):
-    """GNN for graph-level prediction for augmented graphs without FG nodes"""
+    """
+    Combines:
+    - FGNodePoolingNoGraphNodeNet: Pools atom and functional group nodes, excluding graph nodes.
+    - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
 
-    NAME = "ResGatedFGNodeNoGraphNodeGraphPred"
+    ...
 
 
 class ResGatedAugOnlyPoolGraphPred(AugmentedOnlyPoolingNet, ResGatedGraphPred):
-    """GNN for graph-level prediction for augmented graphs"""
+    """
+    Combines:
+    - AugmentedOnlyPoolingNet: Pools only augmented nodes with molecule attributes.
+    - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
 
-    NAME = "ResGatedAugOnlyPoolGraphPred"
+    ...
 
 
 class ResGatedGraphNodeOnlyPoolGraphPred(GraphNodeOnlyPoolingNet, ResGatedGraphPred):
-    """GNN for graph-level prediction for augmented graphs"""
+    """
+    Combines:
+    - GraphNodeOnlyPoolingNet: Pools only graph nodes with molecule attributes.
+    - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
 
-    NAME = "ResGatedGraphNodeOnlyPoolGraphPred"
+    ...
 
 
 class ResGatedFGOnlyPoolGraphPred(FGOnlyPoolingNet, ResGatedGraphPred):
-    """GNN for graph-level prediction for augmented graphs"""
+    """
+    Combines:
+    - FGOnlyPoolingNet: Pools only functional group nodes with molecule attributes.
+    - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
 
-    NAME = "ResGatedFGOnlyPoolGraphPred"
+    ...
