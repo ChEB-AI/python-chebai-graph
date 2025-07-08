@@ -37,7 +37,7 @@ class GATGraphConvNetBase(GraphModelBase):
             edge_dim=self.n_bond_properties,
             heads=self.heads,
             v2=self.v2,
-            act=ELU,
+            act=self.activation,
         )
 
     def forward(self, batch: dict) -> torch.Tensor:
@@ -59,7 +59,7 @@ class GATGraphConvNetBase(GraphModelBase):
 
         out = self.gat(
             x=graph_data.x.float(),
-            edge_index=graph_data.edge_index,
+            edge_index=graph_data.edge_index.long(),
             edge_attr=graph_data.edge_attr,
         )
 
