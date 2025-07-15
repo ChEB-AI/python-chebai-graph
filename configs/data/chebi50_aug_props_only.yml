@@ -1,9 +1,12 @@
-class_path: chebai_graph.preprocessing.datasets.ChEBI50GraphFGAugmentorReader
+class_path: chebai_graph.preprocessing.datasets.ChEBI50_WFGE_WGN_GraphProp
 init_args:
   properties:
       # Atom properties
       - chebai_graph.preprocessing.properties.AtomFunctionalGroup
       - chebai_graph.preprocessing.properties.AtomNodeLevel
       - chebai_graph.preprocessing.properties.AtomRingSize
+      - chebai_graph.preprocessing.properties.IsHydrogenBondDonorFG
+      - chebai_graph.preprocessing.properties.IsHydrogenBondAcceptorFG
+      - chebai_graph.preprocessing.properties.IsFGAlkyl
       # Bond properties
       - chebai_graph.preprocessing.properties.BondLevel
