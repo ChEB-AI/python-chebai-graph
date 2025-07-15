@@ -5,9 +5,9 @@ init_args:
   config:
     in_length: 256
     hidden_length: 512
-    dropout_rate: 0.1
+    dropout_rate: 0
     n_conv_layers: 3
     n_atom_properties: 158
     n_bond_properties: 7
-  n_molecule_properties: 200
+  n_molecule_properties: 0
   n_linear_layers: 2
