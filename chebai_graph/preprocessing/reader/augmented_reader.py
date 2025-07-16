@@ -704,7 +704,12 @@ class _AddGraphNode(_AugmentorReader):
                 - Graph-level node attributes.
                 - Edge attributes for graph-level connections.
         """
-        graph_node = {k.NODE_LEVEL: k.GRAPH_NODE_LEVEL, "FG": "graph_fg", "RING": "0"}
+        graph_node = {
+            k.NODE_LEVEL: k.GRAPH_NODE_LEVEL,
+            "FG": "graph_fg",
+            "RING": "0",
+            "is_alkyl": "0",
+        }
 
         graph_to_nodes_edges = {}
         graph_edge_index = [[], []]
