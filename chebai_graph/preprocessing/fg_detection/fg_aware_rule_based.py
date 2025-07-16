@@ -38,6 +38,9 @@ def set_ring_properties(mol: Chem.Mol) -> list[list[set[int]]] | None:
     if mol is None:
         return
 
+    for atom in mol.GetAtoms():
+        atom.SetProp("RING", "")
+
     AllChem.GetSymmSSSR(mol)
 
     ######## SET RING PROP ########
