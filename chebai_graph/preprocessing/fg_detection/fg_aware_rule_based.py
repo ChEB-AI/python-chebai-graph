@@ -8,7 +8,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import MolToSmiles as m2s
 
-from chebai_graph.preprocessing.fg_detection.fg_constants import ELEMENTS
+from chebai_graph.preprocessing.fg_detection.fg_constants import ELEMENTS, NO_FG
 
 
 def ring_size_processing(ring_size):
@@ -1817,9 +1817,11 @@ def detect_functional_group(mol: Chem.Mol):
         ########################### Groups containing other elements ###########################
         if atom.GetProp("FG") == "" and atom_symbol in ELEMENTS and not in_ring:
             if charge == 0:
-                atom.SetProp("FG", atom_symbol)
+                # atom.SetProp("FG", atom_symbol)
+                atom.SetProp("FG", NO_FG)
             else:
-                atom.SetProp("FG", f"{atom_symbol}[{charge}]")
+                # atom.SetProp("FG", f"{atom_symbol}[{charge}]")
+                atom.SetProp("FG", NO_FG)
         else:
             pass
 
