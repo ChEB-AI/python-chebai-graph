@@ -477,18 +477,20 @@ class AtomsFGReader_NoFGEdges_NoGraphNode(_AugmentorReader):
             )
 
         if "" in fg_set and len(fg_set) == 1:
+            NO_FG = "NO_FG"
             if len(connected_atoms) == 1:
                 # If there is only one atom and one edge connecting this atom to its fg_atom,
                 # the functional group will be the symbol of this atom
                 # This special case is to handle wildcard SMILES Eg. CHEBI:33429
                 atom = connected_atoms[0]
-                # TODO: needed or can we set to default fg prop `NO_FG`?
-                atom.SetProp("FG", atom.GetSymbol())
+                # needed or can we set to default fg prop `NO_FG`?
+                # default to NO_FG, as very distinct atom symbols increases number of tokens
+                atom.SetProp("FG", NO_FG)
             else:
                 # If there are multiple atoms connected to the functional group, and no atoms have a functional group property/name
                 # assigned, Eg. CHEBI:55388, atom idx 2 and 3 ([C-]#[C-]") have no functional group name, so default FG prop is used
                 for atom in connected_atoms:
-                    atom.SetProp("FG", "NO_FG")
+                    atom.SetProp("FG", NO_FG)
                     # atom.SetProp("FG", fg_smiles)
 
         if len(fg_set - {""}) > 1:
