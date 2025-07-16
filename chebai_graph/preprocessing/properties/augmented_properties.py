@@ -212,7 +212,7 @@ class AtomRingSize(AugmentedAtomProperty):
         """
         ring_size_str = self._get_atom_prop_value(atom, prop)
         if ring_size_str:
-            ring_sizes = list(map(int, ring_size_str.split("-")))
+            ring_sizes = list(map(int, str(ring_size_str).split("-")))
             # TODO: Decide ring size for atoms belongs to fused rings, rn only max ring size taken
             return max(ring_sizes)
         else:
