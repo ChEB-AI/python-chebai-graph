@@ -34,7 +34,6 @@ def find_connected_rings(ring, remaining_rings) -> list[set[int]]:
 
 
 def set_ring_properties(mol: Chem.Mol) -> list[list[set[int]]] | None:
-
     if mol is None:
         return
 
@@ -1818,8 +1817,12 @@ def detect_functional_group(mol: Chem.Mol):
         if atom.GetProp("FG") == "" and atom_symbol in ELEMENTS and not in_ring:
             if charge == 0:
                 atom.SetProp("FG", atom_symbol)
+                atom.SetProp("flag_no_fg", "")
+                # atom.SetProp("FG", NO_FG) # changes the fg-detection algo (num of fg dectected reduces)
             else:
                 atom.SetProp("FG", f"{atom_symbol}[{charge}]")
+                atom.SetProp("flag_no_fg", "")
+                # atom.SetProp("FG", NO_FG) # changes the fg-detection algo (num of fg dectected reduces)
         else:
             pass
 
@@ -1923,7 +1926,7 @@ def get_structure(mol):
             flat_atoms = set().union(*group)
             if flat_atoms.issubset(atom_idx) and len(flat_atoms) == len(atom_idx):
                 for idx, ring_atoms in enumerate(group):
-                    structure[f"{frag}_{idx+1}"] = {
+                    structure[f"{frag}_{idx + 1}"] = {
                         "atom": ring_atoms,
                         "is_ring_fg": True,
                     }

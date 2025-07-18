@@ -470,7 +470,11 @@ class AtomsFGReader_NoFGEdges_NoGraphNode(_AugmentorReader):
             ValueError: If functional group assignment is inconsistent or missing.
             AssertionError: If no representative atom is found.
         """
-        fg_set = {atom.GetProp("FG") for atom in connected_atoms}
+        fg_set = {
+            atom.GetProp("FG")
+            for atom in connected_atoms
+            if not atom.HasProp("is_no_fg")
+        }
         if not fg_set:
             raise ValueError(
                 "No functional group assigned to atoms in the functional group."
