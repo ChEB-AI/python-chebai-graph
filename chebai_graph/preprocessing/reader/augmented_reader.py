@@ -9,6 +9,7 @@ from torch_geometric.data import Data as GeomData
 
 from chebai_graph.preprocessing.collate import GraphCollator
 from chebai_graph.preprocessing.fg_detection.fg_aware_rule_based import get_structure
+from chebai_graph.preprocessing.fg_detection.fg_constants import FLAG_NO_FG
 from chebai_graph.preprocessing.properties import MolecularProperty
 from chebai_graph.preprocessing.properties import constants as k
 
@@ -470,54 +471,74 @@ class AtomsFGReader_NoFGEdges_NoGraphNode(_AugmentorReader):
             ValueError: If functional group assignment is inconsistent or missing.
             AssertionError: If no representative atom is found.
         """
-        fg_set = {
-            atom.GetProp("FG")
-            for atom in connected_atoms
-            if not atom.HasProp("is_no_fg")
-        }
+        NO_FG = "NO_FG"
+        representative_atom = None
+
+        # Check if the functional group SMILES corresponds to an alkyl group
+        # by removing common alkyl characters and checking if anything remains.
+        check = re.sub(r"[CH\-\(\)\[\]/\\@]", "", fg_smiles)
+        is_alkyl = "1" if len(check) == 0 else "0"
+
+        fg_set = set()
+        for atom in connected_atoms:
+            atom.SetProp("is_alkyl", is_alkyl)
+
+            # Set FG to NO_FG if this atom's fg is marked to be ignored
+            if atom.HasProp(FLAG_NO_FG):
+                atom.SetProp("FG", NO_FG)
+
+            fg = atom.GetProp("FG")
+            fg_set.add(fg)
+
+            # Store the last seen valid FG atom as representative
+            if fg and fg != NO_FG:
+                representative_atom = atom
+
+        # Raise error if no FG at all was found (likely unexpected state)
         if not fg_set:
             raise ValueError(
                 "No functional group assigned to atoms in the functional group."
             )
 
-        if "" in fg_set and len(fg_set) == 1:
-            NO_FG = "NO_FG"
-            if len(connected_atoms) == 1:
-                # If there is only one atom and one edge connecting this atom to its fg_atom,
-                # the functional group will be the symbol of this atom
-                # This special case is to handle wildcard SMILES Eg. CHEBI:33429
-                atom = connected_atoms[0]
-                # needed or can we set to default fg prop `NO_FG`?
-                # default to NO_FG, as very distinct atom symbols increases number of tokens
-                atom.SetProp("FG", NO_FG)
-            else:
-                # If there are multiple atoms connected to the functional group, and no atoms have a functional group property/name
-                # assigned, Eg. CHEBI:55388, atom idx 2 and 3 ([C-]#[C-]") have no functional group name, so default FG prop is used
-                for atom in connected_atoms:
-                    atom.SetProp("FG", NO_FG)
-                    # atom.SetProp("FG", fg_smiles)
+        # Determine how many valid functional groups are present
+        valid_fgs = fg_set - {"", NO_FG}
+        num_of_valid_fgs = len(valid_fgs)
 
-        if len(fg_set - {""}) > 1:
+        if num_of_valid_fgs == 0:
+            # fg_set = {"", NO_FG} or {""} or {NO_FG}
+            for atom in connected_atoms:
+                atom.SetProp("FG", NO_FG)
+            node_fg = NO_FG
+
+        elif num_of_valid_fgs > 1:
+            # fg_set = {"FG1", "FG2", ...} or {"FG1", "FG2", ...,  NO_FG} or
+            # {"FG1", "FG2", ..., ""} or {"FG1", FG2, ...,  "", NO_FG}
+            # Inconsistent FG assignments; possibly a bug in FG detection
             raise ValueError(
-                "Connected atoms have different function groups assigned.\n"
-                "All Connected atoms must belong to one functional group or None"
+                "Connected atoms have different functional groups assigned.\n"
+                "All connected atoms must belong to one functional group or None."
             )
 
-        check = re.sub(r"[CH\-\(\)\[\]/\\@]", "", fg_smiles)
-        is_alkyl = "1" if len(check) == 0 else "0"
+        elif num_of_valid_fgs == 1:
+            # fg_set = {"FG1"} or {"FG1", ""} or {"FG1", NO_FG} or {"FG1", "", NO_FG}
+            # Exactly one valid FG; ensure we have an atom to extract it from
+            if representative_atom is None:
+                raise AssertionError(
+                    "Expected at least one atom with a valid functional group."
+                )
+            node_fg = representative_atom.GetProp("FG")
+            # If any atom had FG as an empty string (""), backfill it with node_fg
+            for atom in connected_atoms:
+                atom.SetProp("FG", node_fg)
 
-        representative_atom = None
-        for atom in connected_atoms:
-            if atom.GetProp("FG"):
-                representative_atom = atom
-            atom.SetProp("is_alkyl", is_alkyl)
+        else:
+            # This branch is unreachable but kept for safety
+            raise AssertionError("Unexpected state in functional group detection.")
 
-        if representative_atom is None:
-            raise AssertionError("Expected at least one atom with a functional group.")
-
+        # Assign the final FG node metadata
         fg_nodes[self._idx_of_node] = {
             k.NODE_LEVEL: k.FG_NODE_LEVEL,
-            "FG": representative_atom.GetProp("FG"),
+            "FG": node_fg,
             "RING": 0,
             "is_alkyl": is_alkyl,
         }

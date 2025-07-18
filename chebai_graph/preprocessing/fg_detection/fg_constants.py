@@ -9,3 +9,6 @@ ELEMENTS = {
     "Tb", "Tc", "Te", "Th", "Ti", "Tl", "Tm", "U", "V", "W", "Xe", "Y", "Yb", "Zn", "Zr"
 }
 # fmt: on
+
+
+FLAG_NO_FG = "flag_no_fg"
