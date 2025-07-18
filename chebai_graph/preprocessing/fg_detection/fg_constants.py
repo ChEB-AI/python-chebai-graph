@@ -9,5 +9,3 @@ ELEMENTS = {
     "Tb", "Tc", "Te", "Th", "Ti", "Tl", "Tm", "U", "V", "W", "Xe", "Y", "Yb", "Zn", "Zr"
 }
 # fmt: on
-
-NO_FG = "NO_FG"

@@ -9,7 +9,6 @@ from torch_geometric.data import Data as GeomData
 
 from chebai_graph.preprocessing.collate import GraphCollator
 from chebai_graph.preprocessing.fg_detection.fg_aware_rule_based import get_structure
-from chebai_graph.preprocessing.fg_detection.fg_constants import NO_FG
 from chebai_graph.preprocessing.properties import MolecularProperty
 from chebai_graph.preprocessing.properties import constants as k
 
@@ -478,6 +477,7 @@ class AtomsFGReader_NoFGEdges_NoGraphNode(_AugmentorReader):
             )
 
         if "" in fg_set and len(fg_set) == 1:
+            NO_FG = "NO_FG"
             if len(connected_atoms) == 1:
                 # If there is only one atom and one edge connecting this atom to its fg_atom,
                 # the functional group will be the symbol of this atom
