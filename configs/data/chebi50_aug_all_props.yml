@@ -10,7 +10,6 @@ init_args:
       - chebai_graph.preprocessing.properties.AugAtomNumHs
       - chebai_graph.preprocessing.properties.AtomFunctionalGroup
       - chebai_graph.preprocessing.properties.AtomNodeLevel
-      - chebai_graph.preprocessing.properties.AtomRingSize
       - chebai_graph.preprocessing.properties.IsHydrogenBondDonorFG
       - chebai_graph.preprocessing.properties.IsHydrogenBondAcceptorFG
       - chebai_graph.preprocessing.properties.IsFGAlkyl
