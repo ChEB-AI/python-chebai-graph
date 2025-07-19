@@ -1,4 +1,3 @@
-import sys
 from abc import ABC
 
 from rdkit import Chem
@@ -11,125 +10,18 @@ from chebai_graph.preprocessing.property_encoder import (
 
 from . import constants as k
 from . import properties as pr
-from .base import AtomProperty, BondProperty, FrozenPropertyAlias
-
-# For python 3.7+, the standard dict type preserves insertion order, and is iterated over in same order
-# https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
-# https://mail.python.org/pipermail/python-dev/2017-December/151283.html
-assert sys.version_info >= (
-    3,
-    7,
-), "This code requires Python 3.7 or higher."
-# Order preservation is necessary to to create `prop_list`
-
+from .base import (
+    AllNodeTypeProperty,
+    AtomNodeTypeProperty,
+    AugmentedBondProperty,
+    FGNodeTypeProperty,
+    FrozenPropertyAlias,
+)
 
 # --------------------- Atom Properties -----------------------------
-class AugmentedAtomProperty(AtomProperty, ABC):
-    MAIN_KEY = "nodes"
-
-    def get_property_value(self, augmented_mol: dict) -> list:
-        """
-        Extract property values for atoms from the augmented molecule dictionary.
-
-        Args:
-            augmented_mol (dict): Dictionary representing the augmented molecule.
-
-        Raises:
-            KeyError: If required keys are missing in the dictionary.
-            TypeError: If types of contained objects are incorrect.
-            AssertionError: If the number of property values does not match number of nodes.
-
-        Returns:
-            list: List of property values for all atoms, functional groups, and graph nodes.
-        """
-        if self.MAIN_KEY not in augmented_mol:
-            raise KeyError(
-                f"Key `{self.MAIN_KEY}` should be present in augmented molecule dict"
-            )
-
-        missing_keys = {"atom_nodes"} - augmented_mol[self.MAIN_KEY].keys()
-        if missing_keys:
-            raise KeyError(f"Missing keys {missing_keys} in augmented molecule nodes")
-
-        atom_molecule: Chem.Mol = augmented_mol[self.MAIN_KEY]["atom_nodes"]
-        if not isinstance(atom_molecule, Chem.Mol):
-            raise TypeError(
-                f'augmented_mol["{self.MAIN_KEY}"]["atom_nodes"] must be an instance of rdkit.Chem.Mol'
-            )
-        prop_list = [self.get_atom_value(atom) for atom in atom_molecule.GetAtoms()]
-
-        if "fg_nodes" in augmented_mol[self.MAIN_KEY]:
-            fg_nodes = augmented_mol[self.MAIN_KEY]["fg_nodes"]
-            if not isinstance(fg_nodes, dict):
-                raise TypeError(
-                    f'augmented_mol["{self.MAIN_KEY}"](["fg_nodes"]) must be an instance of dict '
-                    f"containing its properties"
-                )
-            prop_list.extend([self.get_atom_value(atom) for atom in fg_nodes.values()])
-
-        if "graph_node" in augmented_mol[self.MAIN_KEY]:
-            graph_node = augmented_mol[self.MAIN_KEY]["graph_node"]
-            if not isinstance(graph_node, dict):
-                raise TypeError(
-                    f'augmented_mol["{self.MAIN_KEY}"](["graph_node"]) must be an instance of dict '
-                    f"containing its properties"
-                )
-            prop_list.append(self.get_atom_value(graph_node))
-
-        assert (
-            len(prop_list) == augmented_mol[self.MAIN_KEY]["num_nodes"]
-        ), "Number of property values should be equal to number of nodes"
-        return prop_list
-
-    def _check_modify_atom_prop_value(
-        self, atom: Chem.rdchem.Atom | dict, prop: str
-    ) -> str | int | bool:
-        """
-        Check that the property value for the atom/node exists and is not empty.
-
-        Args:
-            atom (Chem.rdchem.Atom | dict): Atom or node representation.
-            prop (str): Property name.
-
-        Raises:
-            ValueError: If the property is empty.
-
-        Returns:
-            str | int | bool: The property value.
-        """
-        value = self._get_atom_prop_value(atom, prop)
-        if not value:
-            # Every atom/node should have given value
-            raise ValueError(f"'{prop}' is set but empty.")
-        return value
-
-    def _get_atom_prop_value(
-        self, atom: Chem.rdchem.Atom | dict, prop: str
-    ) -> str | int | bool:
-        """
-        Retrieve a property value from an atom or dict node.
-
-        Args:
-            atom (Chem.rdchem.Atom | dict): Atom or node.
-            prop (str): Property name.
-
-        Raises:
-            TypeError: If atom is not an expected type.
-
-        Returns:
-            str | int | bool: The property value.
-        """
-        if isinstance(atom, Chem.rdchem.Atom):
-            return atom.GetProp(prop)
-        elif isinstance(atom, dict):
-            return atom[prop]
-        else:
-            raise TypeError(
-                f"Atom/Node in key `{self.MAIN_KEY}` should be of type `Chem.rdchem.Atom` or `dict`."
-            )
 
 
-class AtomNodeLevel(AugmentedAtomProperty):
+class AtomNodeLevel(AllNodeTypeProperty):
     def __init__(self, encoder: PropertyEncoder | None = None):
         """
         Initialize AtomNodeLevel with an optional encoder.
@@ -152,7 +44,7 @@ class AtomNodeLevel(AugmentedAtomProperty):
         return self._check_modify_atom_prop_value(atom, k.NODE_LEVEL)
 
 
-class AtomFunctionalGroup(AugmentedAtomProperty):
+class AtomFunctionalGroup(FGNodeTypeProperty):
     def __init__(self, encoder: PropertyEncoder | None = None):
         """
         Initialize AtomFunctionalGroup with an optional encoder.
@@ -175,7 +67,7 @@ class AtomFunctionalGroup(AugmentedAtomProperty):
         return self._check_modify_atom_prop_value(atom, "FG")
 
 
-class AtomRingSize(AugmentedAtomProperty):
+class AtomRingSize(FGNodeTypeProperty):
     def __init__(self, encoder: PropertyEncoder | None = None):
         """
         Initialize AtomRingSize with an optional encoder.
@@ -219,7 +111,7 @@ class AtomRingSize(AugmentedAtomProperty):
             return 0
 
 
-class IsHydrogenBondDonorFG(AugmentedAtomProperty):
+class IsHydrogenBondDonorFG(FGNodeTypeProperty):
     def __init__(self, encoder: PropertyEncoder | None = None):
         """
         Initialize IsHydrogenBondDonorFG with an optional encoder.
@@ -252,7 +144,7 @@ class IsHydrogenBondDonorFG(AugmentedAtomProperty):
         return fg in self._hydrogen_bond_donor
 
 
-class IsHydrogenBondAcceptorFG(AugmentedAtomProperty):
+class IsHydrogenBondAcceptorFG(FGNodeTypeProperty):
     def __init__(self, encoder: PropertyEncoder | None = None):
         """
         Initialize IsHydrogenBondAcceptorFG with an optional encoder.
@@ -286,7 +178,7 @@ class IsHydrogenBondAcceptorFG(AugmentedAtomProperty):
         return fg in self._hydrogen_bond_acceptor
 
 
-class IsFGAlkyl(AugmentedAtomProperty):
+class IsFGAlkyl(FGNodeTypeProperty):
     def __init__(self, encoder: PropertyEncoder | None = None):
         """
         Args:
@@ -308,7 +200,7 @@ class IsFGAlkyl(AugmentedAtomProperty):
         return int(self._check_modify_atom_prop_value(atom, "is_alkyl"))
 
 
-class AugNodeValueDefaulter(AugmentedAtomProperty, FrozenPropertyAlias, ABC):
+class AugNodeValueDefaulter(AtomNodeTypeProperty, FrozenPropertyAlias, ABC):
     def get_atom_value(self, atom: Chem.rdchem.Atom | dict) -> int | None:
         """
         Get the property value for an atom or dict node.
@@ -427,121 +319,6 @@ class AugAtomAromaticity(AugNodeValueDefaulter, pr.AtomAromaticity):
 
 
 # --------------------- Bond Properties ------------------------------
-class AugmentedBondProperty(BondProperty, ABC):
-    MAIN_KEY = "edges"
-
-    def get_property_value(self, augmented_mol: dict) -> list:
-        """
-        Get bond property values from augmented molecule dict.
-
-        Args:
-            augmented_mol (dict): Augmented molecule dictionary containing edges.
-
-        Returns:
-            list: List of property values for bonds in the augmented molecule.
-
-        Raises:
-            KeyError: If required keys are missing in augmented_mol.
-            TypeError: If the expected objects are not of correct types.
-            AssertionError: If number of property values does not match expected edge count.
-        """
-        if self.MAIN_KEY not in augmented_mol:
-            raise KeyError(
-                f"Key `{self.MAIN_KEY}` should be present in augmented molecule dict"
-            )
-
-        missing_keys = {k.WITHIN_ATOMS_EDGE} - augmented_mol[self.MAIN_KEY].keys()
-        if missing_keys:
-            raise KeyError(f"Missing keys {missing_keys} in augmented molecule nodes")
-
-        atom_molecule: Chem.Mol = augmented_mol[self.MAIN_KEY][k.WITHIN_ATOMS_EDGE]
-        if not isinstance(atom_molecule, Chem.Mol):
-            raise TypeError(
-                f'augmented_mol["{self.MAIN_KEY}"]["{k.WITHIN_ATOMS_EDGE}"] must be an instance of rdkit.Chem.Mol'
-            )
-        prop_list = [self.get_bond_value(bond) for bond in atom_molecule.GetBonds()]
-
-        if k.ATOM_FG_EDGE in augmented_mol[self.MAIN_KEY]:
-            fg_atom_edges = augmented_mol[self.MAIN_KEY][k.ATOM_FG_EDGE]
-            if not isinstance(fg_atom_edges, dict):
-                raise TypeError(
-                    f"augmented_mol['{self.MAIN_KEY}'](['{k.ATOM_FG_EDGE}'])"
-                    f"must be an instance of dict containing its properties"
-                )
-            prop_list.extend(
-                [self.get_bond_value(bond) for bond in fg_atom_edges.values()]
-            )
-
-        if k.WITHIN_FG_EDGE in augmented_mol[self.MAIN_KEY]:
-            fg_edges = augmented_mol[self.MAIN_KEY][k.WITHIN_FG_EDGE]
-            if not isinstance(fg_edges, dict):
-                raise TypeError(
-                    f"augmented_mol['{self.MAIN_KEY}'](['{k.WITHIN_FG_EDGE}'])"
-                    f"must be an instance of dict containing its properties"
-                )
-            prop_list.extend([self.get_bond_value(bond) for bond in fg_edges.values()])
-
-        if k.TO_GRAPHNODE_EDGE in augmented_mol[self.MAIN_KEY]:
-            fg_graph_node_edges = augmented_mol[self.MAIN_KEY][k.TO_GRAPHNODE_EDGE]
-            if not isinstance(fg_graph_node_edges, dict):
-                raise TypeError(
-                    f"augmented_mol['{self.MAIN_KEY}'](['{k.TO_GRAPHNODE_EDGE}'])"
-                    f"must be an instance of dict containing its properties"
-                )
-            prop_list.extend(
-                [self.get_bond_value(bond) for bond in fg_graph_node_edges.values()]
-            )
-
-        num_directed_edges = augmented_mol[self.MAIN_KEY][k.NUM_EDGES] // 2
-        assert (
-            len(prop_list) == num_directed_edges
-        ), f"Number of property values ({len(prop_list)}) should be equal to number of half the number of undirected edges i.e. must be equal to {num_directed_edges} "
-
-        return prop_list
-
-    def _check_modify_bond_prop_value(
-        self, bond: Chem.rdchem.Bond | dict, prop: str
-    ) -> str:
-        """
-        Helper to check and get bond property value.
-
-        Args:
-            bond (Chem.rdchem.Bond | dict): Bond object or bond property dict.
-            prop (str): Property key to get.
-
-        Returns:
-            str: Property value.
-
-        Raises:
-            ValueError: If value is empty or falsy.
-        """
-        value = self._get_bond_prop_value(bond, prop)
-        if not value:
-            # Every atom/node should have given value
-            raise ValueError(f"'{prop}' is set but empty.")
-        return value
-
-    @staticmethod
-    def _get_bond_prop_value(bond: Chem.rdchem.Bond | dict, prop: str) -> str:
-        """
-        Extract bond property value from bond or dict.
-
-        Args:
-            bond (Chem.rdchem.Bond | dict): Bond object or dict.
-            prop (str): Property key.
-
-        Returns:
-            str: Property value.
-
-        Raises:
-            TypeError: If bond is not the expected type.
-        """
-        if isinstance(bond, Chem.rdchem.Bond):
-            return bond.GetProp(prop)
-        elif isinstance(bond, dict):
-            return bond[prop]
-        else:
-            raise TypeError("Bond/Edge should be of type `Chem.rdchem.Bond` or `dict`.")
 
 
 class BondLevel(AugmentedBondProperty):
@@ -625,23 +402,3 @@ class AugBondInRing(AugBondValueDefaulter, pr.BondInRing):
     """
 
     ...
-
-
-# --------------------- Molecular Properties ------------------------------
-class AugmentedMolecularProperty(pr.MolecularProperty, ABC):
-    def get_property_value(self, augmented_mol: dict) -> list:
-        """
-        Get molecular property values from augmented molecule dict.
-
-        Args:
-            augmented_mol (dict): Augmented molecule dict.
-
-        Returns:
-            list: Property values of molecule.
-        """
-        mol: Chem.Mol = augmented_mol[AugmentedAtomProperty.MAIN_KEY]["atom_nodes"]
-        assert isinstance(mol, Chem.Mol), "Molecule should be instance of `Chem.Mol`"
-        return super().get_property_value(mol)
-
-
-class AugRDKit2DNormalized(AugmentedMolecularProperty, pr.RDKit2DNormalized): ...

@@ -3,7 +3,15 @@
 # This is because augmented properties module imports from properties module
 # isort: off
 
-from .base import MolecularProperty, AtomProperty, BondProperty
+from .base import (
+    MolecularProperty,
+    AtomProperty,
+    BondProperty,
+    MoleculeProperty,
+    AllNodeTypeProperty,
+    AtomNodeTypeProperty,
+    FGNodeTypeProperty,
+)
 
 from .properties import (
     AtomType,
@@ -16,14 +24,12 @@ from .properties import (
     BondAromaticity,
     BondType,
     BondInRing,
-    MoleculeNumRings,
     RDKit2DNormalized,
 )
 
 from .augmented_properties import (
     AtomNodeLevel,
     AtomFunctionalGroup,
-    AtomRingSize,
     IsHydrogenBondDonorFG,
     IsHydrogenBondAcceptorFG,
     IsFGAlkyl,
@@ -37,15 +43,20 @@ from .augmented_properties import (
     AugBondAromaticity,
     AugBondType,
     AugBondInRing,
-    AugRDKit2DNormalized,
 )
 
 # isort: on
 
 __all__ = [
+    # -------------- Properties Base classes --------------
     "MolecularProperty",
+    "MoleculeProperty",
     "AtomProperty",
     "BondProperty",
+    "AllNodeTypeProperty",
+    "AtomNodeTypeProperty",
+    "FGNodeTypeProperty",
+    # -------------- Regular Properties -----------------
     "AtomType",
     "NumAtomBonds",
     "AtomCharge",
@@ -56,12 +67,10 @@ __all__ = [
     "BondAromaticity",
     "BondType",
     "BondInRing",
-    "MoleculeNumRings",
     "RDKit2DNormalized",
-    # -------- Augmented Molecular Properties --------
+    # -------- Augmented Molecular Properties ----------
     "AtomNodeLevel",
     "AtomFunctionalGroup",
-    "AtomRingSize",
     "IsHydrogenBondDonorFG",
     "IsHydrogenBondAcceptorFG",
     "IsFGAlkyl",
@@ -75,5 +84,4 @@ __all__ = [
     "AugBondAromaticity",
     "AugBondType",
     "AugBondInRing",
-    "AugRDKit2DNormalized",
 ]

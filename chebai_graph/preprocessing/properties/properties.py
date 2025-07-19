@@ -9,7 +9,7 @@ from chebai_graph.preprocessing.property_encoder import (
     PropertyEncoder,
 )
 
-from .base import AtomProperty, BondProperty, MolecularProperty
+from .base import AtomProperty, BondProperty, MoleculeProperty
 
 
 class AtomType(AtomProperty):
@@ -242,7 +242,7 @@ class BondInRing(BondProperty):
         return bond.IsInRing()
 
 
-class MoleculeNumRings(MolecularProperty):
+class MoleculeNumRings(MoleculeProperty):
     """
     Molecule-level property representing the number of rings in the molecule.
 
@@ -265,7 +265,7 @@ class MoleculeNumRings(MolecularProperty):
         return [mol.GetRingInfo().NumRings()]
 
 
-class RDKit2DNormalized(MolecularProperty):
+class RDKit2DNormalized(MoleculeProperty):
     """
     Molecule-level property representing normalized 2D descriptors from RDKit.
 
@@ -274,6 +274,7 @@ class RDKit2DNormalized(MolecularProperty):
 
     def __init__(self, encoder: PropertyEncoder | None = None) -> None:
         super().__init__(encoder or AsIsEncoder(self))
+        self.generator_normalized = rdNormalizedDescriptors.RDKit2DNormalized()
 
     def get_property_value(self, mol: Chem.rdchem.Mol) -> list[np.ndarray]:
         """
@@ -285,8 +286,7 @@ class RDKit2DNormalized(MolecularProperty):
         Returns:
             list[np.ndarray]: List containing the descriptor numpy array (excluding first element).
         """
-        generator_normalized = rdNormalizedDescriptors.RDKit2DNormalized()
-        features_normalized = generator_normalized.processMol(
+        features_normalized = self.generator_normalized.processMol(
             mol, Chem.MolToSmiles(mol)
         )
         features_normalized = np.nan_to_num(features_normalized)
