@@ -15,9 +15,13 @@ from lightning_utilities.core.rank_zero import rank_zero_info
 from torch_geometric.data.data import Data as GeomData
 
 from chebai_graph.preprocessing.properties import (
+    AllNodeTypeProperty,
+    AtomNodeTypeProperty,
     AtomProperty,
     BondProperty,
+    FGNodeTypeProperty,
     MolecularProperty,
+    MoleculeProperty,
 )
 from chebai_graph.preprocessing.reader import (
     AtomFGReader_NoFGEdges_WithGraphNode,
@@ -41,7 +45,7 @@ class ChEBI50GraphData(ChEBIOver50):
         super().__init__(**kwargs)
 
 
-class GraphPropertiesMixIn(ChEBIOverX, ABC):
+class DataPropertiesSetter(ChEBIOverX, ABC):
     """Mixin for adding molecular property encodings to graph-based ChEBI datasets."""
 
     READER = GraphPropertyReader
@@ -172,6 +176,8 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
         self._setup_properties()
         super()._after_setup(**kwargs)
 
+
+class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
     def _merge_props_into_base(self, row: pd.Series) -> GeomData:
         """
         Merge encoded molecular properties into the GeomData object.
@@ -208,8 +214,10 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
                     [edge_attr, torch.cat([property_values, property_values], dim=0)],
                     dim=1,
                 )
-            else:
+            elif isinstance(property, MoleculeProperty):
                 molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
+            else:
+                raise TypeError(f"Unsupported property type: {type(property).__name__}")
 
         return GeomData(
             x=x,
@@ -261,10 +269,152 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
             f"Finished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n"
             f"Use n_atom_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, AtomProperty))}, "
             f"n_bond_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, BondProperty))}, "
-            f"n_molecule_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if not isinstance(p, (AtomProperty, BondProperty)))}"
+            f"n_molecule_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, MoleculeProperty))}"
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
+
+
+class GraphPropertiesAsPerNodeType(DataPropertiesSetter, ABC):
+    READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+    def load_processed_data_from_file(self, filename: str) -> list[dict]:
+        """
+        Load dataset and merge cached properties into base features.
+
+        Args:
+            filename: The path to the file to load.
+
+        Returns:
+            List of data entries, each a dictionary.
+        """
+        base_data = super().load_processed_data_from_file(filename)
+        base_df = pd.DataFrame(base_data)
+
+        props_categories = {
+            "AllNodeTypeProperties": [],
+            "FGNodeTypeProperties": [],
+            "AtomNodeTypeProperties": [],
+            "GraphNodeTypeProperties": [],
+            "BondProperties": [],
+        }
+        n_atom_node_properties, n_fg_node_properties = 0, 0
+        n_bond_properties, n_graph_node_properties = 0, 0
+        prop_lengths = []
+        for prop in self.properties:
+            prop_length = prop.encoder.get_encoding_length()
+            prop_name = prop.name
+            prop_lengths.append((prop_name, prop_length))
+            if isinstance(prop, AllNodeTypeProperty):
+                n_atom_node_properties += prop_length
+                n_fg_node_properties += prop_length
+                props_categories["AllNodeTypeProperties"].append(prop_name)
+            elif isinstance(prop, FGNodeTypeProperty):
+                n_fg_node_properties += prop_length
+                props_categories["FGNodeTypeProperties"].append(prop_name)
+            elif isinstance(prop, AtomNodeTypeProperty):
+                n_atom_node_properties += prop_length
+                props_categories["AtomNodeTypeProperties"].append(prop_name)
+            elif isinstance(prop, BondProperty):
+                n_bond_properties += prop_length
+                props_categories["BondProperties"].append(prop_name)
+            elif isinstance(prop, MoleculeProperty):
+                # molecule props will be used as graph node props
+                n_graph_node_properties += prop_length
+                props_categories["GraphNodeTypeProperties"].append(prop_name)
+            else:
+                raise TypeError(f"Unsupported property type: {type(prop).__name__}")
+
+        n_atom_properties = max(
+            n_atom_node_properties, n_fg_node_properties, n_graph_node_properties
+        )
+        rank_zero_info(
+            f"Finished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n"
+            f"Properties Categories {props_categories}\n"
+            f"n_atom_node_properties: {n_atom_node_properties}, "
+            f"n_fg_node_properties: {n_fg_node_properties}, "
+            f"n_bond_properties: {n_bond_properties}, "
+            f"n_graph_node_properties: {n_graph_node_properties}\n"
+            f"Use n_atom_properties: {n_atom_properties}, n_bond_properties: {n_bond_properties}, n_molecule_properties: 0"
+        )
+
+        for property in self.properties:
+            property_data = torch.load(
+                self.get_property_path(property), weights_only=False
+            )
+            if len(property_data[0][property.name].shape) > 1:
+                property.encoder.set_encoding_length(
+                    property_data[0][property.name].shape[1]
+                )
+
+            property_df = pd.DataFrame(property_data)
+            property_df.rename(
+                columns={property.name: f"{property.name}"}, inplace=True
+            )
+            base_df = base_df.merge(property_df, on="ident", how="left")
+
+        base_df["features"] = base_df.apply(
+            lambda row: self._merge_props_into_base(row), axis=1
+        )
+
+        # apply transformation, e.g. masking for pretraining task
+        if self.transform is not None:
+            base_df["features"] = base_df["features"].apply(self.transform)
+
+        return base_df[base_data[0].keys()].to_dict("records")
+
+    def _merge_props_into_base(self, row: pd.Series) -> GeomData:
+        """
+        Merge encoded molecular properties into the GeomData object.
+
+        Args:
+            row: A dictionary containing 'features' and encoded properties.
+
+        Returns:
+            A GeomData object with merged features.
+        """
+        geom_data = row["features"]
+        assert isinstance(geom_data, GeomData)
+        is_atom_node = geom_data.is_atom_node
+        assert is_atom_node is not None, "`is_atom_node` must be set in the geom_data"
+        is_graph_node = geom_data.is_graph_node
+        assert is_graph_node is not None, "`is_graph_node` must be set in the geom_data"
+
+        edge_attr = geom_data.edge_attr
+        x = geom_data.x
+        molecule_attr = torch.empty((1, 0))
+
+        for property in self.properties:
+            property_values = row[f"{property.name}"]
+            if isinstance(property_values, torch.Tensor):
+                if len(property_values.size()) == 0:
+                    property_values = property_values.unsqueeze(0)
+                if len(property_values.size()) == 1:
+                    property_values = property_values.unsqueeze(1)
+            else:
+                property_values = torch.zeros(
+                    (0, property.encoder.get_encoding_length())
+                )
+
+            if isinstance(property, AtomProperty):
+                x = torch.cat([x, property_values], dim=1)
+            elif isinstance(property, BondProperty):
+                # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
+                edge_attr = torch.cat(
+                    [edge_attr, torch.cat([property_values, property_values], dim=0)],
+                    dim=1,
+                )
+            elif isinstance(property, MoleculeProperty):
+                molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
+            else:
+                raise TypeError(f"Unsupported property type: {type(property).__name__}")
+
+        return GeomData(
+            x=x,
+            edge_index=geom_data.edge_index,
+            edge_attr=edge_attr,
+            molecule_attr=molecule_attr,
+        )
 
 
 class ChEBI50GraphProperties(GraphPropertiesMixIn, ChEBIOver50):
@@ -310,7 +460,7 @@ class AugGraphPropMixIn_WithGraphNode(AugGraphPropMixIn_NoGraphNode, ABC):
         data = super()._merge_props_into_base(row)
         return self._add_graph_node_mask(data, row)
 
-    def _add_graph_node_mask(self, data: GeomData, row) -> GeomData:
+    def _add_graph_node_mask(self, data: GeomData, row: pd.Series) -> GeomData:
         """
         Add a graph node mask to the GeomData object.
 
