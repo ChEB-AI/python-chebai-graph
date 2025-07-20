@@ -1,18 +1,22 @@
-class_path: chebai_graph.preprocessing.datasets.ChEBI50_WFGE_WGN_GraphProp
+class_path: chebai_graph.preprocessing.datasets.ChEBI50_WFGE_WGN_AsPerNodeType
 init_args:
   properties:
-      # Atom properties
+      # All Node type properties
       - chebai_graph.preprocessing.properties.AtomNodeLevel
+      # Atom Node type properties
       - chebai_graph.preprocessing.properties.AugAtomType
       - chebai_graph.preprocessing.properties.AugNumAtomBonds
       - chebai_graph.preprocessing.properties.AugAtomCharge
       - chebai_graph.preprocessing.properties.AugAtomAromaticity
       - chebai_graph.preprocessing.properties.AugAtomHybridization
       - chebai_graph.preprocessing.properties.AugAtomNumHs
+      # FG Node type properties
       - chebai_graph.preprocessing.properties.AtomFunctionalGroup
       - chebai_graph.preprocessing.properties.IsHydrogenBondDonorFG
       - chebai_graph.preprocessing.properties.IsHydrogenBondAcceptorFG
       - chebai_graph.preprocessing.properties.IsFGAlkyl
+      # Graph Node type properties
+      - chebai_graph.preprocessing.properties.RDKit2DNormalized
       # Bond properties
       - chebai_graph.preprocessing.properties.BondLevel
       - chebai_graph.preprocessing.properties.AugBondType
