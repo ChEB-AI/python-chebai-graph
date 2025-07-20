@@ -52,16 +52,17 @@ class GraphModelBase(torch.nn.Module, ABC):
                 - 'hidden_length'
                 - 'dropout_rate'
                 - 'n_conv_layers'
-                - 'n_atom_properties'
+                - 'n_node_properties'
                 - 'n_bond_properties'
             **kwargs: Additional keyword arguments for torch.nn.Module.
         """
         super().__init__(**kwargs)
-        self.hidden_length = int(config["hidden_length"])
-        self.dropout_rate = float(config["dropout_rate"])
-        self.n_conv_layers = int(config["n_conv_layers"])
-        self.n_atom_properties = int(config["n_atom_properties"])
-        self.n_bond_properties = int(config["n_bond_properties"])
+        self.hidden_channels = int(config["hidden_channels"])
+        self.out_channels = int(config["out_channels"])
+        self.num_layers = int(config["num_layers"])
+        assert self.num_layers > 1, "Need atleast two convolution layers"
+        self.n_node_properties = int(config["n_node_properties"])  # in_channels
+        self.n_bond_properties = int(config["n_bond_properties"])  # edge_dim
 
 
 class GraphNetWrapper(GraphBaseNet, ABC):
@@ -83,9 +84,7 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         """
         super().__init__(**kwargs)
         self.gnn = self._get_gnn(config)
-        gnn_out_dim = (
-            config["out_dim"] if "out_dim" in config else config["hidden_length"]
-        )
+        gnn_out_dim = int(config["out_channels"])
         self.activation = torch.nn.ELU
         self.lin_input_dim = self._get_lin_seq_input_dim(
             gnn_out_dim=gnn_out_dim,
