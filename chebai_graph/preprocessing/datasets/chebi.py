@@ -275,8 +275,19 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         return base_df[base_data[0].keys()].to_dict("records")
 
 
-class GraphPropertiesAsPerNodeType(DataPropertiesSetter, ABC):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
+class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
+    def __init__(self, properties=None, transform=None, **kwargs):
+        super().__init__(properties, transform, **kwargs)
+        # Sort properties so that AllNodeTypeProperty instances come first, rest of the properties order remain same
+        first = [
+            prop for prop in self.properties if isinstance(prop, AllNodeTypeProperty)
+        ]
+        rest = [
+            prop
+            for prop in self.properties
+            if not isinstance(prop, AllNodeTypeProperty)
+        ]
+        self.properties = first + rest
 
     def load_processed_data_from_file(self, filename: str) -> list[dict]:
         """
@@ -308,6 +319,7 @@ class GraphPropertiesAsPerNodeType(DataPropertiesSetter, ABC):
             if isinstance(prop, AllNodeTypeProperty):
                 n_atom_node_properties += prop_length
                 n_fg_node_properties += prop_length
+                n_graph_node_properties += prop_length
                 props_categories["AllNodeTypeProperties"].append(prop_name)
             elif isinstance(prop, FGNodeTypeProperty):
                 n_fg_node_properties += prop_length
@@ -354,7 +366,11 @@ class GraphPropertiesAsPerNodeType(DataPropertiesSetter, ABC):
             base_df = base_df.merge(property_df, on="ident", how="left")
 
         base_df["features"] = base_df.apply(
-            lambda row: self._merge_props_into_base(row), axis=1
+            lambda row: self._merge_props_into_base(
+                row,
+                max_len_node_properties=n_atom_properties,
+            ),
+            axis=1,
         )
 
         # apply transformation, e.g. masking for pretraining task
@@ -363,7 +379,9 @@ class GraphPropertiesAsPerNodeType(DataPropertiesSetter, ABC):
 
         return base_df[base_data[0].keys()].to_dict("records")
 
-    def _merge_props_into_base(self, row: pd.Series) -> GeomData:
+    def _merge_props_into_base(
+        self, row: pd.Series, max_len_node_properties: int
+    ) -> GeomData:
         """
         Merge encoded molecular properties into the GeomData object.
 
@@ -375,14 +393,24 @@ class GraphPropertiesAsPerNodeType(DataPropertiesSetter, ABC):
         """
         geom_data = row["features"]
         assert isinstance(geom_data, GeomData)
+
         is_atom_node = geom_data.is_atom_node
         assert is_atom_node is not None, "`is_atom_node` must be set in the geom_data"
         is_graph_node = geom_data.is_graph_node
         assert is_graph_node is not None, "`is_graph_node` must be set in the geom_data"
 
+        is_fg_node = ~is_atom_node & ~is_graph_node
+        num_nodes = geom_data.x.size(0)
         edge_attr = geom_data.edge_attr
-        x = geom_data.x
-        molecule_attr = torch.empty((1, 0))
+
+        # Initialize node feature matrix
+        assert (
+            max_len_node_properties is not None
+        ), "Maximum len of node properties should not be None"
+        x = torch.zeros((num_nodes, max_len_node_properties))
+
+        # Track column offsets for each node type
+        atom_offset, fg_offset, graph_offset = 0, 0, 0
 
         for property in self.properties:
             property_values = row[f"{property.name}"]
@@ -396,24 +424,51 @@ class GraphPropertiesAsPerNodeType(DataPropertiesSetter, ABC):
                     (0, property.encoder.get_encoding_length())
                 )
 
-            if isinstance(property, AtomProperty):
-                x = torch.cat([x, property_values], dim=1)
+            enc_len = property_values.shape[1]
+            # -------------- Node properties ---------------
+            if isinstance(property, AllNodeTypeProperty):
+                x[:, atom_offset : atom_offset + enc_len] = property_values
+                atom_offset += enc_len
+                fg_offset += enc_len
+                graph_offset += enc_len
+
+            elif isinstance(property, AtomNodeTypeProperty):
+                x[is_atom_node, atom_offset : atom_offset + enc_len] = property_values[
+                    is_atom_node
+                ]
+                atom_offset += enc_len
+
+            elif isinstance(property, FGNodeTypeProperty):
+                x[is_fg_node, fg_offset : fg_offset + enc_len] = property_values[
+                    is_fg_node
+                ]
+                fg_offset += enc_len
+
+            elif isinstance(property, MoleculeProperty):
+                x[is_graph_node, graph_offset : graph_offset + enc_len] = (
+                    property_values[is_graph_node]
+                )
+                graph_offset += enc_len
+
+            # ------------- Bond Properties --------------
             elif isinstance(property, BondProperty):
                 # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
                 edge_attr = torch.cat(
                     [edge_attr, torch.cat([property_values, property_values], dim=0)],
                     dim=1,
                 )
-            elif isinstance(property, MoleculeProperty):
-                molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
             else:
                 raise TypeError(f"Unsupported property type: {type(property).__name__}")
+
+            total_used_columns = max(atom_offset, fg_offset, graph_offset)
+            assert (
+                total_used_columns <= max_len_node_properties
+            ), f"Used {total_used_columns} columns, but max allowed is {max_len_node_properties}"
 
         return GeomData(
             x=x,
             edge_index=geom_data.edge_index,
             edge_attr=edge_attr,
-            molecule_attr=molecule_attr,
         )
 
 
@@ -507,3 +562,7 @@ class ChEBI50_Atom_WGNOnly_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver5
     """ChEBIOver50 with atom-level nodes and graph node only."""
 
     READER = AtomReader_WithGraphNodeOnly
+
+
+class ChEBI50_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver50):
+    READER = AtomFGReader_WithFGEdges_WithGraphNode
