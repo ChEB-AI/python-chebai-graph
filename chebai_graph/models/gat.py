@@ -30,11 +30,12 @@ class GATGraphConvNetBase(GraphModelBase):
         self.v2 = bool(config["v2"])
         self.activation = ELU()  # Instantiate ELU once for reuse.
         self.gat = GAT(
-            in_channels=self.n_atom_properties,
-            hidden_channels=self.hidden_length,
-            num_layers=self.n_conv_layers,
-            dropout=self.dropout_rate,
-            edge_dim=self.n_bond_properties,
+            in_channels=self.in_channels,
+            hidden_channels=self.hidden_channels,
+            out_channels=self.out_channels,
+            num_layers=self.num_layers,
+            dropout=self.dropout,
+            edge_dim=self.edge_dim,
             heads=self.heads,
             v2=self.v2,
             act=self.activation,

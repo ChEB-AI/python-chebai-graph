@@ -267,8 +267,9 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         ]
         rank_zero_info(
             f"Finished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n"
-            f"Use n_atom_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, AtomProperty))}, "
-            f"n_bond_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, BondProperty))}, "
+            f"Use following values for given parameters for model configuration: \n\t"
+            f"in_channels: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, AtomProperty))}, "
+            f"edge_dim: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, BondProperty))}, "
             f"n_molecule_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, MoleculeProperty))}"
         )
 
@@ -337,7 +338,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             else:
                 raise TypeError(f"Unsupported property type: {type(prop).__name__}")
 
-        n_atom_properties = max(
+        n_node_properties = max(
             n_atom_node_properties, n_fg_node_properties, n_graph_node_properties
         )
         rank_zero_info(
@@ -347,7 +348,8 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             f"n_fg_node_properties: {n_fg_node_properties}, "
             f"n_bond_properties: {n_bond_properties}, "
             f"n_graph_node_properties: {n_graph_node_properties}\n"
-            f"Use n_atom_properties: {n_atom_properties}, n_bond_properties: {n_bond_properties}, n_molecule_properties: 0"
+            f"Use following values for given parameters for model configuration: \n\t"
+            f"in_channels: {n_node_properties}, edge_dim: {n_bond_properties}, n_molecule_properties: 0"
         )
 
         for property in self.properties:
@@ -368,7 +370,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         base_df["features"] = base_df.apply(
             lambda row: self._merge_props_into_base(
                 row,
-                max_len_node_properties=n_atom_properties,
+                max_len_node_properties=n_node_properties,
             ),
             axis=1,
         )

@@ -49,20 +49,22 @@ class GraphModelBase(torch.nn.Module, ABC):
 
         Args:
             config (dict): Configuration dictionary with keys:
-                - 'hidden_length'
-                - 'dropout_rate'
-                - 'n_conv_layers'
-                - 'n_node_properties'
-                - 'n_bond_properties'
+                - 'num_layers'
+                - 'in_channels'
+                - 'hidden_channels'
+                - 'out_channels'
+                - 'edge_dim'
+                - 'dropout'
             **kwargs: Additional keyword arguments for torch.nn.Module.
         """
         super().__init__(**kwargs)
-        self.hidden_channels = int(config["hidden_channels"])
-        self.out_channels = int(config["out_channels"])
         self.num_layers = int(config["num_layers"])
         assert self.num_layers > 1, "Need atleast two convolution layers"
-        self.n_node_properties = int(config["n_node_properties"])  # in_channels
-        self.n_bond_properties = int(config["n_bond_properties"])  # edge_dim
+        self.in_channels = int(config["in_channels"])  # number of node/atom properties
+        self.hidden_channels = int(config["hidden_channels"])
+        self.out_channels = int(config["out_channels"])
+        self.edge_dim = int(config["edge_dim"])  # number of bond properties
+        self.dropout = float(config["dropout"])
 
 
 class GraphNetWrapper(GraphBaseNet, ABC):

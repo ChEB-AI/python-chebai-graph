@@ -3,10 +3,11 @@ init_args:
   optimizer_kwargs:
     lr: 1e-3
   config:
-    n_node_properties: 68 # in_channels
-    hidden_channels : 256
-    out_channels : 512
-    num_layers : 4
-    n_bond_properties: 4 # edge_dim
+    in_channels: 158 # number of node/atom properties
+    hidden_channels: 256
+    out_channels: 512
+    num_layers: 5
+    edge_dim: 7 # number of bond properties
+    dropout: 0
   n_molecule_properties: 0
   n_linear_layers: 2
