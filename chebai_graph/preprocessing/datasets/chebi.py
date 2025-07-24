@@ -178,6 +178,17 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
 
 
 class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
+    def __init__(
+        self, properties=None, transform=None, zero_pad_atom: int = None, **kwargs
+    ):
+        super().__init__(properties, transform, **kwargs)
+        self.zero_pad_atom = int(zero_pad_atom) if zero_pad_atom is not None else None
+        if self.zero_pad_atom:
+            print(
+                f"[Info] Atom-level features will be zero-padded with "
+                f"{self.zero_pad_atom} additional dimensions."
+            )
+
     def _merge_props_into_base(self, row: pd.Series) -> GeomData:
         """
         Merge encoded molecular properties into the GeomData object.
@@ -218,6 +229,9 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
                 molecule_attr = torch.cat([molecule_attr, property_values], dim=1)
             else:
                 raise TypeError(f"Unsupported property type: {type(property).__name__}")
+
+        if self.zero_pad_atom is not None:
+            x = torch.cat([x, torch.zeros((x.shape[0], self.zero_pad_atom))], dim=1)
 
         return GeomData(
             x=x,
@@ -265,10 +279,17 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         prop_lengths = [
             (prop.name, prop.encoder.get_encoding_length()) for prop in self.properties
         ]
+        n_node_properties = sum(
+            p.encoder.get_encoding_length()
+            for p in self.properties
+            if isinstance(p, AtomProperty)
+        )
+        if self.zero_pad_atom:
+            n_node_properties += self.zero_pad_atom
         rank_zero_info(
             f"Finished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n"
             f"Use following values for given parameters for model configuration: \n\t"
-            f"in_channels: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, AtomProperty))}, "
+            f"in_channels: {n_node_properties} (with {self.zero_pad_atom} padded zeros) , "
             f"edge_dim: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, BondProperty))}, "
             f"n_molecule_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, MoleculeProperty))}"
         )
