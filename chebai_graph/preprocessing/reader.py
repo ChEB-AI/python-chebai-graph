@@ -14,7 +14,7 @@ from chebai_graph.preprocessing import properties
 from chebai_graph.preprocessing.collate import GraphCollator
 
 
-class GraphPropertyReader(dr.ChemDataReader):
+class GraphPropertyReader(dr.DataReader):
     COLLATOR = GraphCollator
 
     def __init__(

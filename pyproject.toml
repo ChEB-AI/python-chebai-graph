@@ -6,10 +6,7 @@ authors = [
     { name = "Martin Glauer", email = "martin.glauer@ovgu.de" }
 ]
 dependencies = [
-    "torch_geometric",
-    "torch-scatter",
-    "torch-sparse",
-    "torch-cluster",
+    "chebai",
     "descriptastorus"
 ]
 
