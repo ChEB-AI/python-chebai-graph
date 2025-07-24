@@ -76,9 +76,6 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         assert isinstance(self.properties, list) and all(
             isinstance(p, MolecularProperty) for p in self.properties
         )
-        rank_zero_info(
-            f"Data module uses these properties (ordered): {', '.join([str(p) for p in properties])}"
-        )
         self.transform = transform
 
     def _setup_properties(self) -> None:
@@ -188,6 +185,9 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
                 f"[Info] Atom-level features will be zero-padded with "
                 f"{self.zero_pad_atom} additional dimensions."
             )
+        print(
+            f"Data module uses these properties (ordered): {', '.join([str(p) for p in self.properties])}"
+        )
 
     def _merge_props_into_base(self, row: pd.Series) -> GeomData:
         """
@@ -310,6 +310,10 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             if not isinstance(prop, AllNodeTypeProperty)
         ]
         self.properties = first + rest
+        print(
+            "Properties are sorted so that `AllNodeTypeProperty` properties are first in sequence and rest of the order remains same\n",
+            f"Data module uses these properties (ordered): {', '.join([str(p) for p in self.properties])}",
+        )
 
     def load_processed_data_from_file(self, filename: str) -> list[dict]:
         """

@@ -4,12 +4,12 @@ init_args:
       # All Node type properties
       - chebai_graph.preprocessing.properties.AtomNodeLevel
       # Atom Node type properties
-      - chebai_graph.preprocessing.properties.AugAtomType
-      - chebai_graph.preprocessing.properties.AugNumAtomBonds
-      - chebai_graph.preprocessing.properties.AugAtomCharge
       - chebai_graph.preprocessing.properties.AugAtomAromaticity
+      - chebai_graph.preprocessing.properties.AugAtomCharge
       - chebai_graph.preprocessing.properties.AugAtomHybridization
       - chebai_graph.preprocessing.properties.AugAtomNumHs
+      - chebai_graph.preprocessing.properties.AugAtomType
+      - chebai_graph.preprocessing.properties.AugNumAtomBonds
       # FG Node type properties
       - chebai_graph.preprocessing.properties.AtomFunctionalGroup
       - chebai_graph.preprocessing.properties.IsHydrogenBondDonorFG
@@ -19,6 +19,6 @@ init_args:
       - chebai_graph.preprocessing.properties.RDKit2DNormalized
       # Bond properties
       - chebai_graph.preprocessing.properties.BondLevel
-      - chebai_graph.preprocessing.properties.AugBondType
-      - chebai_graph.preprocessing.properties.AugBondInRing
       - chebai_graph.preprocessing.properties.AugBondAromaticity
+      - chebai_graph.preprocessing.properties.AugBondInRing
+      - chebai_graph.preprocessing.properties.AugBondType
