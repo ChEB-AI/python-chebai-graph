@@ -67,9 +67,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         # atom_properties and bond_properties are given as lists containing class_paths
         if properties is not None:
             properties = [resolve_property(prop) for prop in properties]
-            properties = sorted(
-                properties, key=lambda prop: self.get_property_path(prop)
-            )
+            properties = self._sort_properties(properties)
         else:
             properties = []
         self.properties = properties
@@ -77,6 +75,11 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
             isinstance(p, MolecularProperty) for p in self.properties
         )
         self.transform = transform
+
+    def _sort_properties(
+        self, properties: list[MolecularProperty]
+    ) -> list[MolecularProperty]:
+        return sorted(properties, key=lambda prop: self.get_property_path(prop))
 
     def _setup_properties(self) -> None:
         """
@@ -301,14 +304,16 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
     def __init__(self, properties=None, transform=None, **kwargs):
         super().__init__(properties, transform, **kwargs)
         # Sort properties so that AllNodeTypeProperty instances come first, rest of the properties order remain same
-        first = [
-            prop for prop in self.properties if isinstance(prop, AllNodeTypeProperty)
-        ]
-        rest = [
-            prop
-            for prop in self.properties
-            if not isinstance(prop, AllNodeTypeProperty)
-        ]
+        first = self._sort_properties(
+            [prop for prop in self.properties if isinstance(prop, AllNodeTypeProperty)]
+        )
+        rest = self._sort_properties(
+            [
+                prop
+                for prop in self.properties
+                if not isinstance(prop, AllNodeTypeProperty)
+            ]
+        )
         self.properties = first + rest
         print(
             "Properties are sorted so that `AllNodeTypeProperty` properties are first in sequence and rest of the order remains same\n",
