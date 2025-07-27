@@ -31,6 +31,7 @@ from chebai_graph.preprocessing.reader import (
     AtomsFGReader_NoFGEdges_NoGraphNode,
     GraphPropertyReader,
     GraphReader,
+    RandomNodeInitializationReader,
 )
 
 from .utils import resolve_property
@@ -188,9 +189,11 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
                 f"[Info] Atom-level features will be zero-padded with "
                 f"{self.zero_pad_atom} additional dimensions."
             )
-        print(
-            f"Data module uses these properties (ordered): {', '.join([str(p) for p in self.properties])}"
-        )
+
+        if self.properties:
+            print(
+                f"Data module uses these properties (ordered): {', '.join([str(p) for p in self.properties])}"
+            )
 
     def _merge_props_into_base(self, row: pd.Series) -> GeomData:
         """
@@ -502,6 +505,24 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             edge_index=geom_data.edge_index,
             edge_attr=edge_attr,
         )
+
+
+class ChEBI50_StaticGNI(DataPropertiesSetter, ChEBIOver50):
+    READER = RandomNodeInitializationReader
+
+    def _setup_properties(self): ...
+
+    def load_processed_data_from_file(self, filename):
+        base_data = super().load_processed_data_from_file(filename)
+        base_df = pd.DataFrame(base_data)
+
+        rank_zero_info(
+            f"Use following values for given parameters for model configuration: \n\t"
+            f"in_channels: {self.reader.num_node_properties} , "
+            f"edge_dim: {self.reader.num_bond_properties}, "
+            f"n_molecule_properties: {self.reader.num_molecule_properties}"
+        )
+        return base_df[base_data[0].keys()].to_dict("records")
 
 
 class ChEBI50GraphProperties(GraphPropertiesMixIn, ChEBIOver50):

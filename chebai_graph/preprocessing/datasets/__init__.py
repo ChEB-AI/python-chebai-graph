@@ -2,6 +2,7 @@ from .chebi import (
     ChEBI50_Atom_WGNOnly_GraphProp,
     ChEBI50_NFGE_NGN_GraphProp,
     ChEBI50_NFGE_WGN_GraphProp,
+    ChEBI50_StaticGNI,
     ChEBI50_WFGE_NGN_GraphProp,
     ChEBI50_WFGE_WGN_GraphProp,
     ChEBI50GraphData,
@@ -19,4 +20,5 @@ __all__ = [
     "ChEBI50_NFGE_WGN_GraphProp",
     "ChEBI50_WFGE_NGN_GraphProp",
     "ChEBI50_WFGE_WGN_GraphProp",
+    "ChEBI50_StaticGNI",
 ]

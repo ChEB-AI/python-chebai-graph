@@ -6,6 +6,7 @@ from .augmented_reader import (
     AtomsFGReader_NoFGEdges_NoGraphNode,
 )
 from .reader import GraphPropertyReader, GraphReader
+from .static_gni import RandomNodeInitializationReader
 
 __all__ = [
     "GraphReader",
@@ -15,4 +16,5 @@ __all__ = [
     "AtomFGReader_NoFGEdges_WithGraphNode",
     "AtomFGReader_WithFGEdges_NoGraphNode",
     "AtomFGReader_WithFGEdges_WithGraphNode",
+    "RandomNodeInitializationReader",
 ]
