@@ -376,14 +376,14 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             n_atom_node_properties, n_fg_node_properties, n_graph_node_properties
         )
         rank_zero_info(
-            f"Finished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n"
-            f"Properties Categories:\n{pformat(props_categories)}"
+            f"\nFinished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n\n"
+            f"Properties Categories:\n{pformat(props_categories)}\n\n"
             f"n_atom_node_properties: {n_atom_node_properties}, "
             f"n_fg_node_properties: {n_fg_node_properties}, "
             f"n_bond_properties: {n_bond_properties}, "
-            f"n_graph_node_properties: {n_graph_node_properties}\n"
+            f"n_graph_node_properties: {n_graph_node_properties}\n\n"
             f"Use following values for given parameters for model configuration: \n\t"
-            f"in_channels: {n_node_properties}, edge_dim: {n_bond_properties}, n_molecule_properties: 0"
+            f"in_channels: {n_node_properties}, edge_dim: {n_bond_properties}, n_molecule_properties: 0\n"
         )
 
         for property in self.properties:
@@ -449,7 +449,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         atom_offset, fg_offset, graph_offset = 0, 0, 0
 
         for property in self.properties:
-            property_values = row[f"{property.name}"]
+            property_values = row[f"{property.name}"].to(dtype=torch.float32)
             if isinstance(property_values, torch.Tensor):
                 if len(property_values.size()) == 0:
                     property_values = property_values.unsqueeze(0)
@@ -482,7 +482,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
 
             elif isinstance(property, MoleculeProperty):
                 x[is_graph_node, graph_offset : graph_offset + enc_len] = (
-                    property_values[is_graph_node]
+                    property_values
                 )
                 graph_offset += enc_len
 
@@ -505,6 +505,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             x=x,
             edge_index=geom_data.edge_index,
             edge_attr=edge_attr,
+            molecule_attr=torch.empty((1, 0)),  # empty as not used for this class
         )
 
 

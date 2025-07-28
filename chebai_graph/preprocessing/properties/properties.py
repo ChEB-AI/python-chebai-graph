@@ -275,6 +275,12 @@ class RDKit2DNormalized(MoleculeProperty):
     def __init__(self, encoder: PropertyEncoder | None = None) -> None:
         super().__init__(encoder or AsIsEncoder(self))
         self.generator_normalized = rdNormalizedDescriptors.RDKit2DNormalized()
+        # Create a dummy molecule (e.g., methane) to extract the length of descriptor vector
+        dummy_mol = Chem.MolFromSmiles("C")
+        descr_values = self.generator_normalized.processMol(
+            dummy_mol, Chem.MolToSmiles(dummy_mol)
+        )
+        self.encoder.set_encoding_length(len(descr_values) - 1)
 
     def get_property_value(self, mol: Chem.rdchem.Mol) -> list[np.ndarray]:
         """

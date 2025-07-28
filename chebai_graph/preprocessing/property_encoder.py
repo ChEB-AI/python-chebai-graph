@@ -243,8 +243,16 @@ class AsIsEncoder(PropertyEncoder):
             Tensor of shape (1,) containing the input value or zero.
         """
         if token is None:
-            return torch.tensor([0])
-        return torch.tensor([token])
+            return torch.zeros(1, self.get_encoding_length())
+        assert (
+            len(token) == self.get_encoding_length()
+        ), "Length of token should be equal to encoding length"
+        # return torch.tensor([token]) # token is an ndarray, no need to create list of ndarray due to below warning
+        # UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow.
+        # Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor.
+        # (Triggered internally at C:\actions-runner\_work\pytorch\pytorch\pytorch\torch\csrc\utils\tensor_new.cpp:257.)
+        # ----- fix: for above warning
+        return torch.tensor(token).unsqueeze(0)  # shape: (1, len(token))
 
 
 class BoolEncoder(PropertyEncoder):
