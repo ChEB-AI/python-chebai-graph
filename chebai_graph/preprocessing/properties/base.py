@@ -439,3 +439,17 @@ class AugmentedBondProperty(BondProperty, ABC):
             return bond[prop]
         else:
             raise TypeError("Bond/Edge should be of type `Chem.rdchem.Bond` or `dict`.")
+
+
+class AugmentedMoleculeProperty(MoleculeProperty, ABC):
+    def get_property_value(self, augmented_mol: dict) -> list:
+        """
+        Get molecular property values from augmented molecule dict.
+        Args:
+            augmented_mol (dict): Augmented molecule dict.
+        Returns:
+            list: Property values of molecule.
+        """
+        mol: Chem.Mol = augmented_mol[AugmentedAtomProperty.MAIN_KEY]["atom_nodes"]
+        assert isinstance(mol, Chem.Mol), "Molecule should be instance of `Chem.Mol`"
+        return super().get_property_value(mol)

@@ -14,6 +14,7 @@ from .base import (
     AllNodeTypeProperty,
     AtomNodeTypeProperty,
     AugmentedBondProperty,
+    AugmentedMoleculeProperty,
     FGNodeTypeProperty,
     FrozenPropertyAlias,
 )
@@ -402,3 +403,9 @@ class AugBondInRing(AugBondValueDefaulter, pr.BondInRing):
     """
 
     ...
+
+
+# --------------------- Molecule Properties ------------------------------
+
+
+class AugRDKit2DNormalized(AugmentedMoleculeProperty, pr.RDKit2DNormalized): ...

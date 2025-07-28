@@ -16,7 +16,7 @@ init_args:
       - chebai_graph.preprocessing.properties.IsHydrogenBondAcceptorFG
       - chebai_graph.preprocessing.properties.IsFGAlkyl
       # Graph Node type properties
-      - chebai_graph.preprocessing.properties.RDKit2DNormalized
+      - chebai_graph.preprocessing.properties.AugRDKit2DNormalized
       # Bond properties
       - chebai_graph.preprocessing.properties.BondLevel
       - chebai_graph.preprocessing.properties.AugBondAromaticity

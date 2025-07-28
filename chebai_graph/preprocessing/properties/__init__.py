@@ -43,6 +43,7 @@ from .augmented_properties import (
     AugBondAromaticity,
     AugBondType,
     AugBondInRing,
+    AugRDKit2DNormalized,
 )
 
 # isort: on
@@ -84,4 +85,5 @@ __all__ = [
     "AugBondAromaticity",
     "AugBondType",
     "AugBondInRing",
+    "AugRDKit2DNormalized",
 ]

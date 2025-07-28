@@ -1,6 +1,7 @@
 import os
 from abc import ABC
 from collections.abc import Callable
+from pprint import pformat
 
 import pandas as pd
 import torch
@@ -376,7 +377,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         )
         rank_zero_info(
             f"Finished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n"
-            f"Properties Categories {props_categories}\n"
+            f"Properties Categories:\n{pformat(props_categories)}"
             f"n_atom_node_properties: {n_atom_node_properties}, "
             f"n_fg_node_properties: {n_fg_node_properties}, "
             f"n_bond_properties: {n_bond_properties}, "
