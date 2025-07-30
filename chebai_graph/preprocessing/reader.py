@@ -2,7 +2,6 @@ import os
 from typing import List, Optional
 
 import chebai.preprocessing.reader as dr
-import networkx as nx
 import pysmiles as ps
 import rdkit.Chem as Chem
 import torch
@@ -93,6 +92,8 @@ class GraphReader(dr.ChemDataReader):
         return "graph"
 
     def _read_data(self, raw_data) -> Optional[GeomData]:
+        import networkx as nx
+
         # raw_data is a SMILES string
         try:
             mol = ps.read_smiles(raw_data)
