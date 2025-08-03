@@ -17,6 +17,10 @@ from chebai_graph.preprocessing.reader import (
     AtomFGReader_WithFGEdges_WithGraphNode,
     AtomReader_WithGraphNodeOnly,
     AtomsFGReader_NoFGEdges_NoGraphNode,
+    GN_WithAllNodes_FG_WithAtoms_FGE,
+    GN_WithAllNodes_FG_WithAtoms_NoFGE,
+    GN_WithAtoms_FG_WithAtoms_FGE,
+    GN_WithAtoms_FG_WithAtoms_NoFGE,
 )
 
 matplotlib.use("TkAgg")
@@ -51,6 +55,10 @@ READER = {
     "w_fge_n_gn": AtomFGReader_WithFGEdges_NoGraphNode,
     "n_fge_n_gn": AtomsFGReader_NoFGEdges_NoGraphNode,
     "atom_w_gn": AtomReader_WithGraphNodeOnly,
+    "gnwa_fgwa_nfge": GN_WithAtoms_FG_WithAtoms_NoFGE,
+    "gnwa_fgwa_wfge": GN_WithAtoms_FG_WithAtoms_FGE,
+    "gn_wall_fgwa_nfge": GN_WithAllNodes_FG_WithAtoms_NoFGE,
+    "gn_wall_fgwa_wfge": GN_WithAllNodes_FG_WithAtoms_FGE,
 }
 
 
@@ -286,10 +294,6 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
         neighbor_type = {
             G.nodes[nbr].get("node_type") for nbr in G.neighbors(graph_node)
         }
-        assert neighbor_type < {
-            "fg",
-            "atom",
-        }, f"Graph node {graph_node} must only connect to one type of node: {neighbor_type}"
 
         if "fg" in neighbor_type:
             graph_pos_arr = np.array(
@@ -478,11 +482,15 @@ class Main:
                 - h: Hierarchical 2D-graph with separate plane for each node type
                 - 3d: Hierarchical 3D-graph
             reader (str): Reader type for graph augmentation. Options:
-                - 'n_fge_w_gn': FG nodes without FG edges, with a graph node.
-                - 'w_fge_w_gn': FG nodes with FG edges, with a graph node.
+                - 'n_fge_w_gn': FG nodes without FG edges, with a graph node connected to fg nodes.
+                - 'w_fge_w_gn': FG nodes with FG edges, with a graph node connected to fg nodes.
                 - 'w_fge_n_gn': FG nodes with FG edges, no graph node.
                 - 'n_fge_n_gn': FG nodes without FG edges, no graph node.
                 - 'atom_w_gn': Atom nodes only, connected to a graph node.
+                - 'gnwa_fgwa_nfge': Graph node connected to atoms and FG nodes connected to atoms, no FG edges.
+                - 'gnwa_fgwa_wfge': Graph node connected to atoms and FG nodes connected to atoms, with FG edges.
+                - 'gn_wall_fgwa_nfge': Graph node connected to all atoms and FG nodes, no FG edges.
+                - 'gn_wall_fgwa_wfge': Graph node connected to all atoms and FG nodes, with FG edges.
         """
         fg_reader = READER[reader]()
         mol = fg_reader._smiles_to_mol(smiles)

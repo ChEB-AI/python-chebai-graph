@@ -307,13 +307,17 @@ class _AugmentorReader(DataReader, ABC):
 
 
 class AtomsFGReader_NoFGEdges_NoGraphNode(_AugmentorReader):
-    """Adds FG nodes without intra-functional group edges and without introducing a graph-level node."""
+    """
+    Adds FG nodes (connected to their respective atom nodes) without
+    intra-functional group edges, and without introducing a graph-level node.
+    """
 
     def _augment_graph_structure(
         self, mol: Chem.Mol
     ) -> tuple[torch.Tensor, dict, dict]:
         """
-        Constructs the full augmented graph structure from a molecule.
+        Constructs the full augmented graph structure from a molecule by adding
+        fg nodes to their respective atom nodes.
 
         Args:
             mol (Chem.Mol): RDKit molecule object.
@@ -545,7 +549,10 @@ class AtomsFGReader_NoFGEdges_NoGraphNode(_AugmentorReader):
 
 
 class AtomFGReader_WithFGEdges_NoGraphNode(AtomsFGReader_NoFGEdges_NoGraphNode):
-    """Adds FG nodes with intra-functional group edges and without introducing a graph-level node."""
+    """
+    Adds FG nodes (connected to their respective atom nodes) with intra-functional group
+    edges, and without introducing a graph-level node.
+    """
 
     def _augment_graph_structure(
         self, mol: Chem.Mol
@@ -754,13 +761,16 @@ class _AddGraphNode(_AugmentorReader):
 class AtomFGReader_WithFGEdges_WithGraphNode(
     AtomFGReader_WithFGEdges_NoGraphNode, _AddGraphNode
 ):
-    """Adds FG nodes with intra-functional group edges and a graph-level node."""
+    """
+    Adds FG nodes (connected to their respective atom nodes) with intra-functional group
+    edges, and adds a graph-level node connected to all FG nodes.
+    """
 
     def _augment_graph_structure(
         self, mol: Chem.Mol
     ) -> tuple[torch.Tensor, dict, dict]:
         """
-        Augments the graph with FG edges and a global graph-level node.
+        Augments the graph with a global graph-level node.
 
         Args:
             mol (Chem.Mol): RDKit molecule object.
@@ -778,7 +788,10 @@ class AtomFGReader_WithFGEdges_WithGraphNode(
 class AtomFGReader_NoFGEdges_WithGraphNode(
     AtomsFGReader_NoFGEdges_NoGraphNode, _AddGraphNode
 ):
-    """Adds FG nodes without functional group edges and a graph-level node."""
+    """
+    Adds FG nodes (connected to their respective atom nodes) without functional group
+    edges, and adds a graph-level node connected to all FG nodes.
+    """
 
     def _augment_graph_structure(
         self, mol: Chem.Mol
@@ -818,3 +831,113 @@ class AtomReader_WithGraphNodeOnly(_AddGraphNode):
         molecule: Chem.Mol = augmented_struct["node_info"]["atom_nodes"]
         atom_ids = {atom.GetIdx() for atom in molecule.GetAtoms()}
         return self._add_graph_node_and_edges_to_nodes(augmented_struct, atom_ids)
+
+
+class GN_WithAtoms_FG_WithAtoms_NoFGE(
+    AtomsFGReader_NoFGEdges_NoGraphNode, _AddGraphNode
+):
+    """
+    Adds FG nodes (connected to their respective atom nodes) without functional group
+    edges, and adds a graph-level node connected to all atom nodes.
+    """
+
+    def _augment_graph_structure(
+        self, mol: Chem.Mol
+    ) -> tuple[torch.Tensor, dict, dict]:
+        """
+        Augments the graph with a global graph-level node.
+
+        Args:
+            mol (Chem.Mol): RDKit molecule object.
+
+        Returns:
+            tuple[torch.Tensor, dict, dict]: Updated graph structure.
+        """
+        augmented_struct = super()._augment_graph_structure(mol)
+        molecule: Chem.Mol = augmented_struct["node_info"]["atom_nodes"]
+        atom_ids = {atom.GetIdx() for atom in molecule.GetAtoms()}
+        return self._add_graph_node_and_edges_to_nodes(augmented_struct, atom_ids)
+
+
+class GN_WithAtoms_FG_WithAtoms_FGE(
+    AtomFGReader_WithFGEdges_NoGraphNode, _AddGraphNode
+):
+    """
+    Adds FG nodes (connected to their respective atom nodes) with functional group
+    edges, and adds a graph-level node connected to all atom nodes.
+    """
+
+    def _augment_graph_structure(
+        self, mol: Chem.Mol
+    ) -> tuple[torch.Tensor, dict, dict]:
+        """
+        Augments the graph with a global graph-level node.
+
+        Args:
+            mol (Chem.Mol): RDKit molecule object.
+
+        Returns:
+            tuple[torch.Tensor, dict, dict]: Updated graph structure.
+        """
+        augmented_struct = super()._augment_graph_structure(mol)
+        molecule: Chem.Mol = augmented_struct["node_info"]["atom_nodes"]
+        atom_ids = {atom.GetIdx() for atom in molecule.GetAtoms()}
+        return self._add_graph_node_and_edges_to_nodes(augmented_struct, atom_ids)
+
+
+class GN_WithAllNodes_FG_WithAtoms_FGE(
+    AtomFGReader_WithFGEdges_NoGraphNode, _AddGraphNode
+):
+    """
+    Adds FG nodes (connected to their respective atom nodes) with functional group
+    edges, and adds a graph-level node connected to all nodes (fg + atoms).
+    """
+
+    def _augment_graph_structure(
+        self, mol: Chem.Mol
+    ) -> tuple[torch.Tensor, dict, dict]:
+        """
+        Augments the graph with a global graph-level node.
+
+        Args:
+            mol (Chem.Mol): RDKit molecule object.
+
+        Returns:
+            tuple[torch.Tensor, dict, dict]: Updated graph structure.
+        """
+        augmented_struct = super()._augment_graph_structure(mol)
+        molecule: Chem.Mol = augmented_struct["node_info"]["atom_nodes"]
+        fg_to_atoms_map = augmented_struct["graph_meta_info"]["fg_to_atoms_map"]
+        atom_ids = {atom.GetIdx() for atom in molecule.GetAtoms()}
+        return self._add_graph_node_and_edges_to_nodes(
+            augmented_struct, atom_ids | fg_to_atoms_map.keys()
+        )
+
+
+class GN_WithAllNodes_FG_WithAtoms_NoFGE(
+    AtomsFGReader_NoFGEdges_NoGraphNode, _AddGraphNode
+):
+    """
+    Adds FG nodes (connected to their respective atom nodes) without functional group
+    edges, and adds a graph-level node connected to all nodes (fg + atoms).
+    """
+
+    def _augment_graph_structure(
+        self, mol: Chem.Mol
+    ) -> tuple[torch.Tensor, dict, dict]:
+        """
+        Augments the graph with a global graph-level node.
+
+        Args:
+            mol (Chem.Mol): RDKit molecule object.
+
+        Returns:
+            tuple[torch.Tensor, dict, dict]: Updated graph structure.
+        """
+        augmented_struct = super()._augment_graph_structure(mol)
+        molecule: Chem.Mol = augmented_struct["node_info"]["atom_nodes"]
+        fg_to_atoms_map = augmented_struct["graph_meta_info"]["fg_to_atoms_map"]
+        atom_ids = {atom.GetIdx() for atom in molecule.GetAtoms()}
+        return self._add_graph_node_and_edges_to_nodes(
+            augmented_struct, atom_ids | fg_to_atoms_map.keys()
+        )
