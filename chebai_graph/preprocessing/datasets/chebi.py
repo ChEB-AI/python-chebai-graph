@@ -30,6 +30,10 @@ from chebai_graph.preprocessing.reader import (
     AtomFGReader_WithFGEdges_WithGraphNode,
     AtomReader_WithGraphNodeOnly,
     AtomsFGReader_NoFGEdges_NoGraphNode,
+    GN_WithAllNodes_FG_WithAtoms_FGE,
+    GN_WithAllNodes_FG_WithAtoms_NoFGE,
+    GN_WithAtoms_FG_WithAtoms_FGE,
+    GN_WithAtoms_FG_WithAtoms_NoFGE,
     GraphPropertyReader,
     GraphReader,
     RandomNodeInitializationReader,
@@ -593,6 +597,50 @@ class ChEBI50_WFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
     """ChEBIOver50 with with FG nodes and FG edges and graph node."""
 
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI50_GN_WithAllNodes_FG_WithAtoms_FGE(
+    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
+):
+    """
+    ChEBIOver50 with FG nodes (connected to their respective atom nodes) with functional group
+    edges, and adds a graph-level node connected to all nodes (fg + atoms).
+    """
+
+    READER = GN_WithAllNodes_FG_WithAtoms_FGE
+
+
+class ChEBI50_GN_WithAllNodes_FG_WithAtoms_NoFGE(
+    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
+):
+    """
+    ChEBIOver50 with FG nodes (connected to their respective atom nodes) without functional group
+    edges, and adds a graph-level node connected to all nodes (fg + atoms).
+    """
+
+    READER = GN_WithAllNodes_FG_WithAtoms_NoFGE
+
+
+class ChEBI50_GN_WithAtoms_FG_WithAtoms_FGE(
+    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
+):
+    """
+    ChEBIOver50 with FG nodes (connected to their respective atom nodes) with functional group
+    edges, and adds a graph-level node connected to all atom nodes.
+    """
+
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
+class ChEBI50_GN_WithAtoms_FG_WithAtoms_NoFGE(
+    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
+):
+    """
+    ChEBIOver50 with FG nodes (connected to their respective atom nodes) without functional group
+    edges, and adds a graph-level node connected to all atom nodes.
+    """
+
+    READER = GN_WithAtoms_FG_WithAtoms_NoFGE
 
 
 class ChEBI50_NFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
