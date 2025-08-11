@@ -510,6 +510,9 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             edge_index=geom_data.edge_index,
             edge_attr=edge_attr,
             molecule_attr=torch.empty((1, 0)),  # empty as not used for this class
+            is_atom_node=is_atom_node,
+            is_fg_node=is_fg_node,
+            is_graph_node=is_graph_node,
         )
 
 
