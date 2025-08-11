@@ -17,6 +17,13 @@ dev = [
     "black"
 ]
 
+inference =  [
+    "chebai" # pip install chebai[inference]
+    # below packages need to manually installed as mentioned in readme
+    # torch-geometric
+    # torch_scatter
+]
+
 [build-system]
 build-backend = "flit_core.buildapi"
 requires = ["flit_core >=3.2,<4"]

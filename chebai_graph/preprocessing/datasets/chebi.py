@@ -96,11 +96,12 @@ class GraphPropertiesMixIn(XYBaseDataModule):
         features = [row["features"] for row in raw_data]
 
         # use vectorized version of encode function, apply only if value is present
-        enc_if_not_none = lambda encode, value: (
-            [encode(atom_v) for atom_v in value]
-            if value is not None and len(value) > 0
-            else None
-        )
+        def enc_if_not_none(encode, value):
+            return (
+                [encode(v) for v in value]
+                if value is not None and len(value) > 0
+                else None
+            )
 
         for property in self.properties:
             if not os.path.isfile(self.get_property_path(property)):
