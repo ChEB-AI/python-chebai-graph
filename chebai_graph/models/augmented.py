@@ -9,6 +9,7 @@ from .base import (
     GraphNodeOnlyPoolingNet,
     GraphNodePoolingNet,
 )
+from .gat import GATGraphPred
 from .resgated import ResGatedGraphPred
 
 
@@ -17,6 +18,16 @@ class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedGraphPred):
     Combines:
     - AugmentedNodePoolingNet: Pools atom and augmented node embeddings with molecule attributes.
     - ResGatedGraphPred: Residual gated network for final graph prediction.
+    """
+
+    ...
+
+
+class GATAugNodePoolGraphPred(AugmentedNodePoolingNet, GATGraphPred):
+    """
+    Combines:
+    - AugmentedNodePoolingNet: Pools atom and augmented node embeddings with molecule attributes.
+    - GATGraphPred: Graph attention network for final graph prediction.
     """
 
     ...

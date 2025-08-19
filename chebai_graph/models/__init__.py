@@ -1,4 +1,5 @@
 from .augmented import (
+    GATAugNodePoolGraphPred,
     ResGatedAugNodePoolGraphPred,
     ResGatedAugOnlyPoolGraphPred,
     ResGatedFGNodeNoGraphNodeGraphPred,
@@ -24,4 +25,5 @@ __all__ = [
     "ResGatedAugOnlyPoolGraphPred",
     "ResGatedGraphNodeOnlyPoolGraphPred",
     "ResGatedFGOnlyPoolGraphPred",
+    "GATAugNodePoolGraphPred",
 ]
