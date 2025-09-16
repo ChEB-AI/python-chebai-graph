@@ -15,10 +15,13 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "tox",
+    "descriptastorus",
+]
+
+linters = [
+    "isort",
     "pre-commit",
     "black",
-    "descriptastorus",
-    "isort",
 ]
 
 [build-system]
