@@ -18,7 +18,7 @@ or install it directly with
 pip install git+https://github.com/ChEB-AI/python-chebai-graph.git
 ```
 
-The dependencies `torch`, `torch_geometric` and `torch-sparse` cannot be installed automatically.
+The dependencies `torch`, `torch_geometric` and `torch_scatter` cannot be installed automatically.
 
 Use the following command:
 
@@ -27,8 +27,8 @@ pip install torch torch_scatter torch_geometric -f https://data.pyg.org/whl/torc
 ```
 
 Replace:
-- `${TORCH}` with a PyTorch version (e.g., `2.6.0`; for later versions, check first if they are compatible with torch_scatter and torch_geometric)
-- `${CUDA}` with e.g. `cpu`, `cu118`, or `cu121` depending on your system and CUDA version
+- `${TORCH}` with a PyTorch version (e.g., `2.8.0`; for later versions, check first if they are compatible with torch_scatter and [torch_geometric](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html))
+- `${CUDA}` with `cpu`, `cu118`, `cu121` (or other, depending on your system and CUDA version)
 
 If you already have `torch` installed, make sure that `torch_scatter` and `torch_geometric` are compatible with your
 PyTorch version and are installed with the same CUDA version.
