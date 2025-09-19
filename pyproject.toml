@@ -7,21 +7,21 @@ authors = [
 ]
 dependencies = [
     "chebai",
-    "descriptastorus"
+    # below packages need to manually installed as mentioned in readme
+    # torch-geometric
+    # torch_scatter
 ]
 
 [project.optional-dependencies]
 dev = [
     "tox",
-    "pre-commit",
-    "black"
+    "descriptastorus",
 ]
 
-inference =  [
-    "chebai" # pip install chebai[inference]
-    # below packages need to manually installed as mentioned in readme
-    # torch-geometric
-    # torch_scatter
+linters = [
+    "isort",
+    "pre-commit",
+    "black",
 ]
 
 [build-system]
