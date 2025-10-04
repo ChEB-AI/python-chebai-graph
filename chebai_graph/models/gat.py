@@ -40,7 +40,7 @@ class GATGraphConvNetBase(GraphModelBase):
             heads=self.heads,
             v2=self.v2,
             act=self.activation,
-            share_weights=self.share_weights
+            share_weights=self.share_weights,
         )
 
     def forward(self, batch: dict) -> torch.Tensor:
