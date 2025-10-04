@@ -117,6 +117,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         idents = [row["ident"] for row in raw_data]
         features = [row["features"] for row in raw_data]
 
+        # use vectorized version of encode function, apply only if value is present
         def enc_if_not_none(encode, value):
             return (
                 [encode(v) for v in value]
