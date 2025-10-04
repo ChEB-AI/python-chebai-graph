@@ -2,7 +2,6 @@ import os
 from typing import List, Optional
 
 import chebai.preprocessing.reader as dr
-import networkx as nx
 import pysmiles as ps
 import rdkit.Chem as Chem
 import torch
@@ -10,7 +9,7 @@ from lightning_utilities.core.rank_zero import rank_zero_info, rank_zero_warn
 from torch_geometric.data import Data as GeomData
 from torch_geometric.utils import from_networkx
 
-from chebai_graph.preprocessing import properties
+import chebai_graph.preprocessing.properties as properties
 from chebai_graph.preprocessing.collate import GraphCollator
 
 
@@ -42,8 +41,8 @@ class GraphPropertyReader(dr.DataReader):
         else:
             try:
                 Chem.SanitizeMol(mol)
-            except Exception as e:
-                rank_zero_warn(f"Rdkit failed at sanitizing {smiles} \n Error: {e}")
+            except Exception:
+                rank_zero_warn(f"Rdkit failed at sanitizing {smiles}")
                 self.failed_counter += 1
         self.mol_object_buffer[smiles] = mol
         return mol
@@ -93,6 +92,8 @@ class GraphReader(dr.ChemDataReader):
         return "graph"
 
     def _read_data(self, raw_data) -> Optional[GeomData]:
+        import networkx as nx
+
         # raw_data is a SMILES string
         try:
             mol = ps.read_smiles(raw_data)

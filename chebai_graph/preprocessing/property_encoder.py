@@ -1,6 +1,8 @@
 import abc
 import inspect
 import os
+import sys
+from itertools import islice
 from typing import Optional
 
 import torch
@@ -92,7 +94,7 @@ class IndexEncoder(PropertyEncoder):
 
     def encode(self, token):
         """Returns a unique number for each token, automatically adds new tokens to the cache."""
-        if not str(token) in self.cache:
+        if str(token) not in self.cache:
             self.cache[(str(token))] = len(self.cache)
         return torch.tensor([self.cache[str(token)] + self.offset])
 
@@ -109,7 +111,7 @@ class OneHotEncoder(IndexEncoder):
 
     @property
     def name(self):
-        return f"one_hot"
+        return "one_hot"
 
     def on_start(self, property_values):
         """To get correct number of classes during encoding, cache unique tokens beforehand"""

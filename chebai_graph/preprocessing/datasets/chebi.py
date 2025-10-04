@@ -97,22 +97,23 @@ class GraphPropertiesMixIn(ChEBIOverX, ABC):
         features = [row["features"] for row in raw_data]
 
         # use vectorized version of encode function, apply only if value is present
-        enc_if_not_none = lambda encode, value: (
-            [encode(atom_v) for atom_v in value]
-            if value is not None and len(value) > 0
-            else None
-        )
+        def enc_if_not_none(encode, value):
+            return (
+                [encode(v) for v in value]
+                if value is not None and len(value) > 0
+                else None
+            )
 
         for property in self.properties:
             if not os.path.isfile(self.get_property_path(property)):
                 rank_zero_info(f"Processing property {property.name}")
                 # read all property values first, then encode
-                rank_zero_info(f"\tReading property valeus...")
+                rank_zero_info("\tReading property valeus...")
                 property_values = [
                     self.reader.read_property(feat, property)
                     for feat in tqdm.tqdm(features)
                 ]
-                rank_zero_info(f"\tEncoding property values...")
+                rank_zero_info("\tEncoding property values...")
                 property.encoder.on_start(property_values=property_values)
                 encoded_values = [
                     enc_if_not_none(property.encoder.encode, value)
