@@ -28,6 +28,7 @@ class GATGraphConvNetBase(GraphModelBase):
         super().__init__(config=config, **kwargs)
         self.heads = int(config["heads"])
         self.v2 = bool(config["v2"])
+        self.share_weights = bool(config.get("share_weights", False))
         self.activation = ELU()  # Instantiate ELU once for reuse.
         self.gat = GAT(
             in_channels=self.in_channels,
@@ -39,6 +40,7 @@ class GATGraphConvNetBase(GraphModelBase):
             heads=self.heads,
             v2=self.v2,
             act=self.activation,
+            share_weights=self.share_weights
         )
 
     def forward(self, batch: dict) -> torch.Tensor:
