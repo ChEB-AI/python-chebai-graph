@@ -61,9 +61,9 @@ class ResGatedDynamicGNI(GraphModelBase):
         )
 
         out = self.resgated(
-            x=graph_data.x.float(),
+            x=random_x.float(),
             edge_index=graph_data.edge_index.long(),
-            edge_attr=graph_data.edge_attr,
+            edge_attr=random_edge_attr.float(),
         )
 
         return self.activation(out)
