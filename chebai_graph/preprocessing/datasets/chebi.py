@@ -36,7 +36,7 @@ from chebai_graph.preprocessing.reader import (
     GN_WithAtoms_FG_WithAtoms_NoFGE,
     GraphPropertyReader,
     GraphReader,
-    RandomNodeInitializationReader,
+    RandomFeatureInitializationReader,
 )
 
 from .utils import resolve_property
@@ -518,7 +518,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
 
 
 class ChEBI50_StaticGNI(DataPropertiesSetter, ChEBIOver50):
-    READER = RandomNodeInitializationReader
+    READER = RandomFeatureInitializationReader
 
     def _setup_properties(self): ...
 

@@ -4,6 +4,7 @@ from .augmented import (
     ResGatedAugNodePoolGraphPred,
     ResGatedGraphNodeFGNodePoolGraphPred,
 )
+from .dynamic_gni import ResGatedDynamicGNIGraphPred
 from .gat import GATGraphPred
 from .resgated import ResGatedGraphPred
 
@@ -14,4 +15,5 @@ __all__ = [
     "GATGraphPred",
     "GATAugNodePoolGraphPred",
     "GATGraphNodeFGNodePoolGraphPred",
+    "ResGatedDynamicGNIGraphPred",
 ]

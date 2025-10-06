@@ -12,7 +12,7 @@ from torch_geometric.data import Data as GeomData
 from .reader import GraphPropertyReader
 
 
-class RandomNodeInitializationReader(GraphPropertyReader):
+class RandomFeatureInitializationReader(GraphPropertyReader):
     def __init__(
         self,
         num_node_properties: int,
@@ -46,24 +46,9 @@ class RandomNodeInitializationReader(GraphPropertyReader):
         )
         random_molecule_properties = torch.empty(1, self.num_molecule_properties)
 
-        if self.distribution == "normal":
-            torch.nn.init.normal_(random_x)
-            torch.nn.init.normal_(random_edge_attr)
-            torch.nn.init.normal_(random_molecule_properties)
-        elif self.distribution == "uniform":
-            torch.nn.init.uniform_(random_x, a=-1.0, b=1.0)
-            torch.nn.init.uniform_(random_edge_attr, a=-1.0, b=1.0)
-            torch.nn.init.uniform_(random_molecule_properties, a=-1.0, b=1.0)
-        elif self.distribution == "xavier_normal":
-            torch.nn.init.xavier_normal_(random_x)
-            torch.nn.init.xavier_normal_(random_edge_attr)
-            torch.nn.init.xavier_normal_(random_molecule_properties)
-        elif self.distribution == "xavier_uniform":
-            torch.nn.init.xavier_uniform_(random_x)
-            torch.nn.init.xavier_uniform_(random_edge_attr)
-            torch.nn.init.xavier_uniform_(random_molecule_properties)
-        else:
-            raise ValueError("Unknown distribution type")
+        self.random_gni(random_x, self.distribution)
+        self.random_gni(random_edge_attr, self.distribution)
+        self.random_gni(random_molecule_properties, self.distribution)
 
         data.x = random_x
         data.edge_attr = random_edge_attr
@@ -73,3 +58,16 @@ class RandomNodeInitializationReader(GraphPropertyReader):
     def read_property(self, *args, **kwargs) -> Exception:
         """This reader does not support reading specific properties."""
         raise NotImplementedError("This reader only performs random initialization.")
+
+    @staticmethod
+    def random_gni(tensor: torch.Tensor, distribution: str) -> None:
+        if distribution == "normal":
+            torch.nn.init.normal_(tensor)
+        elif distribution == "uniform":
+            torch.nn.init.uniform_(tensor, a=-1.0, b=1.0)
+        elif distribution == "xavier_normal":
+            torch.nn.init.xavier_normal_(tensor)
+        elif distribution == "xavier_uniform":
+            torch.nn.init.xavier_uniform_(tensor)
+        else:
+            raise ValueError("Unknown distribution type")
