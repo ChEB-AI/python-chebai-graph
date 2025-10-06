@@ -3,5 +3,3 @@ init_args:
   reader_kwargs:
     num_node_properties: 158
     num_bond_properties: 7
-    num_molecule_properties: 200
-    distribution: normal
