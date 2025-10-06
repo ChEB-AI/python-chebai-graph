@@ -40,9 +40,12 @@ class RandomFeatureInitializationReader(GraphPropertyReader):
 
     def _read_data(self, raw_data):
         data: GeomData = super()._read_data(raw_data)
+        if data is None:
+            return None
+
         random_x = torch.empty(data.x.shape[0], self.num_node_properties)
         random_edge_attr = torch.empty(
-            data.edge_index.shape[1], self.num_bond_properties
+            data.edge_attr.shape[0], self.num_bond_properties
         )
         random_molecule_properties = torch.empty(1, self.num_molecule_properties)
 
