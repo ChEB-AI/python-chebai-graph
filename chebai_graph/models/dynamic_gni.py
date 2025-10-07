@@ -25,9 +25,33 @@ class ResGatedDynamicGNI(GraphModelBase):
     def __init__(self, config: dict[str, Any], **kwargs: Any):
         super().__init__(config=config, **kwargs)
         self.activation = ELU()  # Instantiate ELU once for reuse.
+
         distribution = config.get("distribution", "normal")
-        assert distribution in ["normal", "uniform", "xavier_normal", "xavier_uniform"]
+        assert distribution in RandomFeatureInitializationReader.DISTRIBUTIONS, (
+            f"Unsupported distribution: {distribution}. "
+            f"Choose from {RandomFeatureInitializationReader.DISTRIBUTIONS}."
+        )
         self.distribution = distribution
+
+        self.complete_randomness = config.get("complete_randomness", True)
+
+        if not self.complete_randomness:
+            assert (
+                "random_pad_node" in config or "random_pad_edge" in config
+            ), "Missing 'random_pad_node' or 'random_pad_edge' in config when complete_randomness is False"
+            self.random_pad_node = (
+                int(config["random_pad_node"])
+                if config.get("random_pad_node") is not None
+                else None
+            )
+            self.random_pad_edge = (
+                int(config["random_pad_edge"])
+                if config.get("random_pad_edge") is not None
+                else None
+            )
+            assert (
+                self.random_pad_node > 0 or self.random_pad_edge > 0
+            ), "'random_pad_node' or 'random_pad_edge' must be positive integers"
 
         self.resgated: BasicGNN = ResGatedModel(
             in_channels=self.in_channels,
@@ -52,24 +76,52 @@ class ResGatedDynamicGNI(GraphModelBase):
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData), "Expected GraphData instance"
 
-        random_x = torch.empty(
-            graph_data.x.shape[0], graph_data.x.shape[1], device=self.device
-        )
-        RandomFeatureInitializationReader.random_gni(random_x, self.distribution)
+        new_x = None
+        new_edge_attr = None
+        if self.complete_randomness:
+            new_x = torch.empty(
+                graph_data.x.shape[0], graph_data.x.shape[1], device=self.device
+            )
+            RandomFeatureInitializationReader.random_gni(new_x, self.distribution)
 
-        random_edge_attr = torch.empty(
-            graph_data.edge_attr.shape[0],
-            graph_data.edge_attr.shape[1],
-            device=self.device,
-        )
-        RandomFeatureInitializationReader.random_gni(
-            random_edge_attr, self.distribution
-        )
+            new_edge_attr = torch.empty(
+                graph_data.edge_attr.shape[0],
+                graph_data.edge_attr.shape[1],
+                device=self.device,
+            )
+            RandomFeatureInitializationReader.random_gni(
+                new_edge_attr, self.distribution
+            )
+        else:
+            if self.random_pad_node is not None:
+                pad_node = torch.empty(
+                    graph_data.x.shape[0],
+                    self.random_pad_node,
+                    device=self.device,
+                )
+                RandomFeatureInitializationReader.random_gni(
+                    pad_node, self.distribution
+                )
+                new_x = torch.cat((graph_data.x, pad_node), dim=1)
 
+            if self.random_pad_edge is not None:
+                pad_edge = torch.empty(
+                    graph_data.edge_attr.shape[0],
+                    self.random_pad_edge,
+                    device=self.device,
+                )
+                RandomFeatureInitializationReader.random_gni(
+                    pad_edge, self.distribution
+                )
+                new_edge_attr = torch.cat((graph_data.edge_attr, pad_edge), dim=1)
+
+        assert (
+            new_x is not None and new_edge_attr is not None
+        ), "Feature initialization failed"
         out = self.resgated(
-            x=random_x.float(),
+            x=new_x.float(),
             edge_index=graph_data.edge_index.long(),
-            edge_attr=random_edge_attr.float(),
+            edge_attr=new_edge_attr.float(),
         )
 
         return self.activation(out)
