@@ -349,14 +349,16 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             if isinstance(p, AtomProperty)
         )
 
-        in_channels_str = f"in_channels: {n_node_properties}"
+        in_channels_str = ""
         if self.zero_pad_node:
             n_node_properties += self.zero_pad_node
-            in_channels_str += f"(with {self.zero_pad_node} padded zeros)"
+            in_channels_str += f" (with {self.zero_pad_node} padded zeros)"
 
         if self.random_pad_node:
             n_node_properties += self.random_pad_node
-            in_channels_str += f"(with {self.random_pad_node} random padded values from {self.distribution} distribution)"
+            in_channels_str += f" (with {self.random_pad_node} random padded values from {self.distribution} distribution)"
+
+        in_channels_str = f"in_channels: {n_node_properties}" + in_channels_str
 
         # -------------------------- Count total edge properties
         n_edge_properties = sum(
@@ -364,25 +366,53 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             for p in self.properties
             if isinstance(p, BondProperty)
         )
-        edge_dim_str = f"edge_dim: {n_edge_properties}"
+        edge_dim_str = ""
 
         if self.zero_pad_edge:
             n_edge_properties += self.zero_pad_edge
-            edge_dim_str += f"(with {self.zero_pad_edge} padded zeros)"
+            edge_dim_str += f" (with {self.zero_pad_edge} padded zeros)"
 
         if self.random_pad_edge:
             n_edge_properties += self.random_pad_edge
-            edge_dim_str += f"(with {self.random_pad_edge} random padded values from {self.distribution} distribution)"
+            edge_dim_str += f" (with {self.random_pad_edge} random padded values from {self.distribution} distribution)"
+
+        edge_dim_str = f"edge_dim: {n_edge_properties}" + edge_dim_str
 
         rank_zero_info(
             f"Finished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n"
             f"Use following values for given parameters for model configuration: \n\t"
-            f"{in_channels_str}, "
-            f"{edge_dim_str}, "
+            f"{in_channels_str} \n\t"
+            f"{edge_dim_str} \n\t"
             f"n_molecule_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, MoleculeProperty))}"
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
+
+    @property
+    def processed_file_names_dict(self) -> dict:
+        """
+        Returns a dictionary for the processed and tokenized data files.
+
+        Returns:
+            dict: A dictionary mapping dataset keys to their respective file names.
+                  For example, {"data": "data.pt"}.
+        """
+        if self.n_token_limit is not None:
+            return {"data": f"data_maxlen{self.n_token_limit}.pt"}
+
+        data_pt_filename = "data"
+        if self.zero_pad_node:
+            data_pt_filename += f"_zpn{self.zero_pad_node}"
+        if self.zero_pad_edge:
+            data_pt_filename += f"_zpe{self.zero_pad_edge}"
+        if self.random_pad_node:
+            data_pt_filename += f"_rpn{self.random_pad_node}"
+        if self.random_pad_edge:
+            data_pt_filename += f"_rpe{self.random_pad_edge}"
+        if self.random_pad_node or self.random_pad_edge:
+            data_pt_filename += f"_D{self.distribution}"
+
+        return {"data": data_pt_filename + ".pt"}
 
 
 class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
