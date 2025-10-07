@@ -186,15 +186,49 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
 
 class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
     def __init__(
-        self, properties=None, transform=None, zero_pad_atom: int = None, **kwargs
+        self,
+        properties=None,
+        transform=None,
+        zero_pad_node: int = None,
+        zero_pad_edge: int = None,
+        random_pad_node: int = None,
+        random_pad_edge: int = None,
+        distribution: str = "normal",
+        **kwargs,
     ):
         super().__init__(properties, transform, **kwargs)
-        self.zero_pad_atom = int(zero_pad_atom) if zero_pad_atom is not None else None
-        if self.zero_pad_atom:
+        self.zero_pad_node = int(zero_pad_node) if zero_pad_node else None
+        if self.zero_pad_node:
             print(
-                f"[Info] Atom-level features will be zero-padded with "
-                f"{self.zero_pad_atom} additional dimensions."
+                f"[Info] Node-level features will be zero-padded with "
+                f"{self.zero_pad_node} additional dimensions."
             )
+
+        self.zero_pad_edge = int(zero_pad_edge) if zero_pad_edge else None
+        if self.zero_pad_edge:
+            print(
+                f"[Info] Edge-level features will be zero-padded with "
+                f"{self.zero_pad_edge} additional dimensions."
+            )
+
+        self.random_pad_edge = int(random_pad_edge) if random_pad_edge else None
+        self.random_pad_node = int(random_pad_node) if random_pad_node else None
+        if self.random_pad_node or self.random_pad_edge:
+            assert (
+                distribution is not None
+                and distribution in RandomFeatureInitializationReader.DISTRIBUTIONS
+            ), "When using random padding, a valid distribution must be specified."
+            self.distribution = distribution
+            if self.random_pad_node:
+                print(
+                    f"[Info] Node-level features will be padded with "
+                    f"{self.random_pad_node} additional dimensions initialized from {self.distribution} distribution."
+                )
+            if self.random_pad_edge:
+                print(
+                    f"[Info] Edge-level features will be padded with "
+                    f"{self.random_pad_edge} additional dimensions initialized from {self.distribution} distribution."
+                )
 
         if self.properties:
             print(
@@ -242,8 +276,24 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             else:
                 raise TypeError(f"Unsupported property type: {type(property).__name__}")
 
-        if self.zero_pad_atom is not None:
-            x = torch.cat([x, torch.zeros((x.shape[0], self.zero_pad_atom))], dim=1)
+        if self.zero_pad_node:
+            x = torch.cat([x, torch.zeros((x.shape[0], self.zero_pad_node))], dim=1)
+
+        if self.zero_pad_edge:
+            edge_attr = torch.cat(
+                [edge_attr, torch.zeros((edge_attr.shape[0], self.zero_pad_edge))],
+                dim=1,
+            )
+
+        if self.random_pad_node:
+            random_pad = torch.empty((x.shape[0], self.random_pad_node))
+            RandomFeatureInitializationReader.random_gni(random_pad, self.distribution)
+            x = torch.cat([x, random_pad], dim=1)
+
+        if self.random_pad_edge:
+            random_pad = torch.empty((edge_attr.shape[0], self.random_pad_edge))
+            RandomFeatureInitializationReader.random_gni(random_pad, self.distribution)
+            edge_attr = torch.cat([edge_attr, random_pad], dim=1)
 
         return GeomData(
             x=x,
@@ -291,18 +341,44 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         prop_lengths = [
             (prop.name, prop.encoder.get_encoding_length()) for prop in self.properties
         ]
+
+        # -------------------------- Count total node properties
         n_node_properties = sum(
             p.encoder.get_encoding_length()
             for p in self.properties
             if isinstance(p, AtomProperty)
         )
-        if self.zero_pad_atom:
-            n_node_properties += self.zero_pad_atom
+
+        in_channels_str = f"in_channels: {n_node_properties}"
+        if self.zero_pad_node:
+            n_node_properties += self.zero_pad_node
+            in_channels_str += f"(with {self.zero_pad_node} padded zeros)"
+
+        if self.random_pad_node:
+            n_node_properties += self.random_pad_node
+            in_channels_str += f"(with {self.random_pad_node} random padded values from {self.distribution} distribution)"
+
+        # -------------------------- Count total edge properties
+        n_edge_properties = sum(
+            p.encoder.get_encoding_length()
+            for p in self.properties
+            if isinstance(p, BondProperty)
+        )
+        edge_dim_str = f"edge_dim: {n_edge_properties}"
+
+        if self.zero_pad_edge:
+            n_edge_properties += self.zero_pad_edge
+            edge_dim_str += f"(with {self.zero_pad_edge} padded zeros)"
+
+        if self.random_pad_edge:
+            n_edge_properties += self.random_pad_edge
+            edge_dim_str += f"(with {self.random_pad_edge} random padded values from {self.distribution} distribution)"
+
         rank_zero_info(
             f"Finished loading dataset from properties.\nEncoding lengths: {prop_lengths}\n"
             f"Use following values for given parameters for model configuration: \n\t"
-            f"in_channels: {n_node_properties} (with {self.zero_pad_atom} padded zeros) , "
-            f"edge_dim: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, BondProperty))}, "
+            f"{in_channels_str}, "
+            f"{edge_dim_str}, "
             f"n_molecule_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, MoleculeProperty))}"
         )
 

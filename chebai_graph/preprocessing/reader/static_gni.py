@@ -13,6 +13,8 @@ from .reader import GraphPropertyReader
 
 
 class RandomFeatureInitializationReader(GraphPropertyReader):
+    DISTRIBUTIONS = ["normal", "uniform", "xavier_normal", "xavier_uniform"]
+
     def __init__(
         self,
         num_node_properties: int,
@@ -26,7 +28,7 @@ class RandomFeatureInitializationReader(GraphPropertyReader):
         self.num_node_properties = num_node_properties
         self.num_bond_properties = num_bond_properties
         self.num_molecule_properties = num_molecule_properties
-        assert distribution in ["normal", "uniform", "xavier_normal", "xavier_uniform"]
+        assert distribution in self.DISTRIBUTIONS
         self.distribution = distribution
 
     def name(self) -> str:
