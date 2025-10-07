@@ -37,6 +37,7 @@ class ResGatedDynamicGNI(GraphModelBase):
             edge_dim=self.edge_dim,
             act=self.activation,
         )
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, batch: dict[str, Any]) -> Tensor:
         """
@@ -51,10 +52,15 @@ class ResGatedDynamicGNI(GraphModelBase):
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData), "Expected GraphData instance"
 
-        random_x = torch.empty(graph_data.x.shape[0], graph_data.x.shape[1])
+        random_x = torch.empty(
+            graph_data.x.shape[0], graph_data.x.shape[1], device=self.device
+        )
         RandomFeatureInitializationReader.random_gni(random_x, self.distribution)
+
         random_edge_attr = torch.empty(
-            graph_data.edge_attr.shape[0], graph_data.edge_attr.shape[1]
+            graph_data.edge_attr.shape[0],
+            graph_data.edge_attr.shape[1],
+            device=self.device,
         )
         RandomFeatureInitializationReader.random_gni(
             random_edge_attr, self.distribution
