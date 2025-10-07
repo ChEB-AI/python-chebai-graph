@@ -169,3 +169,8 @@ cython_debug/
 electra_pretrained.ckpt
 .isort.cfg
 /.vscode
+
+*.err
+*.out
+*.sh
+*.ckpt

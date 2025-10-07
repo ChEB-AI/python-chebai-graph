@@ -1,0 +1,15 @@
+class_path: chebai_graph.models.GATGraphNodeFGNodePoolGraphPred
+init_args:
+  optimizer_kwargs:
+    lr: 1e-3
+  config:
+    in_channels: 203 # number of node/atom properties
+    hidden_channels: 256
+    out_channels: 512
+    num_layers: 4
+    edge_dim: 11 # number of bond properties
+    heads: 8  # the number of heads should be divisible by output channels (hidden channels if output channel not given)
+    v2: True  # set True to use `torch_geometric.nn.conv.GATv2Conv` convolution layers, default is GATConv
+    dropout: 0
+  n_molecule_properties: 0
+  n_linear_layers: 1
