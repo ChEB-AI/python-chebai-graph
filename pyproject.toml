@@ -7,7 +7,10 @@ authors = [
 ]
 dependencies = [
     "chebai",
-    "descriptastorus"
+    "descriptastorus",
+    # below packages need to manually installed as mentioned in readme
+    # torch-geometric
+    # torch_scatter
 ]
 requires-python = ">=3.8"
 
@@ -15,8 +18,12 @@ requires-python = ">=3.8"
 [project.optional-dependencies]
 dev = [
     "tox",
+]
+
+linters = [
+    "isort",
     "pre-commit",
-    "black"
+    "black",
 ]
 
 [build-system]

@@ -201,7 +201,7 @@ class AugmentedNodePoolingNet(GraphNetWrapper, ABC):
 
         Includes:
         - Atom embeddings
-        - Molecular attributes
+        - Molecular attributes (if any)
         - Augmented node embeddings
 
         Args:
