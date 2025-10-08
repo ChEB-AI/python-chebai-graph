@@ -12,13 +12,15 @@ from torch_geometric.data import Data as GeomData
 from .reader import GraphPropertyReader
 
 
-class RandomNodeInitializationReader(GraphPropertyReader):
+class RandomFeatureInitializationReader(GraphPropertyReader):
+    DISTRIBUTIONS = ["normal", "uniform", "xavier_normal", "xavier_uniform"]
+
     def __init__(
         self,
         num_node_properties: int,
         num_bond_properties: int,
         num_molecule_properties: int,
-        distribution: str,
+        distribution: str = "normal",
         *args,
         **kwargs,
     ):
@@ -26,7 +28,7 @@ class RandomNodeInitializationReader(GraphPropertyReader):
         self.num_node_properties = num_node_properties
         self.num_bond_properties = num_bond_properties
         self.num_molecule_properties = num_molecule_properties
-        assert distribution in ["normal", "uniform", "xavier_normal", "xavier_uniform"]
+        assert distribution in self.DISTRIBUTIONS
         self.distribution = distribution
 
     def name(self) -> str:
@@ -40,30 +42,18 @@ class RandomNodeInitializationReader(GraphPropertyReader):
 
     def _read_data(self, raw_data):
         data: GeomData = super()._read_data(raw_data)
+        if data is None:
+            return None
+
         random_x = torch.empty(data.x.shape[0], self.num_node_properties)
         random_edge_attr = torch.empty(
-            data.edge_index.shape[1], self.num_bond_properties
+            data.edge_attr.shape[0], self.num_bond_properties
         )
         random_molecule_properties = torch.empty(1, self.num_molecule_properties)
 
-        if self.distribution == "normal":
-            torch.nn.init.normal_(random_x)
-            torch.nn.init.normal_(random_edge_attr)
-            torch.nn.init.normal_(random_molecule_properties)
-        elif self.distribution == "uniform":
-            torch.nn.init.uniform_(random_x, a=-1.0, b=1.0)
-            torch.nn.init.uniform_(random_edge_attr, a=-1.0, b=1.0)
-            torch.nn.init.uniform_(random_molecule_properties, a=-1.0, b=1.0)
-        elif self.distribution == "xavier_normal":
-            torch.nn.init.xavier_normal_(random_x)
-            torch.nn.init.xavier_normal_(random_edge_attr)
-            torch.nn.init.xavier_normal_(random_molecule_properties)
-        elif self.distribution == "xavier_uniform":
-            torch.nn.init.xavier_uniform_(random_x)
-            torch.nn.init.xavier_uniform_(random_edge_attr)
-            torch.nn.init.xavier_uniform_(random_molecule_properties)
-        else:
-            raise ValueError("Unknown distribution type")
+        self.random_gni(random_x, self.distribution)
+        self.random_gni(random_edge_attr, self.distribution)
+        self.random_gni(random_molecule_properties, self.distribution)
 
         data.x = random_x
         data.edge_attr = random_edge_attr
@@ -73,3 +63,16 @@ class RandomNodeInitializationReader(GraphPropertyReader):
     def read_property(self, *args, **kwargs) -> Exception:
         """This reader does not support reading specific properties."""
         raise NotImplementedError("This reader only performs random initialization.")
+
+    @staticmethod
+    def random_gni(tensor: torch.Tensor, distribution: str) -> None:
+        if distribution == "normal":
+            torch.nn.init.normal_(tensor)
+        elif distribution == "uniform":
+            torch.nn.init.uniform_(tensor, a=-1.0, b=1.0)
+        elif distribution == "xavier_normal":
+            torch.nn.init.xavier_normal_(tensor)
+        elif distribution == "xavier_uniform":
+            torch.nn.init.xavier_uniform_(tensor)
+        else:
+            raise ValueError("Unknown distribution type")
