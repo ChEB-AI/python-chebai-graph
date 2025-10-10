@@ -74,7 +74,11 @@ class GraphNetWrapper(GraphBaseNet, ABC):
     """
 
     def __init__(
-        self, config: dict, n_linear_layers: int, n_molecule_properties: Optional[int] = 0, **kwargs
+        self,
+        config: dict,
+        n_linear_layers: int,
+        n_molecule_properties: Optional[int] = 0,
+        **kwargs,
     ) -> None:
         """
         Initialize the GNN and linear layers.
@@ -91,7 +95,9 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         self.activation = torch.nn.ELU
         self.lin_input_dim = self._get_lin_seq_input_dim(
             gnn_out_dim=gnn_out_dim,
-            n_molecule_properties=n_molecule_properties if n_molecule_properties is not None else 0,
+            n_molecule_properties=(
+                n_molecule_properties if n_molecule_properties is not None else 0
+            ),
         )
 
         lin_hidden_dim = kwargs.get("lin_hidden_dim", gnn_out_dim)
