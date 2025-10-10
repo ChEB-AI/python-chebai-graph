@@ -388,32 +388,6 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
 
         return base_df[base_data[0].keys()].to_dict("records")
 
-    @property
-    def processed_file_names_dict(self) -> dict:
-        """
-        Returns a dictionary for the processed and tokenized data files.
-
-        Returns:
-            dict: A dictionary mapping dataset keys to their respective file names.
-                  For example, {"data": "data.pt"}.
-        """
-        if self.n_token_limit is not None:
-            return {"data": f"data_maxlen{self.n_token_limit}.pt"}
-
-        data_pt_filename = "data"
-        if self.zero_pad_node:
-            data_pt_filename += f"_zpn{self.zero_pad_node}"
-        if self.zero_pad_edge:
-            data_pt_filename += f"_zpe{self.zero_pad_edge}"
-        if self.random_pad_node:
-            data_pt_filename += f"_rpn{self.random_pad_node}"
-        if self.random_pad_edge:
-            data_pt_filename += f"_rpe{self.random_pad_edge}"
-        if self.random_pad_node or self.random_pad_edge:
-            data_pt_filename += f"_D{self.distribution}"
-
-        return {"data": data_pt_filename + ".pt"}
-
 
 class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
     def __init__(self, properties=None, transform=None, **kwargs):

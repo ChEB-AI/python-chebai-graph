@@ -33,7 +33,11 @@ class ResGatedDynamicGNI(GraphModelBase):
         )
         self.distribution = distribution
 
-        self.complete_randomness = config.get("complete_randomness", True)
+        self.complete_randomness = (
+            str(config.get("complete_randomness", "True")).lower() == "true"
+        )
+
+        print("Using complete randomness: ", self.complete_randomness)
 
         if not self.complete_randomness:
             assert (
@@ -44,11 +48,25 @@ class ResGatedDynamicGNI(GraphModelBase):
                 if config.get("random_pad_node") is not None
                 else None
             )
+            if self.random_pad_node is not None:
+                print(
+                    f"[Info] Node features will be padded with {self.random_pad_node} "
+                    f"new set of random features from distribution {self.distribution} "
+                    f"in each forward pass."
+                )
+
             self.random_pad_edge = (
                 int(config["random_pad_edge"])
                 if config.get("random_pad_edge") is not None
                 else None
             )
+            if self.random_pad_edge is not None:
+                print(
+                    f"[Info] Edge features will be padded with {self.random_pad_edge} "
+                    f"new set of random features from distribution {self.distribution} "
+                    f"in each forward pass."
+                )
+
             assert (
                 self.random_pad_node > 0 or self.random_pad_edge > 0
             ), "'random_pad_node' or 'random_pad_edge' must be positive integers"
