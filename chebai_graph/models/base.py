@@ -74,7 +74,7 @@ class GraphNetWrapper(GraphBaseNet, ABC):
     """
 
     def __init__(
-        self, config: dict, n_linear_layers: int, n_molecule_properties: Optional[int] = 0, **kwargs
+        self, config: dict, n_linear_layers: int, n_molecule_properties: Optional[int] = 0, use_batch_norm: bool = False, **kwargs
     ) -> None:
         """
         Initialize the GNN and linear layers.
@@ -93,6 +93,9 @@ class GraphNetWrapper(GraphBaseNet, ABC):
             gnn_out_dim=gnn_out_dim,
             n_molecule_properties=n_molecule_properties if n_molecule_properties is not None else 0,
         )
+        self.use_batch_norm = use_batch_norm
+        if self.use_batch_norm:
+            self.batch_norm = torch.nn.BatchNorm1d(self.lin_input_dim)
 
         lin_hidden_dim = kwargs.get("lin_hidden_dim", gnn_out_dim)
         self.lin_sequential: torch.nn.Sequential = self._get_linear_module_list(
@@ -180,6 +183,8 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         a = self.gnn(batch)
         a = scatter_add(a, graph_data.batch, dim=0)
         a = torch.cat([a, graph_data.molecule_attr], dim=1)
+        if self.use_batch_norm:
+            a = self.batch_norm(a)
         return self.lin_sequential(a)
 
 
