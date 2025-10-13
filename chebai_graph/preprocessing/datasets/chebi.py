@@ -189,45 +189,29 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         self,
         properties=None,
         transform=None,
-        zero_pad_node: int = None,
-        zero_pad_edge: int = None,
-        random_pad_node: int = None,
-        random_pad_edge: int = None,
+        pad_node_features: int = None,
+        pad_edge_features: int = None,
         distribution: str = "normal",
         **kwargs,
     ):
         super().__init__(properties, transform, **kwargs)
-        self.zero_pad_node = int(zero_pad_node) if zero_pad_node else None
-        if self.zero_pad_node:
-            print(
-                f"[Info] Node-level features will be zero-padded with "
-                f"{self.zero_pad_node} additional dimensions."
-            )
-
-        self.zero_pad_edge = int(zero_pad_edge) if zero_pad_edge else None
-        if self.zero_pad_edge:
-            print(
-                f"[Info] Edge-level features will be zero-padded with "
-                f"{self.zero_pad_edge} additional dimensions."
-            )
-
-        self.random_pad_edge = int(random_pad_edge) if random_pad_edge else None
-        self.random_pad_node = int(random_pad_node) if random_pad_node else None
-        if self.random_pad_node or self.random_pad_edge:
+        self.pad_edge_features = int(pad_edge_features) if pad_edge_features else None
+        self.pad_node_features = int(pad_node_features) if pad_node_features else None
+        if self.pad_node_features or self.pad_edge_features:
             assert (
                 distribution is not None
                 and distribution in RandomFeatureInitializationReader.DISTRIBUTIONS
-            ), "When using random padding, a valid distribution must be specified."
+            ), "When using padding for features, a valid distribution must be specified."
             self.distribution = distribution
-            if self.random_pad_node:
+            if self.pad_node_features:
                 print(
-                    f"[Info] Node-level features will be padded with "
-                    f"{self.random_pad_node} additional dimensions initialized from {self.distribution} distribution."
+                    f"[Info] Node-level features will be padded with random"
+                    f"{self.pad_node_features} values from {self.distribution} distribution."
                 )
-            if self.random_pad_edge:
+            if self.pad_edge_features:
                 print(
-                    f"[Info] Edge-level features will be padded with "
-                    f"{self.random_pad_edge} additional dimensions initialized from {self.distribution} distribution."
+                    f"[Info] Edge-level features will be padded with random"
+                    f"{self.pad_edge_features} values from {self.distribution} distribution."
                 )
 
         if self.properties:
@@ -276,24 +260,19 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             else:
                 raise TypeError(f"Unsupported property type: {type(property).__name__}")
 
-        if self.zero_pad_node:
-            x = torch.cat([x, torch.zeros((x.shape[0], self.zero_pad_node))], dim=1)
-
-        if self.zero_pad_edge:
-            edge_attr = torch.cat(
-                [edge_attr, torch.zeros((edge_attr.shape[0], self.zero_pad_edge))],
-                dim=1,
+        if self.pad_node_features:
+            padding_values = torch.empty((x.shape[0], self.pad_node_features))
+            RandomFeatureInitializationReader.random_gni(
+                padding_values, self.distribution
             )
+            x = torch.cat([x, padding_values], dim=1)
 
-        if self.random_pad_node:
-            random_pad = torch.empty((x.shape[0], self.random_pad_node))
-            RandomFeatureInitializationReader.random_gni(random_pad, self.distribution)
-            x = torch.cat([x, random_pad], dim=1)
-
-        if self.random_pad_edge:
-            random_pad = torch.empty((edge_attr.shape[0], self.random_pad_edge))
-            RandomFeatureInitializationReader.random_gni(random_pad, self.distribution)
-            edge_attr = torch.cat([edge_attr, random_pad], dim=1)
+        if self.pad_edge_features:
+            padding_values = torch.empty((edge_attr.shape[0], self.pad_edge_features))
+            RandomFeatureInitializationReader.random_gni(
+                padding_values, self.distribution
+            )
+            edge_attr = torch.cat([edge_attr, padding_values], dim=1)
 
         return GeomData(
             x=x,
@@ -350,13 +329,9 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         )
 
         in_channels_str = ""
-        if self.zero_pad_node:
-            n_node_properties += self.zero_pad_node
-            in_channels_str += f" (with {self.zero_pad_node} padded zeros)"
-
-        if self.random_pad_node:
-            n_node_properties += self.random_pad_node
-            in_channels_str += f" (with {self.random_pad_node} random padded values from {self.distribution} distribution)"
+        if self.pad_node_features:
+            n_node_properties += self.pad_node_features
+            in_channels_str += f" (with {self.pad_node_features} padded random values from {self.distribution} distribution)"
 
         in_channels_str = f"in_channels: {n_node_properties}" + in_channels_str
 
@@ -367,14 +342,9 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             if isinstance(p, BondProperty)
         )
         edge_dim_str = ""
-
-        if self.zero_pad_edge:
-            n_edge_properties += self.zero_pad_edge
-            edge_dim_str += f" (with {self.zero_pad_edge} padded zeros)"
-
-        if self.random_pad_edge:
-            n_edge_properties += self.random_pad_edge
-            edge_dim_str += f" (with {self.random_pad_edge} random padded values from {self.distribution} distribution)"
+        if self.pad_edge_features:
+            n_edge_properties += self.pad_edge_features
+            edge_dim_str += f" (with {self.pad_edge_features} padded random values from {self.distribution} distribution)"
 
         edge_dim_str = f"edge_dim: {n_edge_properties}" + edge_dim_str
 
@@ -387,32 +357,6 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
-
-    @property
-    def processed_file_names_dict(self) -> dict:
-        """
-        Returns a dictionary for the processed and tokenized data files.
-
-        Returns:
-            dict: A dictionary mapping dataset keys to their respective file names.
-                  For example, {"data": "data.pt"}.
-        """
-        if self.n_token_limit is not None:
-            return {"data": f"data_maxlen{self.n_token_limit}.pt"}
-
-        data_pt_filename = "data"
-        if self.zero_pad_node:
-            data_pt_filename += f"_zpn{self.zero_pad_node}"
-        if self.zero_pad_edge:
-            data_pt_filename += f"_zpe{self.zero_pad_edge}"
-        if self.random_pad_node:
-            data_pt_filename += f"_rpn{self.random_pad_node}"
-        if self.random_pad_edge:
-            data_pt_filename += f"_rpe{self.random_pad_edge}"
-        if self.random_pad_node or self.random_pad_edge:
-            data_pt_filename += f"_D{self.distribution}"
-
-        return {"data": data_pt_filename + ".pt"}
 
 
 class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):

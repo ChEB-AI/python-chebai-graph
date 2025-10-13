@@ -13,7 +13,7 @@ from .reader import GraphPropertyReader
 
 
 class RandomFeatureInitializationReader(GraphPropertyReader):
-    DISTRIBUTIONS = ["normal", "uniform", "xavier_normal", "xavier_uniform"]
+    DISTRIBUTIONS = ["normal", "uniform", "xavier_normal", "xavier_uniform", "zeros"]
 
     def __init__(
         self,
@@ -74,5 +74,7 @@ class RandomFeatureInitializationReader(GraphPropertyReader):
             torch.nn.init.xavier_normal_(tensor)
         elif distribution == "xavier_uniform":
             torch.nn.init.xavier_uniform_(tensor)
+        elif distribution == "zeros":
+            torch.nn.init.zeros_(tensor)
         else:
             raise ValueError("Unknown distribution type")

@@ -33,25 +33,43 @@ class ResGatedDynamicGNI(GraphModelBase):
         )
         self.distribution = distribution
 
-        self.complete_randomness = config.get("complete_randomness", True)
+        self.complete_randomness = (
+            str(config.get("complete_randomness", "True")).lower() == "true"
+        )
+
+        print("Using complete randomness: ", self.complete_randomness)
 
         if not self.complete_randomness:
             assert (
-                "random_pad_node" in config or "random_pad_edge" in config
-            ), "Missing 'random_pad_node' or 'random_pad_edge' in config when complete_randomness is False"
-            self.random_pad_node = (
-                int(config["random_pad_node"])
-                if config.get("random_pad_node") is not None
+                "pad_node_features" in config or "pad_edge_features" in config
+            ), "Missing 'pad_node_features' or 'pad_edge_features' in config when complete_randomness is False"
+            self.pad_node_features = (
+                int(config["pad_node_features"])
+                if config.get("pad_node_features") is not None
                 else None
             )
-            self.random_pad_edge = (
-                int(config["random_pad_edge"])
-                if config.get("random_pad_edge") is not None
+            if self.pad_node_features is not None:
+                print(
+                    f"[Info] Node features will be padded with {self.pad_node_features} "
+                    f"new set of random features from distribution {self.distribution} "
+                    f"in each forward pass."
+                )
+
+            self.pad_edge_features = (
+                int(config["pad_edge_features"])
+                if config.get("pad_edge_features") is not None
                 else None
             )
+            if self.pad_edge_features is not None:
+                print(
+                    f"[Info] Edge features will be padded with {self.pad_edge_features} "
+                    f"new set of random features from distribution {self.distribution} "
+                    f"in each forward pass."
+                )
+
             assert (
-                self.random_pad_node > 0 or self.random_pad_edge > 0
-            ), "'random_pad_node' or 'random_pad_edge' must be positive integers"
+                self.pad_node_features > 0 or self.pad_edge_features > 0
+            ), "'pad_node_features' or 'pad_edge_features' must be positive integers"
 
         self.resgated: BasicGNN = ResGatedModel(
             in_channels=self.in_channels,
@@ -93,10 +111,10 @@ class ResGatedDynamicGNI(GraphModelBase):
                 new_edge_attr, self.distribution
             )
         else:
-            if self.random_pad_node is not None:
+            if self.pad_node_features is not None:
                 pad_node = torch.empty(
                     graph_data.x.shape[0],
-                    self.random_pad_node,
+                    self.pad_node_features,
                     device=self.device,
                 )
                 RandomFeatureInitializationReader.random_gni(
@@ -104,10 +122,10 @@ class ResGatedDynamicGNI(GraphModelBase):
                 )
                 new_x = torch.cat((graph_data.x, pad_node), dim=1)
 
-            if self.random_pad_edge is not None:
+            if self.pad_edge_features is not None:
                 pad_edge = torch.empty(
                     graph_data.edge_attr.shape[0],
-                    self.random_pad_edge,
+                    self.pad_edge_features,
                     device=self.device,
                 )
                 RandomFeatureInitializationReader.random_gni(

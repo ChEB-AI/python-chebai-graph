@@ -74,11 +74,14 @@ class GraphNetWrapper(GraphBaseNet, ABC):
     """
 
     def __init__(
-        self, config: dict, n_linear_layers: int, n_molecule_properties: Optional[int] = 0, use_batch_norm: bool = False, **kwargs
-    ) -> None:
+        self,
+        config: dict,
+        n_linear_layers: int,
+        n_molecule_properties: Optional[int] = 0,
+        use_batch_norm: bool = False,
+        **kwargs,
+    ):
         """
-        Initialize the GNN and linear layers.
-
         Args:
             config (dict): Model configuration.
             n_linear_layers (int): Number of linear layers.
@@ -91,7 +94,9 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         self.activation = torch.nn.ELU
         self.lin_input_dim = self._get_lin_seq_input_dim(
             gnn_out_dim=gnn_out_dim,
-            n_molecule_properties=n_molecule_properties if n_molecule_properties is not None else 0,
+            n_molecule_properties=(
+                n_molecule_properties if n_molecule_properties is not None else 0
+            ),
         )
         self.use_batch_norm = use_batch_norm
         if self.use_batch_norm:
