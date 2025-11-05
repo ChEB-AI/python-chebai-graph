@@ -12,6 +12,8 @@ dependencies = [
     # torch-geometric
     # torch_scatter
 ]
+requires-python = ">=3.8"
+
 
 [project.optional-dependencies]
 dev = [

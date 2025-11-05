@@ -3,8 +3,6 @@ import typing
 
 import torch
 import torch.nn.functional as F
-from chebai.models.base import ChebaiBaseNet
-from chebai.preprocessing.structures import XYData
 from torch import nn
 from torch_geometric import nn as tgnn
 from torch_geometric.data import Data as GraphData
@@ -12,15 +10,9 @@ from torch_scatter import scatter_add, scatter_mean
 
 from chebai_graph.loss.pretraining import MaskPretrainingLoss
 
+from .base import GraphBaseNet
+
 logging.getLogger("pysmiles").setLevel(logging.CRITICAL)
-
-
-class GraphBaseNet(ChebaiBaseNet):
-    def _get_prediction_and_labels(self, data, labels, output):
-        return torch.sigmoid(output), labels.int()
-
-    def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor:
-        return batch.y.float() if batch.y is not None else None
 
 
 class JCIGraphNet(GraphBaseNet):
@@ -186,6 +178,67 @@ class ResGatedGraphConvNetGraphPred(GraphBaseNet):
             a = self.gnn.activation(lin(a))
         a = self.final_layer(a)
         return a
+
+
+class ResGatedAugmentedGraphPred(GraphBaseNet):
+    """GNN for graph-level prediction for augmented graphs"""
+
+    NAME = "ResGatedAugmentedGraphPred"
+
+    def __init__(
+        self,
+        config: typing.Dict,
+        n_linear_layers=2,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.gnn = ResGatedGraphConvNetBase(config, **kwargs)
+        self.linear_layers = torch.nn.ModuleList(
+            [
+                torch.nn.Linear(
+                    self.gnn.hidden_length
+                    + (i == 0) * self.gnn.n_molecule_properties
+                    + (i == 0) * self.gnn.hidden_length,
+                    self.gnn.hidden_length,
+                )
+                for i in range(n_linear_layers - 1)
+            ]
+        )
+        self.final_layer = nn.Linear(self.gnn.hidden_length, self.out_dim)
+
+    def forward(self, batch):
+        graph_data = batch["features"][0]
+        assert isinstance(graph_data, GraphData)
+        is_atom_node = graph_data.is_atom_node.bool()  # Boolean mask: shape [num_nodes]
+        is_augmented_node = ~is_atom_node
+
+        node_embeddings = self.gnn(batch)
+
+        atom_embeddings = node_embeddings[is_atom_node]
+        atom_batch = graph_data.batch[is_atom_node]
+
+        augmented_node_embeddings = node_embeddings[is_augmented_node]
+        augmented_node_batch = graph_data.batch[is_augmented_node]
+
+        # Scatter add separately
+        graph_vec_atoms = scatter_add(atom_embeddings, atom_batch, dim=0)
+        graph_vec_augmented_nodes = scatter_add(
+            augmented_node_embeddings, augmented_node_batch, dim=0
+        )
+
+        # Concatenate both
+        graph_vector = torch.cat(
+            [
+                graph_vec_atoms,
+                graph_data.molecule_attr,
+                graph_vec_augmented_nodes,
+            ],
+            dim=1,
+        )
+
+        for lin in self.linear_layers:
+            a = self.gnn.activation(lin(graph_vector))
+        return self.final_layer(a)
 
 
 class ResGatedGraphConvNetPretrain(GraphBaseNet):
