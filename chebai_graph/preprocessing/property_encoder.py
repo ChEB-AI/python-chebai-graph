@@ -19,7 +19,7 @@ class PropertyEncoder(abc.ABC):
     def __init__(self, property, eval=False, **kwargs) -> None:
         self.property = property
         self._encoding_length: int = 1
-        self.eval = eval # if True, do not update cache (for index encoder)
+        self.eval = eval  # if True, do not update cache (for index encoder)
 
     @property
     def name(self) -> str:
@@ -150,11 +150,11 @@ class IndexEncoder(PropertyEncoder):
         if token is None:
             self._count_for_unk_token += 1
             return torch.tensor([self._unk_token_idx])
-        
+
         if self.eval and str(token) not in self.cache:
             self._count_for_unk_token += 1
             return torch.tensor([self._unk_token_idx])
-        
+
         if str(token) not in self.cache:
             self.cache[str(token)] = len(self.cache)
         return torch.tensor([self.cache[str(token)] + self.offset])

@@ -12,7 +12,7 @@ from .chebi import (
     ChEBI50_WFGE_WGN_GraphProp,
     ChEBI50GraphData,
     ChEBI50GraphProperties,
-    ChEBI100GraphProperties
+    ChEBI100GraphProperties,
 )
 from .pubchem import PubChemGraphProperties
 

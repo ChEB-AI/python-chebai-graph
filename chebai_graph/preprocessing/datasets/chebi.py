@@ -282,7 +282,9 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             molecule_attr=molecule_attr,
         )
 
-    def load_processed_data(self, kind: Optional[str] = None, filename: Optional[str] = None) -> list[dict]:
+    def load_processed_data(
+        self, kind: Optional[str] = None, filename: Optional[str] = None
+    ) -> list[dict]:
         """
         Load dataset and merge cached properties into base features.
 
@@ -380,7 +382,9 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             f"Data module uses these properties (ordered): {', '.join([str(p) for p in self.properties])}",
         )
 
-    def load_processed_data(self, kind: Optional[str] = None, filename: Optional[str] = None) -> list[dict]:
+    def load_processed_data(
+        self, kind: Optional[str] = None, filename: Optional[str] = None
+    ) -> list[dict]:
         """
         Load dataset and merge cached properties into base features.
 
