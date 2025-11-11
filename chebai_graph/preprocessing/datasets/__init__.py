@@ -12,12 +12,14 @@ from .chebi import (
     ChEBI50_WFGE_WGN_GraphProp,
     ChEBI50GraphData,
     ChEBI50GraphProperties,
+    ChEBI100GraphProperties,
 )
 from .pubchem import PubChemGraphProperties
 
 __all__ = [
     "ChEBI50GraphFGAugmentorReader",
     "ChEBI50GraphProperties",
+    "ChEBI100GraphProperties",
     "ChEBI50GraphData",
     "PubChemGraphProperties",
     "ChEBI50_Atom_WGNOnly_GraphProp",

@@ -184,6 +184,7 @@ class GraphNetWrapper(GraphBaseNet, ABC):
             torch.Tensor: Predicted output.
         """
         graph_data = batch["features"][0]
+        graph_data.to(self.device)
         assert isinstance(graph_data, GraphData)
         a = self.gnn(batch)
         a = scatter_add(a, graph_data.batch, dim=0)

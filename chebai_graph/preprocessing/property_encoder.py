@@ -16,9 +16,10 @@ class PropertyEncoder(abc.ABC):
         **kwargs: Additional keyword arguments.
     """
 
-    def __init__(self, property, **kwargs) -> None:
+    def __init__(self, property, eval=False, **kwargs) -> None:
         self.property = property
         self._encoding_length: int = 1
+        self.eval = eval  # if True, do not update cache (for index encoder)
 
     @property
     def name(self) -> str:
@@ -150,6 +151,10 @@ class IndexEncoder(PropertyEncoder):
             self._count_for_unk_token += 1
             return torch.tensor([self._unk_token_idx])
 
+        if self.eval and str(token) not in self.cache:
+            self._count_for_unk_token += 1
+            return torch.tensor([self._unk_token_idx])
+
         if str(token) not in self.cache:
             self.cache[str(token)] = len(self.cache)
         return torch.tensor([self.cache[str(token)] + self.offset])
@@ -213,6 +218,15 @@ class OneHotEncoder(IndexEncoder):
         Returns:
             One-hot encoded tensor of shape (1, encoding_length).
         """
+        if self.eval:
+            if token is None or str(token) not in self.cache:
+                self._count_for_unk_token += 1
+                return torch.zeros(self.get_encoding_length(), dtype=torch.int64)
+            index = self.cache[str(token)] + self.offset
+            return torch.nn.functional.one_hot(
+                torch.tensor(index), num_classes=self.get_encoding_length()
+            )
+
         if token not in self.tokens_dict:
             self._count_for_unk_token += 1
             return torch.zeros(1, self.get_encoding_length(), dtype=torch.int64)
