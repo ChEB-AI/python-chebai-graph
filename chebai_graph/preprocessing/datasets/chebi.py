@@ -2,6 +2,7 @@ import os
 from abc import ABC
 from collections.abc import Callable
 from pprint import pformat
+from typing import Optional
 
 import pandas as pd
 import torch
@@ -281,7 +282,7 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             molecule_attr=molecule_attr,
         )
 
-    def load_processed_data_from_file(self, filename: str) -> list[dict]:
+    def load_processed_data(self, kind: Optional[str] = None, filename: Optional[str] = None) -> list[dict]:
         """
         Load dataset and merge cached properties into base features.
 
@@ -291,7 +292,7 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         Returns:
             List of data entries, each a dictionary.
         """
-        base_data = super().load_processed_data_from_file(filename)
+        base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
 
         for property in self.properties:
@@ -379,7 +380,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             f"Data module uses these properties (ordered): {', '.join([str(p) for p in self.properties])}",
         )
 
-    def load_processed_data_from_file(self, filename: str) -> list[dict]:
+    def load_processed_data(self, kind: Optional[str] = None, filename: Optional[str] = None) -> list[dict]:
         """
         Load dataset and merge cached properties into base features.
 
@@ -389,9 +390,8 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         Returns:
             List of data entries, each a dictionary.
         """
-        base_data = super().load_processed_data_from_file(filename)
+        base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
-
         props_categories = {
             "AllNodeTypeProperties": [],
             "FGNodeTypeProperties": [],
@@ -442,6 +442,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         )
 
         for property in self.properties:
+            rank_zero_info(f"Loading property {property.name}...")
             property_data = torch.load(
                 self.get_property_path(property), weights_only=False
             )
