@@ -88,75 +88,31 @@ python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.lo
 
 To use a GAT-based model, choose **one** of the following configs:
 
-- **Atom–Motif–Graph Node Pooling**
-  ```bash
-  --model=../python-chebai-graph/configs/model/gat_aug_amgpool.yml
-  ```
-
-- **Atom-Augmented Node Pooling**
-  ```bash
-  --model=../python-chebai-graph/configs/model/gat_aug_aagpool.yml
-  ```
-
-- **Standard Pooling**
-  ```bash
-  --model=../python-chebai-graph/configs/model/gat.yml
-  ```
+- **Atom–Motif–Graph Node Pooling**: `--model=../python-chebai-graph/configs/model/gat_aug_amgpool.yml`
+- **Atom-Augmented Node Pooling**: `--model=../python-chebai-graph/configs/model/gat_aug_aagpool.yml`
+- **Standard Pooling**: `--model=../python-chebai-graph/configs/model/gat.yml`
 
 #### GAT-specific hyperparameters
 
-- **Number of message-passing layers**
-  ```bash
-  --model.config.num_layers=5        # Default: 4
-  ```
-
-- **Attention heads**
-  ```bash
-  --model.config.heads=4             # Default: 8
-  ```
-  *Note: The number of heads should be divisible by the output channels (or hidden channels if output channels are not specified).*
-
-- **Use GATv2**
-  ```bash
-  --model.config.v2=True             # Default: False
-  ```
-
+- **Number of message-passing layers**: `--model.config.num_layers=5`        (default: 4)
+- **Attention heads**: `--model.config.heads=4`             (Default: 8)  
+  > Note: The number of heads should be divisible by the output channels (or hidden channels if output channels are not specified).
+- **Use GATv2**: `--model.config.v2=True`             (default: False)
 
 #### **ResGated Architecture**
 
 To use a ResGated GNN model, choose **one** of the following configs:
 
-- **Atom–Motif–Graph Node Pooling**
-  ```bash
-  --model=../python-chebai-graph/configs/model/res_aug_amgpool.yml
-  ```
-
-- **Atom-Augmented Node Pooling**
-  ```bash
-  --model=../python-chebai-graph/configs/model/res_aug_aagpool.yml
-  ```
-
-- **Standard Pooling**
-  ```bash
-  --model=../python-chebai-graph/configs/model/resgated.yml
-  ```
-
+- **Atom–Motif–Graph Node Pooling**: `--model=../python-chebai-graph/configs/model/res_aug_amgpool.yml`
+- **Atom-Augmented Node Pooling**: `--model=../python-chebai-graph/configs/model/res_aug_aagpool.yml`
+- **Standard Pooling**: `--model=../python-chebai-graph/configs/model/resgated.yml`
 
 #### **Common Hyperparameters**
 
 These can be used for both GAT and ResGated architectures:
 
-- **Dropout**
-  ```bash
-  --model.config.dropout=0.1         # Default: 0
-  ```
-
-- **Number of final linear layers**
-  ```bash
-  --model.n_linear_layers=2          # Default: 1
-  ```
-
-
+- **Dropout**: `--model.config.dropout=0.1`         (default: 0)
+- **Number of final linear layers**: `--model.n_linear_layers=2`         (default: 1)
 
 # Random Node Initialization
 
