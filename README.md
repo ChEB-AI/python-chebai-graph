@@ -75,3 +75,119 @@ The list can be found in the `configs/data/chebi50_graph_properties.yml` file.
 ```bash
 python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.logger=configs/training/csv_logger.yml --model=../python-chebai-graph/configs/model/gnn_res_gated.yml --model.train_metrics=configs/metrics/micro-macro-f1.yml --model.test_metrics=configs/metrics/micro-macro-f1.yml --model.val_metrics=configs/metrics/micro-macro-f1.yml --data=../python-chebai-graph/configs/data/chebi50_graph_properties.yml --data.init_args.batch_size=128 --trainer.accumulate_grad_batches=4 --data.init_args.num_workers=10 --model.pass_loss_kwargs=false --data.init_args.chebi_version=241 --trainer.min_epochs=200 --trainer.max_epochs=200 --model.criterion=configs/loss/bce.yml
 ```
+
+## Augmented Graphs
+
+```bash
+python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.logger=configs/training/wandb_logger.yml --model=../python-chebai-graph/configs/model/gat_aug_amgpool.yml --model.train_metrics=configs/metrics/micro-macro-f1.yml --model.test_metrics=configs/metrics/micro-macro-f1.yml --model.val_metrics=configs/metrics/micro-macro-f1.yml --model.config.v2=True --data=../python-chebai-graph/configs/data/chebi50_aug_prop_as_per_node.yml --data.init_args.batch_size=128 --trainer.accumulate_grad_batches=4 --data.init_args.num_workers=10 --model.pass_loss_kwargs=false --data.init_args.chebi_version=241 --trainer.min_epochs=200 --trainer.max_epochs=200 --model.criterion=configs/loss/bce.yml --trainer.logger.init_args.name=gatv2_amg_s0
+```
+
+### Model Hyperparameters
+
+#### **GAT Architecture**
+
+To use a GAT-based model, choose **one** of the following configs:
+
+- **Atom–Motif–Graph Node Pooling**
+  ```bash
+  --model=../python-chebai-graph/configs/model/gat_aug_amgpool.yml
+  ```
+
+- **Atom-Augmented Node Pooling**
+  ```bash
+  --model=../python-chebai-graph/configs/model/gat_aug_aagpool.yml
+  ```
+
+- **Standard Pooling**
+  ```bash
+  --model=../python-chebai-graph/configs/model/gat.yml
+  ```
+
+#### GAT-specific hyperparameters
+
+- **Number of message-passing layers**
+  ```bash
+  --model.config.num_layers=5        # Default: 4
+  ```
+
+- **Attention heads**
+  ```bash
+  --model.config.heads=4             # Default: 8
+  ```
+  *Note: The number of heads should be divisible by the output channels (or hidden channels if output channels are not specified).*
+
+- **Use GATv2**
+  ```bash
+  --model.config.v2=True             # Default: False
+  ```
+
+
+#### **ResGated Architecture**
+
+To use a ResGated GNN model, choose **one** of the following configs:
+
+- **Atom–Motif–Graph Node Pooling**
+  ```bash
+  --model=../python-chebai-graph/configs/model/res_aug_amgpool.yml
+  ```
+
+- **Atom-Augmented Node Pooling**
+  ```bash
+  --model=../python-chebai-graph/configs/model/res_aug_aagpool.yml
+  ```
+
+- **Standard Pooling**
+  ```bash
+  --model=../python-chebai-graph/configs/model/resgated.yml
+  ```
+
+
+#### **Common Hyperparameters**
+
+These can be used for both GAT and ResGated architectures:
+
+- **Dropout**
+  ```bash
+  --model.config.dropout=0.1         # Default: 0
+  ```
+
+- **Number of final linear layers**
+  ```bash
+  --model.n_linear_layers=2          # Default: 1
+  ```
+
+## Random Node Initialization
+
+
+
+
+
+
+### Static Node Intialization
+
+In this type of node initialization, the node properties ( and/or edge properties) of the given molecular graph is initialized only once during dataset creation with given node initiliazation scheme.
+
+
+In the below config, for each node we the 158 node properties we retrieve from RDKit along and add 54 features to node (specified by `--data.pad_node_features=45`) which is drawn from normal distribution (by default.) You can change the distribution from which additional features are drawn by using `--data.distribution=zeros`
+
+below are the available distributions:
+["normal", "uniform", "xavier_normal", "xavier_uniform", "zeros"]
+
+Similary, each edge is initializaed with 7 properties from RDKit and 4 additional features drawn from given distribution.
+
+
+```
+python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.logger=configs/training/wandb_logger.yml --model=../python-chebai-graph/configs/model/resgated.yml --model.config.in_channels=203 --model.config.edge_dim=11 --model.train_metrics=configs/metrics/micro-macro-f1.yml --model.test_metrics=configs/metrics/micro-macro-f1.yml --model.val_metrics=configs/metrics/micro-macro-f1.yml --data=../python-chebai-graph/configs/data/chebi50_graph_properties.yml --data.pad_node_features=45 --data.pad_edge_features=4 --data.init_args.batch_size=128 --trainer.accumulate_grad_batches=4 --data.init_args.num_workers=10 --data.init_args.persistent_workers=False --model.pass_loss_kwargs=false --data.init_args.chebi_version=241 --trainer.min_epochs=200 --trainer.max_epochs=200 --model.criterion=configs/loss/bce.yml --trainer.logger.init_args.name=gni_res_props+zeros_s0
+```
+
+if you to use all the features for node (and edge) drawn from given distribution, use the data class
+`--data=../python-chebai-graph/configs/data/chebi50_static_gni.yml` . Refer the data class code.
+
+### Dynamic Node Initialization
+In this type of node initialization, the node properties ( and/or edge properties) of the given molecular graph is initialized at each forward pass  of the model with given node initiliazation scheme.
+
+
+```bash
+
+python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.logger=configs/training/wandb_logger.yml --model=../python-chebai-graph/configs/model/resgated_dynamic_gni.yml --model.config.in_channels=203 --model.config.edge_dim=11 --model.config.complete_randomness=False --model.config.pad_node_features=45 --model.config.pad_edge_features=4 --model.train_metrics=configs/metrics/micro-macro-f1.yml --model.test_metrics=configs/metrics/micro-macro-f1.yml --model.val_metrics=configs/metrics/micro-macro-f1.yml --data=../python-chebai-graph/configs/data/chebi50_graph_properties.yml --data.init_args.batch_size=128 --trainer.accumulate_grad_batches=4 --data.init_args.num_workers=10 --data.init_args.persistent_workers=False --model.pass_loss_kwargs=false --data.init_args.chebi_version=241 --trainer.min_epochs=200 --trainer.max_epochs=200 --model.criterion=configs/loss/bce.yml --trainer.logger.init_args.name=gni_dres_props+rand_s0
+```

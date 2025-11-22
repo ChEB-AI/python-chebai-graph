@@ -125,20 +125,11 @@ class RandomFeatureInitializationReader(GraphPropertyReader):
         if data is None:
             return None
 
-        # Ensure expected attributes exist (torch_geometric Data may vary).
-        num_nodes = int(data.x.shape[0]) if getattr(data, "x", None) is not None else 0
-        num_edges = (
-            int(data.edge_attr.shape[0])
-            if getattr(data, "edge_attr", None) is not None
-            else 0
+        random_x = torch.empty(data.x.shape[0], self.num_node_properties)
+        random_edge_attr = torch.empty(
+            data.edge_attr.shape[0], self.num_bond_properties
         )
-
-        # Create random tensors of the requested shapes.
-        random_x: Tensor = torch.empty(num_nodes, self.num_node_properties)
-        random_edge_attr: Tensor = torch.empty(num_edges, self.num_bond_properties)
-        random_molecule_properties: Tensor = torch.empty(
-            1, self.num_molecule_properties
-        )
+        random_molecule_properties = torch.empty(1, self.num_molecule_properties)
 
         # Initialize them according to the chosen distribution.
         self.random_gni(random_x, self.distribution)
