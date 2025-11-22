@@ -156,38 +156,68 @@ These can be used for both GAT and ResGated architectures:
   --model.n_linear_layers=2          # Default: 1
   ```
 
-## Random Node Initialization
 
 
+# Random Node Initialization
 
+## Static Node Initialization
 
-
-
-### Static Node Intialization
-
-In this type of node initialization, the node properties ( and/or edge properties) of the given molecular graph is initialized only once during dataset creation with given node initiliazation scheme.
-
-
-In the below config, for each node we the 158 node properties we retrieve from RDKit along and add 54 features to node (specified by `--data.pad_node_features=45`) which is drawn from normal distribution (by default.) You can change the distribution from which additional features are drawn by using `--data.distribution=zeros`
-
-below are the available distributions:
-["normal", "uniform", "xavier_normal", "xavier_uniform", "zeros"]
-
-Similary, each edge is initializaed with 7 properties from RDKit and 4 additional features drawn from given distribution.
+In this type of node initialization, the node properties (and/or edge properties) of the given molecular graph are initialized only once during dataset creation with the given initialization scheme.
 
 
 ```
 python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.logger=configs/training/wandb_logger.yml --model=../python-chebai-graph/configs/model/resgated.yml --model.config.in_channels=203 --model.config.edge_dim=11 --model.train_metrics=configs/metrics/micro-macro-f1.yml --model.test_metrics=configs/metrics/micro-macro-f1.yml --model.val_metrics=configs/metrics/micro-macro-f1.yml --data=../python-chebai-graph/configs/data/chebi50_graph_properties.yml --data.pad_node_features=45 --data.pad_edge_features=4 --data.init_args.batch_size=128 --trainer.accumulate_grad_batches=4 --data.init_args.num_workers=10 --data.init_args.persistent_workers=False --model.pass_loss_kwargs=false --data.init_args.chebi_version=241 --trainer.min_epochs=200 --trainer.max_epochs=200 --model.criterion=configs/loss/bce.yml --trainer.logger.init_args.name=gni_res_props+zeros_s0
 ```
 
-if you to use all the features for node (and edge) drawn from given distribution, use the data class
-`--data=../python-chebai-graph/configs/data/chebi50_static_gni.yml` . Refer the data class code.
+In the above config, for each node we use the 158 node properties retrieved from RDKit and add 45 additional features (specified by `--data.pad_node_features=45`) drawn from a normal distribution (default). You can change the distribution using:
 
-### Dynamic Node Initialization
-In this type of node initialization, the node properties ( and/or edge properties) of the given molecular graph is initialized at each forward pass  of the model with given node initiliazation scheme.
+```
+--data.distribution=zeros
+```
+
+Available distributions:
+
+```
+["normal", "uniform", "xavier_normal", "xavier_uniform", "zeros"]
+```
+
+Similarly, each edge is initialized with 7 RDKit properties and 4 additional features drawn from the given distribution.
 
 
-```bash
+If you want all node (and edge) features to be drawn from a given distribution (i.e., ignore RDKit features), use:
 
+```
+--data=../python-chebai-graph/configs/data/chebi50_static_gni.yml
+```
+
+Refer to the data class code for details.
+
+
+## Dynamic Node Initialization
+
+In this type of node initialization, the node properties (and/or edge properties) of the molecular graph are initialized at **each forward pass** of the model using the given initialization scheme.
+
+Currently, dynamic node initialization is implemented only for the **resgated** architecture by specifying:
+
+```
+--model=../python-chebai-graph/configs/model/resgated_dynamic_gni.yml
+```
+
+To keep RDKit features and *add* dynamically initialized features:
+
+```
+--model.config.complete_randomness=False
+--model.config.pad_node_features=45
+```
+
+The additional features are drawn from normal distribution (default). You can change it using:
+
+```
+--model.config.distribution=uniform
+```
+
+If all features should be initialized from the given distribution, remove the complete_randomness flag (default is True).
+
+```
 python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.logger=configs/training/wandb_logger.yml --model=../python-chebai-graph/configs/model/resgated_dynamic_gni.yml --model.config.in_channels=203 --model.config.edge_dim=11 --model.config.complete_randomness=False --model.config.pad_node_features=45 --model.config.pad_edge_features=4 --model.train_metrics=configs/metrics/micro-macro-f1.yml --model.test_metrics=configs/metrics/micro-macro-f1.yml --model.val_metrics=configs/metrics/micro-macro-f1.yml --data=../python-chebai-graph/configs/data/chebi50_graph_properties.yml --data.init_args.batch_size=128 --trainer.accumulate_grad_batches=4 --data.init_args.num_workers=10 --data.init_args.persistent_workers=False --model.pass_loss_kwargs=false --data.init_args.chebi_version=241 --trainer.min_epochs=200 --trainer.max_epochs=200 --model.criterion=configs/loss/bce.yml --trainer.logger.init_args.name=gni_dres_props+rand_s0
 ```
