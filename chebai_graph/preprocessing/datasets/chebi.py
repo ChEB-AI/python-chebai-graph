@@ -77,7 +77,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
             properties = self._sort_properties(properties)
         else:
             properties = []
-        self.properties = properties
+        self.properties: list[MolecularProperty] = properties
         assert isinstance(self.properties, list) and all(
             isinstance(p, MolecularProperty) for p in self.properties
         )
@@ -360,6 +360,40 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
+
+    def _process_input_for_prediction(self, smiles_list: list[str]) -> list:
+        data = [
+            self.reader.to_data(
+                {"id": f"smiles_{idx}", "features": smiles, "labels": None}
+            )
+            for idx, smiles in enumerate(smiles_list)
+        ]
+        # element of data is a dict with 'id' and 'features' (GeomData)
+        # GeomData has only edge_index filled but node and edges features are empty.
+
+        assert len(data) == len(smiles_list), "Data length mismatch."
+        data_df = pd.DataFrame(data)
+
+        for idx, data_row in data_df.itertuples(index=True):
+            property_data = data_row
+            for property in self.properties:
+                property.encoder.eval = True
+                property_value = self.reader.read_property(smiles_list[idx], property)
+                if property_value is None or len(property_value) == 0:
+                    encoded_value = None
+                else:
+                    encoded_value = torch.stack(
+                        [property.encoder.encode(v) for v in property_value]
+                    )
+                    if len(encoded_value.shape) == 3:
+                        encoded_value = encoded_value.squeeze(0)
+                property_data[property.name] = encoded_value
+
+            property_data["features"] = property_data.apply(
+                lambda row: self._merge_props_into_base(row), axis=1
+            )
+
+        return data_df.to_dict("records")
 
 
 class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
