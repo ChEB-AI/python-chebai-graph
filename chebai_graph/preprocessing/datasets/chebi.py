@@ -206,7 +206,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         """
         data = [
             self.reader.to_data(
-                {"id": f"smiles_{idx}", "features": smiles, "labels": None}
+                {"ident": f"smiles_{idx}", "features": smiles, "labels": None}
             )
             for idx, smiles in enumerate(smiles_list)
         ]
