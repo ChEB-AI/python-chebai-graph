@@ -184,61 +184,53 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         self._setup_properties()
         super()._after_setup(**kwargs)
 
-    def _process_input_for_prediction(
-        self,
-        smiles_list: list[str],
-        model_hparams: Optional[dict] = None,
-    ) -> list:
-        data_df = self._process_smiles_and_props(smiles_list)
-        data_df["features"] = data_df.apply(
-            lambda row: self._merge_props_into_base(row), axis=1
+    def _preprocess_smiles_for_pred(
+        self, idx, smiles: str, model_hparams: Optional[dict] = None
+    ) -> dict:
+        """Preprocess prediction data."""
+        # Add dummy labels because the collate function requires them.
+        # Note: If labels are set to `None`, the collator will insert a `non_null_labels` entry into `loss_kwargs`,
+        # which later causes `_get_prediction_and_labels` method in the prediction pipeline to treat the data as empty.
+        result = self.reader.to_data(
+            {"id": f"smiles_{idx}", "features": smiles, "labels": [1, 2]}
+        )
+        if result is None or result["features"] is None:
+            return None
+        for property in self.properties:
+            property.encoder.eval = True
+            property_value = self.reader.read_property(smiles, property)
+            if property_value is None or len(property_value) == 0:
+                encoded_value = None
+            else:
+                encoded_value = torch.stack(
+                    [property.encoder.encode(v) for v in property_value]
+                )
+                if len(encoded_value.shape) == 3:
+                    encoded_value = encoded_value.squeeze(0)
+            result[property.name] = encoded_value
+
+        result["features"] = self._prediction_merge_props_into_base_wrapper(
+            result, model_hparams
         )
 
         # apply transformation, e.g. masking for pretraining task
         if self.transform is not None:
-            data_df["features"] = data_df["features"].apply(self.transform)
+            result["features"] = self.transform(result["features"])
 
-        return data_df.to_dict("records")
+        return result
 
-    def _process_smiles_and_props(self, smiles_list: list[str]) -> pd.DataFrame:
+    def _prediction_merge_props_into_base_wrapper(
+        self, row: pd.Series | dict, model_hparams: Optional[dict] = None
+    ) -> GeomData:
         """
-        Process SMILES strings and compute molecular properties.
+        Wrapper to merge properties into base features for prediction.
+
+        Args:
+            row: A dictionary or pd.Series containing 'features' and encoded properties.
+        Returns:
+            A GeomData object with merged features.
         """
-        data = [
-            self.reader.to_data(
-                {"ident": f"smiles_{idx}", "features": smiles, "labels": None}
-            )
-            for idx, smiles in enumerate(smiles_list)
-        ]
-        # element of data is a dict with 'id' and 'features' (GeomData)
-        # GeomData has only edge_index filled but node and edges features are empty.
-
-        assert len(data) == len(smiles_list), "Data length mismatch."
-        data_df = pd.DataFrame(data)
-
-        props: list[dict] = []
-        for data_row in data_df.itertuples(index=True):
-            row_prop_dict: dict = {}
-            for property in self.properties:
-                property.encoder.eval = True
-                property_value = self.reader.read_property(
-                    smiles_list[data_row.Index], property
-                )
-                if property_value is None or len(property_value) == 0:
-                    encoded_value = None
-                else:
-                    encoded_value = torch.stack(
-                        [property.encoder.encode(v) for v in property_value]
-                    )
-                    if len(encoded_value.shape) == 3:
-                        encoded_value = encoded_value.squeeze(0)
-                row_prop_dict[property.name] = encoded_value
-            row_prop_dict["ident"] = data_row.ident
-            props.append(row_prop_dict)
-
-        property_df = pd.DataFrame(props)
-        data_df = data_df.merge(property_df, on="ident", how="left")
-        return data_df
+        return self._merge_props_into_base(row)
 
 
 class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
@@ -276,7 +268,7 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
                 f"Data module uses these properties (ordered): {', '.join([str(p) for p in self.properties])}"
             )
 
-    def _merge_props_into_base(self, row: pd.Series) -> GeomData:
+    def _merge_props_into_base(self, row: pd.Series | dict) -> GeomData:
         """
         Merge encoded molecular properties into the GeomData object.
 
@@ -544,6 +536,8 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             A GeomData object with merged features.
         """
         geom_data = row["features"]
+        if geom_data is None:
+            return None
         assert isinstance(geom_data, GeomData)
 
         is_atom_node = geom_data.is_atom_node
@@ -627,11 +621,17 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             is_graph_node=is_graph_node,
         )
 
-    def _process_input_for_prediction(
-        self,
-        smiles_list: list[str],
-        model_hparams: Optional[dict] = None,
-    ) -> list:
+    def _prediction_merge_props_into_base_wrapper(
+        self, row: pd.Series | dict, model_hparams: Optional[dict] = None
+    ) -> GeomData:
+        """
+        Wrapper to merge properties into base features for prediction.
+
+        Args:
+            row: A dictionary or pd.Series containing 'features' and encoded properties.
+        Returns:
+            A GeomData object with merged features.
+        """
         if (
             model_hparams is None
             or "in_channels" not in model_hparams["config"]
@@ -641,21 +641,8 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
                 f"model_hparams must be provided for data class: {self.__class__.__name__}"
                 f" which should contain 'in_channels' key with valid value in 'config' dictionary."
             )
-
         max_len_node_properties = int(model_hparams["config"]["in_channels"])
-        # Determine max_len_node_properties based on in_channels
-
-        data_df = self._process_smiles_and_props(smiles_list)
-        data_df["features"] = data_df.apply(
-            lambda row: self._merge_props_into_base(row, max_len_node_properties),
-            axis=1,
-        )
-
-        # apply transformation, e.g. masking for pretraining task
-        if self.transform is not None:
-            data_df["features"] = data_df["features"].apply(self.transform)
-
-        return data_df.to_dict("records")
+        return self._merge_props_into_base(row, max_len_node_properties)
 
 
 class ChEBI50_StaticGNI(DataPropertiesSetter, ChEBIOver50):
