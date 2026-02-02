@@ -1,3 +1,23 @@
+"""
+ResGatedDynamicGNIGraphPred
+------------------------------------------------
+
+Module providing a ResGated GNN model that applies Random Node Initialization
+(RNI) dynamically at each forward pass. This follows the approach from:
+
+Abboud, R., et al. (2020). "The surprising power of graph neural networks with
+random node initialization." arXiv preprint arXiv:2010.01179.
+
+The module exposes:
+- ResGatedDynamicGNI: a model that can either completely replace node/edge
+  features with random tensors each forward pass or pad existing features with
+  additional random features.
+- ResGatedDynamicGNIGraphPred: a thin wrapper that instantiates the above for
+  graph-level prediction pipelines.
+"""
+
+__all__ = ["ResGatedDynamicGNIGraphPred"]
+
 from typing import Any
 
 import torch
@@ -14,12 +34,37 @@ from .resgated import ResGatedModel
 
 class ResGatedDynamicGNI(GraphModelBase):
     """
-    Base model class for applying ResGatedGraphConv layers to graph-structured data
-    with dynamic initialization of features for nodes and edges.
+    ResGated GNN with dynamic Random Node Initialization (RNI).
 
-    Args:
-        config (dict): Configuration dictionary containing model hyperparameters.
-        **kwargs: Additional keyword arguments for parent class.
+    This model supports two modes controlled by the `config`:
+
+    - complete_randomness (bool-like): If True, **replace** node and edge
+      features entirely with randomly initialized tensors each forward pass.
+      If False, the model **pads** existing features with extra randomly
+      initialized features on-the-fly.
+
+    - pad_node_features (int, optional): Number of random columns to append
+      to each node feature vector when `complete_randomness` is False.
+
+    - pad_edge_features (int, optional): Number of random columns to append
+      to each edge feature vector when `complete_randomness` is False.
+
+    - distribution (str): Distribution for random initialization. Must be one
+      of RandomFeatureInitializationReader.DISTRIBUTIONS.
+
+    Parameters
+    ----------
+    config : Dict[str, Any]
+        Configuration dictionary containing model hyperparameters. Expected keys
+        used by this class:
+            - distribution (optional, default "normal")
+            - complete_randomness (optional, default "True")
+            - pad_node_features (optional, int)
+            - pad_edge_features (optional, int)
+        Keys required by GraphModelBase (e.g., in_channels, hidden_channels,
+        out_channels, num_layers, edge_dim) should also be present.
+    **kwargs : Any
+        Additional keyword arguments forwarded to GraphModelBase.
     """
 
     def __init__(self, config: dict[str, Any], **kwargs: Any):
@@ -96,6 +141,8 @@ class ResGatedDynamicGNI(GraphModelBase):
 
         new_x = None
         new_edge_attr = None
+
+        # If replacing features entirely with random values
         if self.complete_randomness:
             new_x = torch.empty(
                 graph_data.x.shape[0], graph_data.x.shape[1], device=self.device
@@ -110,6 +157,8 @@ class ResGatedDynamicGNI(GraphModelBase):
             RandomFeatureInitializationReader.random_gni(
                 new_edge_attr, self.distribution
             )
+
+        # If padding existing features with additional random columns
         else:
             if self.pad_node_features is not None:
                 pad_node = torch.empty(
