@@ -12,6 +12,7 @@ from chebai.preprocessing.datasets.chebi import (
     ChEBIOver100,
     ChEBIOverX,
     ChEBIOverXPartial,
+    ChEBIFromList,
 )
 from lightning_utilities.core.rank_zero import rank_zero_info
 from torch_geometric.data.data import Data as GeomData
@@ -588,6 +589,12 @@ class ChEBI50_StaticGNI(DataPropertiesSetter, ChEBIOver50):
             f"n_molecule_properties: {self.reader.num_molecule_properties}"
         )
         return base_df[base_data[0].keys()].to_dict("records")
+
+
+class CHEBIFromListGraphProperties(GraphPropertiesMixIn, ChEBIFromList):
+    """ChEBIFromList dataset with molecular property encodings."""
+
+    pass
 
 
 class ChEBI50GraphProperties(GraphPropertiesMixIn, ChEBIOver50):
