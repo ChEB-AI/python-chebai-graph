@@ -737,5 +737,9 @@ class ChEBI50_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver50):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class ChEBIFromList_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIFromList):
+    READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
 class ChEBI100_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver100):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
