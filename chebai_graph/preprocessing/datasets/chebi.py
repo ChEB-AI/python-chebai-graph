@@ -130,7 +130,13 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         
         # augment molecule graph if possible (this would also happen for the properties if needed, but this avoids redundancy)
         if isinstance(self.reader, _AugmentorReader):
-            returned_results = [self.reader._create_augmented_graph(mol) for mol in features]
+            returned_results = []
+            for mol in features:
+                try:
+                    r = self.reader._create_augmented_graph(mol)
+                except Exception as e:
+                    r = None
+                returned_results.append(r)
             mols = [augmented_mol[1] for augmented_mol in returned_results if augmented_mol is not None]
         else:
             mols = features
