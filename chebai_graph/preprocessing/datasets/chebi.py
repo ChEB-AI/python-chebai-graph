@@ -5,6 +5,7 @@ from pprint import pformat
 from typing import Optional
 
 import pandas as pd
+from chebai_graph.preprocessing.reader.augmented_reader import _AugmentorReader
 import torch
 import tqdm
 from chebai.preprocessing.datasets.chebi import (
@@ -126,6 +127,13 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
                 if value is not None and len(value) > 0
                 else None
             )
+        
+        # augment molecule graph if possible (this would also happen for the properties if needed, but this avoids redundancy)
+        if isinstance(self.reader, _AugmentorReader):
+            returned_results = [self._create_augmented_graph(mol) for mol in features]
+            mols = [augmented_mol[1] for augmented_mol in returned_results if augmented_mol is not None]
+        else:
+            mols = features
 
         for property in self.properties:
             if not os.path.isfile(self.get_property_path(property)):
@@ -133,8 +141,8 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
                 # read all property values first, then encode
                 rank_zero_info(f"\tReading property values of {property.name}...")
                 property_values = [
-                    self.reader.read_property(feat, property)
-                    for feat in tqdm.tqdm(features)
+                    self.reader.read_property(mol, property)
+                    for mol in tqdm.tqdm(mols)
                 ]
                 rank_zero_info(f"\tEncoding property values of {property.name}...")
                 property.encoder.on_start(property_values=property_values)

@@ -308,8 +308,12 @@ class _AugmentorReader(DataReader, ABC):
                 mol = self._smiles_to_mol(smiles)
             if mol is None:
                 return None
-
-            returned_result = self._create_augmented_graph(mol)
+            try:
+                returned_result = self._create_augmented_graph(mol)
+            except Exception as e:
+                print(f"Failed to construct augmented graph, Error: {e}")
+                self.f_cnt_for_aug_graph += 1
+                return None
             if returned_result is None:
                 return None
 
