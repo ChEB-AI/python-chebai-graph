@@ -4,6 +4,7 @@ from abc import ABC
 
 import torch
 from chebai.preprocessing.reader import DataReader
+from chebai.preprocessing.datasets.chebi import sanitize_molecule
 from rdkit import Chem
 from torch_geometric.data import Data as GeomData
 
@@ -21,7 +22,6 @@ assert sys.version_info >= (
 # https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
 # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
 # Order preservation is necessary to to create `is_atom_node` mask
-
 
 class _AugmentorReader(DataReader, ABC):
     """
@@ -59,12 +59,12 @@ class _AugmentorReader(DataReader, ABC):
         """
         return f"{cls.__name__}".lower()
 
-    def _read_data(self, smiles: str) -> GeomData | None:
+    def _read_data(self, raw_data: str | Chem.Mol) -> GeomData | None:
         """
         Reads and augments molecular data from a SMILES string.
 
         Args:
-            smiles (str): SMILES representation of the molecule.
+            raw_data (str | Chem.Mol): SMILES string or RDKit molecule object representing the molecule.
 
         Returns:
             GeomData | None: A PyTorch Geometric Data object with augmented nodes and edges,
@@ -73,20 +73,25 @@ class _AugmentorReader(DataReader, ABC):
         Raises:
             RuntimeError: If an unexpected error occurs during graph augmentation.
         """
-        mol = self._smiles_to_mol(smiles)
+        if isinstance(raw_data, str):
+            mol = self._smiles_to_mol(raw_data)
+            smiles = raw_data
+        else:
+            mol = raw_data
+            smiles = Chem.MolToSmiles(mol)
         if mol is None:
             return None
 
         try:
             returned_result = self._create_augmented_graph(mol)
         except Exception as e:
-            raise RuntimeError(
-                f"Error has occurred for following SMILES: {smiles}\n\t {e}"
-            ) from e
+            print(f"Failed to construct augmented graph for smiles {smiles}, Error: {e}")
+            self.f_cnt_for_aug_graph += 1
+            return None
 
         # If the returned result is None, it indicates that the graph augmentation failed
         if returned_result is None:
-            print(f"Failed to construct augmented graph for smiles {smiles}")
+            print(f"Failed to construct augmented graph for smiles {smiles} (returned None)")
             self.f_cnt_for_aug_graph += 1
             return None
 
@@ -136,13 +141,13 @@ class _AugmentorReader(DataReader, ABC):
         Returns:
             Chem.Mol | None: RDKit molecule object if successful, else None.
         """
-        mol = Chem.MolFromSmiles(smiles)
+        mol = Chem.MolFromSmiles(smiles, sanitize=False)
         if mol is None:
             print(f"RDKit failed to parse {smiles} (returned None)")
             self.f_cnt_for_smiles += 1
         else:
             try:
-                Chem.SanitizeMol(mol)
+                mol = sanitize_molecule(mol)
             except Exception as e:
                 print(f"RDKit failed at sanitizing {smiles}, Error {e}")
                 self.f_cnt_for_smiles += 1
@@ -662,17 +667,17 @@ class AtomFGReader_WithFGEdges_NoGraphNode(AtomsFGReader_NoFGEdges_NoGraphNode):
 class _AddGraphNode(_AugmentorReader):
     """Adds a graph-level node and connects it to selected/given nodes."""
 
-    def _read_data(self, smiles: str) -> GeomData | None:
+    def _read_data(self, raw_data: str | Chem.Mol) -> GeomData | None:
         """
         Reads data and adds a graph-level node annotation.
 
         Args:
-            smiles (str): SMILES string.
+            raw_data (str | Chem.Mol): SMILES string or RDKit molecule object representing the molecule.
 
         Returns:
             Data | None: Geometric data object with is_graph_node annotation.
         """
-        geom_data = super()._read_data(smiles)
+        geom_data = super()._read_data(raw_data)
         if geom_data is None:
             return None
         NUM_NODES = geom_data.x.shape[0]
@@ -941,3 +946,4 @@ class GN_WithAllNodes_FG_WithAtoms_NoFGE(
         return self._add_graph_node_and_edges_to_nodes(
             augmented_struct, atom_ids | fg_to_atoms_map.keys()
         )
+    
