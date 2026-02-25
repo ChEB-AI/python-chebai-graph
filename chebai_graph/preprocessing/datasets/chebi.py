@@ -15,6 +15,7 @@ from chebai.preprocessing.datasets.chebi import (
 )
 from lightning_utilities.core.rank_zero import rank_zero_info
 from torch_geometric.data.data import Data as GeomData
+from rdkit import Chem
 
 from chebai_graph.preprocessing.properties import (
     AllNodeTypeProperty,
@@ -185,20 +186,23 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         super()._after_setup(**kwargs)
 
     def _preprocess_smiles_for_pred(
-        self, idx, smiles: str, model_hparams: Optional[dict] = None
+        self, idx, raw_data: str | Chem.Mol, model_hparams: Optional[dict] = None
     ) -> dict:
         """Preprocess prediction data."""
         # Add dummy labels because the collate function requires them.
         # Note: If labels are set to `None`, the collator will insert a `non_null_labels` entry into `loss_kwargs`,
         # which later causes `_get_prediction_and_labels` method in the prediction pipeline to treat the data as empty.
         result = self.reader.to_data(
-            {"id": f"smiles_{idx}", "features": smiles, "labels": [1, 2]}
+            {"id": f"smiles_{idx}", "features": raw_data, "labels": [1, 2]}
         )
+        # _read_data can return an updated version of the input data (e.g. augmented molecule dict) along with the GeomData object
+        if isinstance(result["features"], tuple):
+            result["features"], raw_data = result["features"][0]
         if result is None or result["features"] is None:
             return None
         for property in self.properties:
             property.encoder.eval = True
-            property_value = self.reader.read_property(smiles, property)
+            property_value = self.reader.read_property(raw_data, property)
             if property_value is None or len(property_value) == 0:
                 encoded_value = None
             else:

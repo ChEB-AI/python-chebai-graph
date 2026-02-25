@@ -68,7 +68,7 @@ class GraphPropertyReader(dr.DataReader):
         self.mol_object_buffer[smiles] = mol
         return mol
 
-    def _read_data(self, raw_data: str | Chem.Mol) -> GeomData | None:
+    def _read_data(self, raw_data: str | Chem.Mol) -> tuple[GeomData, Chem.Mol] | None:
         """
         Convert raw SMILES string data into a PyTorch Geometric Data object.
 
@@ -95,7 +95,7 @@ class GraphPropertyReader(dr.DataReader):
         # edge_index.shape == [2, num_edges]; edge_attr.shape == [num_edges, num_edge_features]
         edge_attr = torch.zeros((edge_index.size(1), 0))
 
-        return GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        return (GeomData(x=x, edge_index=edge_index, edge_attr=edge_attr), mol)
 
     def on_finish(self) -> None:
         """
@@ -104,18 +104,18 @@ class GraphPropertyReader(dr.DataReader):
         print(f"Failed to read {self.failed_counter} SMILES in total")
         self.mol_object_buffer = {}
 
-    def read_property(self, smiles: str, property: MolecularProperty) -> list | None:
+    def read_property(self, raw_data: str | Chem.Mol, property: MolecularProperty) -> list | None:
         """
         Read a molecular property for a given SMILES string.
 
         Args:
-            smiles (str): SMILES string of the molecule.
+            raw_data (str | Chem.Mol): SMILES string or RDKit molecule object of the molecule.
             property (MolecularProperty): Property extractor to apply.
 
         Returns:
             list | None: Property values or None if molecule parsing failed.
         """
-        mol = self._smiles_to_mol(smiles)
+        mol = self._smiles_to_mol(raw_data) if isinstance(raw_data, str) else raw_data
         if mol is None:
             return None
         return property.get_property_value(mol)

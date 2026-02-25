@@ -59,7 +59,7 @@ class _AugmentorReader(DataReader, ABC):
         """
         return f"{cls.__name__}".lower()
 
-    def _read_data(self, raw_data: str | Chem.Mol) -> GeomData | None:
+    def _read_data(self, raw_data: str | Chem.Mol) -> tuple[GeomData, dict] | None:
         """
         Reads and augments molecular data from a SMILES string.
 
@@ -67,8 +67,8 @@ class _AugmentorReader(DataReader, ABC):
             raw_data (str | Chem.Mol): SMILES string or RDKit molecule object representing the molecule.
 
         Returns:
-            GeomData | None: A PyTorch Geometric Data object with augmented nodes and edges,
-            or None if parsing or augmentation fails.
+            tuple[GeomData, dict] | None: A tuple containing a PyTorch Geometric Data object with augmented nodes and edges,
+            and a dictionary of augmented molecule data, or None if parsing or augmentation fails.
 
         Raises:
             RuntimeError: If an unexpected error occurs during graph augmentation.
@@ -124,12 +124,12 @@ class _AugmentorReader(DataReader, ABC):
         NUM_ATOM_NODES = augmented_molecule["nodes"]["atom_nodes"].GetNumAtoms()
         is_atom_mask[:NUM_ATOM_NODES] = True
 
-        return GeomData(
+        return (GeomData(
             x=x,
             edge_index=edge_index,
             edge_attr=edge_attr,
             is_atom_node=is_atom_mask,
-        )
+        ), augmented_molecule)
 
     def _smiles_to_mol(self, smiles: str) -> Chem.Mol | None:
         """
@@ -285,32 +285,35 @@ class _AugmentorReader(DataReader, ABC):
         )
         self.mol_object_buffer = {}
 
-    def read_property(self, data: str | Chem.Mol, property: MolecularProperty) -> list | None:
+    def read_property(self, raw_data: str | Chem.Mol | dict, property: MolecularProperty) -> list | None:
         """
         Reads a specific property from a molecule represented by a SMILES string.
 
         Args:
-            data (str | Chem.Mol): SMILES string or RDKit molecule object representing the molecule.
+            raw_data (str | Chem.Mol | dict): SMILES string, RDKit molecule object, or dictionary representation of a molecule.
             property (MolecularProperty): Molecular property object for which the value needs to be extracted.
 
         Returns:
             list | None: Property values if molecule parsing is successful, else None.
         """
-        if isinstance(data, Chem.Mol):
-            mol = data
+        if isinstance(raw_data, dict):
+            augmented_mol = raw_data
         else:
-            smiles = data
-            if smiles in self.mol_object_buffer:
-                return property.get_property_value(self.mol_object_buffer[smiles])
-            mol = self._smiles_to_mol(smiles)
-        if mol is None:
-            return None
+            if isinstance(raw_data, Chem.Mol):
+                mol = raw_data
+            else:
+                smiles = raw_data
+                if smiles in self.mol_object_buffer:
+                    return property.get_property_value(self.mol_object_buffer[smiles])
+                mol = self._smiles_to_mol(smiles)
+            if mol is None:
+                return None
 
-        returned_result = self._create_augmented_graph(mol)
-        if returned_result is None:
-            return None
+            returned_result = self._create_augmented_graph(mol)
+            if returned_result is None:
+                return None
 
-        _, augmented_mol = returned_result
+            _, augmented_mol = returned_result
         return property.get_property_value(augmented_mol)
 
 
@@ -680,14 +683,14 @@ class _AddGraphNode(_AugmentorReader):
         Returns:
             Data | None: Geometric data object with is_graph_node annotation.
         """
-        geom_data = super()._read_data(raw_data)
+        geom_data, augmented_mol = super()._read_data(raw_data)
         if geom_data is None:
             return None
         NUM_NODES = geom_data.x.shape[0]
         is_graph_node = torch.zeros(NUM_NODES, dtype=torch.bool)
         is_graph_node[-1] = True
         geom_data.is_graph_node = is_graph_node
-        return geom_data
+        return (geom_data, augmented_mol)
 
     def _add_graph_node_and_edges_to_nodes(
         self,
