@@ -156,6 +156,9 @@ class IndexEncoder(PropertyEncoder):
             return torch.tensor([self._unk_token_idx])
 
         if str(token) not in self.cache:
+            # Ensure cache is a mutable dict (jsonargparse may convert it to mappingproxy)
+            if not isinstance(self.cache, dict):
+                self.cache = dict(self.cache)
             self.cache[str(token)] = len(self.cache)
         return torch.tensor([self.cache[str(token)] + self.offset])
 
