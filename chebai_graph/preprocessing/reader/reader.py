@@ -1,6 +1,7 @@
 import os
 
 import chebai.preprocessing.reader as dr
+from chebai.preprocessing.datasets.chebi import sanitize_molecule
 import networkx as nx
 import pysmiles as ps
 import rdkit.Chem as Chem
@@ -54,30 +55,33 @@ class GraphPropertyReader(dr.DataReader):
         if smiles in self.mol_object_buffer:
             return self.mol_object_buffer[smiles]
 
-        mol = Chem.MolFromSmiles(smiles)
+        mol = Chem.MolFromSmiles(smiles, sanitize=False)
         if mol is None:
             print(f"RDKit failed to at parsing {smiles} (returned None)")
             self.failed_counter += 1
         else:
             try:
-                Chem.SanitizeMol(mol)
+                sanitize_molecule(mol)
             except Exception as e:
                 print(f"Rdkit failed at sanitizing {smiles}, \n Error: {e}")
                 self.failed_counter += 1
         self.mol_object_buffer[smiles] = mol
         return mol
 
-    def _read_data(self, raw_data: str) -> GeomData | None:
+    def _read_data(self, raw_data: str | Chem.Mol) -> GeomData | None:
         """
         Convert raw SMILES string data into a PyTorch Geometric Data object.
 
         Args:
-            raw_data (str): SMILES string.
+            raw_data (str | Chem.Mol): SMILES string or RDKit molecule object.
 
         Returns:
             GeomData | None: Graph data object or None if molecule parsing failed.
         """
-        mol = self._smiles_to_mol(raw_data)
+        if isinstance(raw_data, Chem.Mol):
+            mol = raw_data
+        else:
+            mol = self._smiles_to_mol(raw_data)
         if mol is None:
             return None
 
@@ -144,19 +148,19 @@ class GraphReader(dr.ChemDataReader):
         """
         return "graph"
 
-    def _read_data(self, raw_data: str) -> GeomData | None:
+    def _read_data(self, raw_data: str | Chem.Mol) -> GeomData | None:
         """
         Convert a SMILES string into a PyTorch Geometric Data object with atom tokens and bond order attributes.
 
         Args:
-            raw_data (str): SMILES string.
+            raw_data (str | Chem.Mol): SMILES string or RDKit molecule object.
 
         Returns:
             GeomData | None: Graph data object or None if parsing failed.
         """
         # raw_data is a SMILES string
         try:
-            mol = ps.read_smiles(raw_data)
+            mol = self._smiles_to_mol(raw_data) if isinstance(raw_data, str) else raw_data
         except ValueError:
             return None
         assert isinstance(mol, nx.Graph)
@@ -189,6 +193,27 @@ class GraphReader(dr.ChemDataReader):
         nx.set_edge_attributes(mol, de, "edge_attr")
         data = from_networkx(mol)
         return data
+    
+    def _smiles_to_mol(self, smiles: str) -> Chem.rdchem.Mol | None:
+        """
+        Load SMILES string into an RDKit molecule object.
+
+        Args:
+            smiles (str): The SMILES string to parse.
+
+        Returns:
+            Chem.rdchem.Mol | None: Parsed molecule object or None if parsing failed.
+        """
+
+        mol = Chem.MolFromSmiles(smiles, sanitize=False)
+        if mol is None:
+            print(f"RDKit failed to at parsing {smiles} (returned None)")
+        else:
+            try:
+                sanitize_molecule(mol)
+            except Exception as e:
+                print(f"Rdkit failed at sanitizing {smiles}, \n Error: {e}")
+        return mol
 
     def collate(self, list_of_tuples: list) -> any:
         """
