@@ -285,21 +285,24 @@ class _AugmentorReader(DataReader, ABC):
         )
         self.mol_object_buffer = {}
 
-    def read_property(self, smiles: str, property: MolecularProperty) -> list | None:
+    def read_property(self, data: str | Chem.Mol, property: MolecularProperty) -> list | None:
         """
         Reads a specific property from a molecule represented by a SMILES string.
 
         Args:
-            smiles (str): SMILES string representing the molecule.
+            data (str | Chem.Mol): SMILES string or RDKit molecule object representing the molecule.
             property (MolecularProperty): Molecular property object for which the value needs to be extracted.
 
         Returns:
             list | None: Property values if molecule parsing is successful, else None.
         """
-        if smiles in self.mol_object_buffer:
-            return property.get_property_value(self.mol_object_buffer[smiles])
-
-        mol = self._smiles_to_mol(smiles)
+        if isinstance(data, Chem.Mol):
+            mol = data
+        else:
+            smiles = data
+            if smiles in self.mol_object_buffer:
+                return property.get_property_value(self.mol_object_buffer[smiles])
+            mol = self._smiles_to_mol(smiles)
         if mol is None:
             return None
 
