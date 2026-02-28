@@ -4,7 +4,7 @@ from abc import ABC
 
 import torch
 from chebai.preprocessing.reader import DataReader
-from chebai.preprocessing.datasets.chebi import sanitize_molecule
+from chebi_utils.sdf_extractor import sanitize_molecule
 from rdkit import Chem
 from torch_geometric.data import Data as GeomData
 
