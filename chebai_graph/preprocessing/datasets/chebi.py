@@ -296,7 +296,10 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         Returns:
             A GeomData object with merged features.
         """
-        geom_data = row["features"]
+        if isinstance(row["features"], tuple):
+            geom_data, _ = row["features"] # ignore additional returned data from _read_data (e.g. augmented molecule dict)
+        else:
+            geom_data = row["features"]
         assert isinstance(geom_data, GeomData)
         edge_attr = geom_data.edge_attr
         x = geom_data.x
