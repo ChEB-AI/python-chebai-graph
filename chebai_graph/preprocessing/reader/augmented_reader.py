@@ -4,7 +4,7 @@ from abc import ABC
 
 import torch
 from chebai.preprocessing.reader import DataReader
-from chebi_utils.sdf_extractor import sanitize_molecule
+from chebi_utils.sdf_extractor import _sanitize_molecule
 from rdkit import Chem
 from torch_geometric.data import Data as GeomData
 
@@ -147,7 +147,7 @@ class _AugmentorReader(DataReader, ABC):
             self.f_cnt_for_smiles += 1
         else:
             try:
-                mol = sanitize_molecule(mol)
+                mol = _sanitize_molecule(mol)
             except Exception as e:
                 print(f"RDKit failed at sanitizing {smiles}, Error {e}")
                 self.f_cnt_for_smiles += 1
