@@ -262,9 +262,9 @@ class AugmentedAtomProperty(AtomProperty, ABC):
                 )
             prop_list.append(self.get_atom_value(graph_node))
 
-        assert (
-            len(prop_list) == augmented_mol[self.MAIN_KEY]["num_nodes"]
-        ), "Number of property values should be equal to number of nodes"
+        assert len(prop_list) == augmented_mol[self.MAIN_KEY]["num_nodes"], (
+            "Number of property values should be equal to number of nodes"
+        )
         return prop_list
 
     def _check_modify_atom_prop_value(
@@ -390,9 +390,9 @@ class AugmentedBondProperty(BondProperty, ABC):
             )
 
         num_directed_edges = augmented_mol[self.MAIN_KEY][k.NUM_EDGES] // 2
-        assert (
-            len(prop_list) == num_directed_edges
-        ), f"Number of property values ({len(prop_list)}) should be equal to number of half the number of undirected edges i.e. must be equal to {num_directed_edges} "
+        assert len(prop_list) == num_directed_edges, (
+            f"Number of property values ({len(prop_list)}) should be equal to number of half the number of undirected edges i.e. must be equal to {num_directed_edges} "
+        )
 
         return prop_list
 

@@ -610,7 +610,14 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             enc_len = property_values.shape[1]
             # -------------- Node properties ---------------
             if isinstance(property, AllNodeTypeProperty):
-                x[:, atom_offset : atom_offset + enc_len] = property_values
+                try:
+                    x[:, atom_offset : atom_offset + enc_len] = property_values
+                except Exception as e:
+                    raise ValueError(
+                        f"Error assigning property '{property.name}' values to node features: {e}\n"
+                        f"Property values shape: {property_values.shape}, expected (num_nodes, {enc_len})\n"
+                        f"Node feature matrix shape: {x.shape}"
+                    )
                 atom_offset += enc_len
                 fg_offset += enc_len
                 graph_offset += enc_len

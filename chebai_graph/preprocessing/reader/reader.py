@@ -104,7 +104,9 @@ class GraphPropertyReader(dr.DataReader):
         print(f"Failed to read {self.failed_counter} SMILES in total")
         self.mol_object_buffer = {}
 
-    def read_property(self, raw_data: str | Chem.Mol, property: MolecularProperty) -> list | None:
+    def read_property(
+        self, raw_data: str | Chem.Mol, property: MolecularProperty
+    ) -> list | None:
         """
         Read a molecular property for a given SMILES string.
 
@@ -160,7 +162,9 @@ class GraphReader(dr.ChemDataReader):
         """
         # raw_data is a SMILES string
         try:
-            mol = self._smiles_to_mol(raw_data) if isinstance(raw_data, str) else raw_data
+            mol = (
+                self._smiles_to_mol(raw_data) if isinstance(raw_data, str) else raw_data
+            )
         except ValueError:
             return None
         assert isinstance(mol, nx.Graph)
@@ -193,7 +197,7 @@ class GraphReader(dr.ChemDataReader):
         nx.set_edge_attributes(mol, de, "edge_attr")
         data = from_networkx(mol)
         return data
-    
+
     def _smiles_to_mol(self, smiles: str) -> Chem.rdchem.Mol | None:
         """
         Load SMILES string into an RDKit molecule object.

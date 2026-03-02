@@ -23,6 +23,7 @@ assert sys.version_info >= (
 # https://mail.python.org/pipermail/python-dev/2017-December/151283.html
 # Order preservation is necessary to to create `is_atom_node` mask
 
+
 class _AugmentorReader(DataReader, ABC):
     """
     Abstract base class for augmentor readers that extend ChemDataReader.
@@ -85,13 +86,17 @@ class _AugmentorReader(DataReader, ABC):
         try:
             returned_result = self._create_augmented_graph(mol)
         except Exception as e:
-            print(f"Failed to construct augmented graph for smiles {smiles}, Error: {e}")
+            print(
+                f"Failed to construct augmented graph for smiles {smiles}, Error: {e}"
+            )
             self.f_cnt_for_aug_graph += 1
             return None
 
         # If the returned result is None, it indicates that the graph augmentation failed
         if returned_result is None:
-            print(f"Failed to construct augmented graph for smiles {smiles} (returned None)")
+            print(
+                f"Failed to construct augmented graph for smiles {smiles} (returned None)"
+            )
             self.f_cnt_for_aug_graph += 1
             return None
 
@@ -100,36 +105,39 @@ class _AugmentorReader(DataReader, ABC):
 
         # Empty features initialized; node and edge features can be added later
         NUM_NODES = augmented_molecule["nodes"]["num_nodes"]
-        assert (
-            NUM_NODES is not None and NUM_NODES > 1
-        ), "Num of nodes in augmented graph should be more than 1"
+        assert NUM_NODES is not None and NUM_NODES > 1, (
+            "Num of nodes in augmented graph should be more than 1"
+        )
 
         x = torch.zeros((NUM_NODES, 0))
         edge_attr = torch.zeros((augmented_molecule["edges"][k.NUM_EDGES], 0))
 
-        assert (
-            edge_index.shape[0] == 2
-        ), f"Expected edge_index to have shape [2, num_edges], but got shape {edge_index.shape}"
+        assert edge_index.shape[0] == 2, (
+            f"Expected edge_index to have shape [2, num_edges], but got shape {edge_index.shape}"
+        )
 
-        assert (
-            edge_index.shape[1] == edge_attr.shape[0]
-        ), f"Mismatch between number of edges in edge_index ({edge_index.shape[1]}) and edge_attr ({edge_attr.shape[0]})"
+        assert edge_index.shape[1] == edge_attr.shape[0], (
+            f"Mismatch between number of edges in edge_index ({edge_index.shape[1]}) and edge_attr ({edge_attr.shape[0]})"
+        )
 
-        assert (
-            len(set(edge_index[0].tolist())) == x.shape[0]
-        ), f"Number of unique source nodes in edge_index ({len(set(edge_index[0].tolist()))}) does not match number of nodes in x ({x.shape[0]})"
+        assert len(set(edge_index[0].tolist())) == x.shape[0], (
+            f"Number of unique source nodes in edge_index ({len(set(edge_index[0].tolist()))}) does not match number of nodes in x ({x.shape[0]})"
+        )
 
         # Create a boolean mask: True for atom, False for augmented
         is_atom_mask = torch.zeros(NUM_NODES, dtype=torch.bool)
         NUM_ATOM_NODES = augmented_molecule["nodes"]["atom_nodes"].GetNumAtoms()
         is_atom_mask[:NUM_ATOM_NODES] = True
 
-        return (GeomData(
-            x=x,
-            edge_index=edge_index,
-            edge_attr=edge_attr,
-            is_atom_node=is_atom_mask,
-        ), augmented_molecule)
+        return (
+            GeomData(
+                x=x,
+                edge_index=edge_index,
+                edge_attr=edge_attr,
+                is_atom_node=is_atom_mask,
+            ),
+            augmented_molecule,
+        )
 
     def _smiles_to_mol(self, smiles: str) -> Chem.Mol | None:
         """
@@ -219,9 +227,9 @@ class _AugmentorReader(DataReader, ABC):
         atom_edge_index = self._generate_atom_level_edge_index(mol)
 
         total_atoms = mol.GetNumAtoms()
-        assert (
-            self._idx_of_node == total_atoms
-        ), f"Mismatch in number of nodes: expected {total_atoms}, got {self._idx_of_node}"
+        assert self._idx_of_node == total_atoms, (
+            f"Mismatch in number of nodes: expected {total_atoms}, got {self._idx_of_node}"
+        )
 
         node_info = {
             "atom_nodes": mol,
@@ -229,9 +237,9 @@ class _AugmentorReader(DataReader, ABC):
         }
 
         total_edges = mol.GetNumBonds()
-        assert (
-            self._idx_of_edge == total_edges
-        ), f"Mismatch in number of edges: expected {total_edges}, got {self._idx_of_edge}"
+        assert self._idx_of_edge == total_edges, (
+            f"Mismatch in number of edges: expected {total_edges}, got {self._idx_of_edge}"
+        )
         edge_info = {
             k.WITHIN_ATOMS_EDGE: mol,
             k.NUM_EDGES: self._idx_of_edge,
@@ -285,7 +293,9 @@ class _AugmentorReader(DataReader, ABC):
         )
         self.mol_object_buffer = {}
 
-    def read_property(self, raw_data: str | Chem.Mol | dict, property: MolecularProperty) -> list | None:
+    def read_property(
+        self, raw_data: str | Chem.Mol | dict, property: MolecularProperty
+    ) -> list | None:
         """
         Reads a specific property from a molecule represented by a SMILES string.
 
@@ -362,16 +372,16 @@ class AtomsFGReader_NoFGEdges_NoGraphNode(_AugmentorReader):
         augmented_mol["directed_edge_index"] = directed_edge_index
 
         total_atoms = sum([mol.GetNumAtoms(), len(fg_nodes)])
-        assert (
-            self._idx_of_node == total_atoms
-        ), f"Mismatch in number of nodes: expected {total_atoms}, got {self._idx_of_node}"
+        assert self._idx_of_node == total_atoms, (
+            f"Mismatch in number of nodes: expected {total_atoms}, got {self._idx_of_node}"
+        )
         augmented_mol["node_info"]["fg_nodes"] = fg_nodes
         augmented_mol["node_info"]["num_nodes"] = self._idx_of_node
 
         total_edges = sum([mol.GetNumBonds(), len(atom_fg_edges)])
-        assert (
-            self._idx_of_edge == total_edges
-        ), f"Mismatch in number of edges: expected {total_edges}, got {self._idx_of_edge}"
+        assert self._idx_of_edge == total_edges, (
+            f"Mismatch in number of edges: expected {total_edges}, got {self._idx_of_edge}"
+        )
         augmented_mol["edge_info"][k.ATOM_FG_EDGE] = atom_fg_edges
         augmented_mol["edge_info"][k.NUM_EDGES] = self._idx_of_edge
 
@@ -594,12 +604,12 @@ class AtomFGReader_WithFGEdges_NoGraphNode(AtomsFGReader_NoFGEdges_NoGraphNode):
         augmented_struct["edge_info"][k.WITHIN_FG_EDGE] = internal_fg_edges
         augmented_struct["edge_info"][k.NUM_EDGES] += len(internal_fg_edges)
 
-        assert (
-            self._idx_of_edge == augmented_struct["edge_info"][k.NUM_EDGES]
-        ), f"Mismatch in number of edges: expected {self._idx_of_edge}, got {augmented_struct['edge_info'][k.NUM_EDGES]}"
-        assert (
-            self._idx_of_node == augmented_struct["node_info"]["num_nodes"]
-        ), f"Mismatch in number of nodes: expected {self._idx_of_node}, got {augmented_struct['node_info']['num_nodes']}"
+        assert self._idx_of_edge == augmented_struct["edge_info"][k.NUM_EDGES], (
+            f"Mismatch in number of edges: expected {self._idx_of_edge}, got {augmented_struct['edge_info'][k.NUM_EDGES]}"
+        )
+        assert self._idx_of_node == augmented_struct["node_info"]["num_nodes"], (
+            f"Mismatch in number of nodes: expected {self._idx_of_node}, got {augmented_struct['node_info']['num_nodes']}"
+        )
 
         augmented_struct["directed_edge_index"] = torch.cat(
             [
@@ -629,9 +639,9 @@ class AtomFGReader_WithFGEdges_NoGraphNode(AtomsFGReader_NoFGEdges_NoGraphNode):
         internal_edge_index = [[], []]
 
         def add_fg_internal_edge(source_fg: int, target_fg: int) -> None:
-            assert (
-                source_fg is not None and target_fg is not None
-            ), "Each bond should have a fg node on both end"
+            assert source_fg is not None and target_fg is not None, (
+                "Each bond should have a fg node on both end"
+            )
             assert source_fg != target_fg, "Source and Target FG should be different"
 
             edge_key = tuple(sorted((source_fg, target_fg)))
@@ -718,15 +728,15 @@ class _AddGraphNode(_AugmentorReader):
 
         augmented_struct["edge_info"][k.TO_GRAPHNODE_EDGE] = nodes_to_graph_edges
         augmented_struct["edge_info"][k.NUM_EDGES] += len(nodes_to_graph_edges)
-        assert (
-            self._idx_of_edge == augmented_struct["edge_info"][k.NUM_EDGES]
-        ), f"Mismatch in number of edges: expected {self._idx_of_edge}, got {augmented_struct['edge_info'][k.NUM_EDGES]}"
+        assert self._idx_of_edge == augmented_struct["edge_info"][k.NUM_EDGES], (
+            f"Mismatch in number of edges: expected {self._idx_of_edge}, got {augmented_struct['edge_info'][k.NUM_EDGES]}"
+        )
 
         augmented_struct["node_info"]["graph_node"] = graph_node
         augmented_struct["node_info"]["num_nodes"] += 1
-        assert (
-            self._idx_of_node == augmented_struct["node_info"]["num_nodes"]
-        ), f"Mismatch in number of nodes: expected {self._idx_of_node}, got {augmented_struct['node_info']['num_nodes']}"
+        assert self._idx_of_node == augmented_struct["node_info"]["num_nodes"], (
+            f"Mismatch in number of nodes: expected {self._idx_of_node}, got {augmented_struct['node_info']['num_nodes']}"
+        )
 
         augmented_struct["directed_edge_index"] = torch.cat(
             [
@@ -957,4 +967,3 @@ class GN_WithAllNodes_FG_WithAtoms_NoFGE(
         return self._add_graph_node_and_edges_to_nodes(
             augmented_struct, atom_ids | fg_to_atoms_map.keys()
         )
-    
