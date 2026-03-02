@@ -201,7 +201,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
 
     def _preprocess_smiles_for_pred(
         self, idx, raw_data: str | Chem.Mol, model_hparams: Optional[dict] = None
-    ) -> dict:
+    ) -> Optional[dict]:
         """Preprocess prediction data."""
         # Add dummy labels because the collate function requires them.
         # Note: If labels are set to `None`, the collator will insert a `non_null_labels` entry into `loss_kwargs`,
@@ -211,7 +211,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         )
         # _read_data can return an updated version of the input data (e.g. augmented molecule dict) along with the GeomData object
         if isinstance(result["features"], tuple):
-            result["features"], raw_data = result["features"][0]
+            result["features"], raw_data = result["features"]
         if result is None or result["features"] is None:
             return None
         for property in self.properties:
@@ -559,6 +559,8 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         geom_data = row["features"]
         if geom_data is None:
             return None
+        if isinstance(geom_data, tuple):
+            geom_data = geom_data[0]  # ignore additional returned data from _read_data (e.g. augmented molecule dict)
         assert isinstance(geom_data, GeomData)
 
         is_atom_node = geom_data.is_atom_node
