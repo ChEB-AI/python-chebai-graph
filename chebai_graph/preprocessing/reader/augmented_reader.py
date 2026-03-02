@@ -677,7 +677,7 @@ class AtomFGReader_WithFGEdges_NoGraphNode(AtomsFGReader_NoFGEdges_NoGraphNode):
 class _AddGraphNode(_AugmentorReader):
     """Adds a graph-level node and connects it to selected/given nodes."""
 
-    def _read_data(self, raw_data: str | Chem.Mol) -> GeomData | None:
+    def _read_data(self, raw_data: str | Chem.Mol) -> tuple[GeomData, dict] | None:
         """
         Reads data and adds a graph-level node annotation.
 
@@ -687,9 +687,10 @@ class _AddGraphNode(_AugmentorReader):
         Returns:
             Data | None: Geometric data object with is_graph_node annotation.
         """
-        geom_data, augmented_mol = super()._read_data(raw_data)
-        if geom_data is None:
+        res = super()._read_data(raw_data)
+        if res is None:
             return None
+        geom_data, augmented_mol = res
         NUM_NODES = geom_data.x.shape[0]
         is_graph_node = torch.zeros(NUM_NODES, dtype=torch.bool)
         is_graph_node[-1] = True
