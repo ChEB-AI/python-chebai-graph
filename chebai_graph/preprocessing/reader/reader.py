@@ -1,7 +1,7 @@
 import os
 
 import chebai.preprocessing.reader as dr
-from chebai.preprocessing.datasets.chebi import sanitize_molecule
+from chebai.preprocessing.datasets.chebi import _sanitize_molecule
 import networkx as nx
 import pysmiles as ps
 import rdkit.Chem as Chem
@@ -61,7 +61,7 @@ class GraphPropertyReader(dr.DataReader):
             self.failed_counter += 1
         else:
             try:
-                sanitize_molecule(mol)
+                _sanitize_molecule(mol)
             except Exception as e:
                 print(f"Rdkit failed at sanitizing {smiles}, \n Error: {e}")
                 self.failed_counter += 1
@@ -210,7 +210,7 @@ class GraphReader(dr.ChemDataReader):
             print(f"RDKit failed to at parsing {smiles} (returned None)")
         else:
             try:
-                sanitize_molecule(mol)
+                _sanitize_molecule(mol)
             except Exception as e:
                 print(f"Rdkit failed at sanitizing {smiles}, \n Error: {e}")
         return mol
