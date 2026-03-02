@@ -7,7 +7,7 @@ init_args:
     hidden_channels: 256
     out_channels: 512
     num_layers: 4
-    edge_dim: 11 # number of bond properties
+    edge_dim: 12 # number of bond properties
     dropout: 0
   n_molecule_properties: 0
   n_linear_layers: 1
