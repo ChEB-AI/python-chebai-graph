@@ -1,7 +1,7 @@
 import os
 
 import chebai.preprocessing.reader as dr
-from chebai.preprocessing.datasets.chebi import _sanitize_molecule
+from chebi_utils.sdf_extractor import _sanitize_molecule
 import networkx as nx
 import pysmiles as ps
 import rdkit.Chem as Chem
