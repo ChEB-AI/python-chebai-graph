@@ -138,7 +138,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
                 for mol in features:
                     try:
                         r = self.reader._create_augmented_graph(mol)
-                    except Exception as e:
+                    except Exception:
                         r = None
                     returned_results.append(r)
                 mols = [
@@ -163,7 +163,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
                         enc_if_not_none(property.encoder.encode, value)
                         for value in tqdm.tqdm(property_values)
                     ]
-
+                    assert len(encoded_values) == len(idents) == len(features)
                     torch.save(
                         [
                             {property.name: torch.cat(feat), "ident": id}
