@@ -292,8 +292,13 @@ class RDKit2DNormalized(MoleculeProperty):
         Returns:
             list[np.ndarray]: List containing the descriptor numpy array (excluding first element).
         """
+        if mol is None:
+            raise ValueError("Input molecule is None.")
+        smiles = Chem.MolToSmiles(mol)
+        if smiles is None:
+            raise ValueError("Could not convert molecule to SMILES.")
         features_normalized = self.generator_normalized.processMol(
-            mol, Chem.MolToSmiles(mol)
+            mol, smiles
         )
         features_normalized = np.nan_to_num(features_normalized)
         return [features_normalized[1:]]

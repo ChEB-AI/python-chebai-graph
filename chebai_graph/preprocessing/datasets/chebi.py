@@ -42,7 +42,7 @@ from chebai_graph.preprocessing.reader import (
     RandomFeatureInitializationReader,
 )
 
-from .utils import resolve_property
+from chebai_graph.preprocessing.datasets.utils import resolve_property
 
 
 class ChEBI50GraphData(ChEBIOver50):
@@ -142,9 +142,8 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
                         r = None
                     returned_results.append(r)
                 mols = [
-                    augmented_mol[1]
+                    augmented_mol[1] if augmented_mol is not None else None
                     for augmented_mol in returned_results
-                    if augmented_mol is not None
                 ]
             else:
                 mols = features
@@ -155,7 +154,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
                     # read all property values first, then encode
                     rank_zero_info(f"\tReading property values of {property.name}...")
                     property_values = [
-                        self.reader.read_property(mol, property)
+                        self.reader.read_property(mol, property) if mol is not None else None
                         for mol in tqdm.tqdm(mols)
                     ]
                     rank_zero_info(f"\tEncoding property values of {property.name}...")
@@ -610,14 +609,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             enc_len = property_values.shape[1]
             # -------------- Node properties ---------------
             if isinstance(property, AllNodeTypeProperty):
-                try:
-                    x[:, atom_offset : atom_offset + enc_len] = property_values
-                except Exception as e:
-                    raise ValueError(
-                        f"Error assigning property '{property.name}' values to node features: {e}\n"
-                        f"Property values shape: {property_values.shape}, expected (num_nodes, {enc_len})\n"
-                        f"Node feature matrix shape: {x.shape}"
-                    )
+                x[:, atom_offset : atom_offset + enc_len] = property_values
                 atom_offset += enc_len
                 fg_offset += enc_len
                 graph_offset += enc_len
@@ -855,3 +847,9 @@ class ChEBI25_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOverX):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
     THRESHOLD = 25
+
+
+if __name__ == "__main__":
+    dataset = ChEBI25_WFGE_WGN_AsPerNodeType(chebi_version=248, subset="3_STAR")
+    dataset.prepare_data()
+    dataset.setup()
