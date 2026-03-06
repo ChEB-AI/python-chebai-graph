@@ -1916,7 +1916,7 @@ def get_structure(mol):
         frag_mol = Chem.MolFromSmiles(frag, sanitize=False)
         try:
             frag_mol = _sanitize_molecule(frag_mol)
-        except:
+        except Exception:
             pass
         frag_rings = frag_mol.GetRingInfo().AtomRings()
         if len(frag_rings) >= 1:

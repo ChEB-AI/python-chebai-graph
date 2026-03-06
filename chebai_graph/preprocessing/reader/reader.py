@@ -3,7 +3,6 @@ import os
 import chebai.preprocessing.reader as dr
 from chebi_utils.sdf_extractor import _sanitize_molecule
 import networkx as nx
-import pysmiles as ps
 import rdkit.Chem as Chem
 import torch
 from torch_geometric.data import Data as GeomData
