@@ -297,8 +297,6 @@ class RDKit2DNormalized(MoleculeProperty):
         smiles = Chem.MolToSmiles(mol)
         if smiles is None:
             raise ValueError("Could not convert molecule to SMILES.")
-        features_normalized = self.generator_normalized.processMol(
-            mol, smiles
-        )
+        features_normalized = self.generator_normalized.processMol(mol, smiles)
         features_normalized = np.nan_to_num(features_normalized)
         return [features_normalized[1:]]

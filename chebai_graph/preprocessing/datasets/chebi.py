@@ -154,7 +154,9 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
                     # read all property values first, then encode
                     rank_zero_info(f"\tReading property values of {property.name}...")
                     property_values = [
-                        self.reader.read_property(mol, property) if mol is not None else None
+                        self.reader.read_property(mol, property)
+                        if mol is not None
+                        else None
                         for mol in tqdm.tqdm(mols)
                     ]
                     rank_zero_info(f"\tEncoding property values of {property.name}...")
