@@ -5,6 +5,7 @@ from pprint import pformat
 from typing import Optional
 
 import pandas as pd
+from chebai_graph.preprocessing.reader.augmented_reader import _AugmentorReader
 import torch
 import tqdm
 from chebai.preprocessing.datasets.chebi import (
@@ -15,6 +16,7 @@ from chebai.preprocessing.datasets.chebi import (
 )
 from lightning_utilities.core.rank_zero import rank_zero_info
 from torch_geometric.data.data import Data as GeomData
+from rdkit import Chem
 
 from chebai_graph.preprocessing.properties import (
     AllNodeTypeProperty,
@@ -40,7 +42,7 @@ from chebai_graph.preprocessing.reader import (
     RandomFeatureInitializationReader,
 )
 
-from .utils import resolve_property
+from chebai_graph.preprocessing.datasets.utils import resolve_property
 
 
 class ChEBI50GraphData(ChEBIOver50):
@@ -126,31 +128,53 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
                 else None
             )
 
-        for property in self.properties:
-            if not os.path.isfile(self.get_property_path(property)):
-                rank_zero_info(f"Processing property {property.name}")
-                # read all property values first, then encode
-                rank_zero_info(f"\tReading property values of {property.name}...")
-                property_values = [
-                    self.reader.read_property(feat, property)
-                    for feat in tqdm.tqdm(features)
+        if any(
+            not os.path.isfile(self.get_property_path(property))
+            for property in self.properties
+        ):
+            # augment molecule graph if possible (this would also happen for the properties if needed, but this avoids redundancy)
+            if isinstance(self.reader, _AugmentorReader):
+                returned_results = []
+                for mol in features:
+                    try:
+                        r = self.reader._create_augmented_graph(mol)
+                    except Exception:
+                        r = None
+                    returned_results.append(r)
+                mols = [
+                    augmented_mol[1] if augmented_mol is not None else None
+                    for augmented_mol in returned_results
                 ]
-                rank_zero_info(f"\tEncoding property values of {property.name}...")
-                property.encoder.on_start(property_values=property_values)
-                encoded_values = [
-                    enc_if_not_none(property.encoder.encode, value)
-                    for value in tqdm.tqdm(property_values)
-                ]
+            else:
+                mols = features
 
-                torch.save(
-                    [
-                        {property.name: torch.cat(feat), "ident": id}
-                        for feat, id in zip(encoded_values, idents)
-                        if feat is not None
-                    ],
-                    self.get_property_path(property),
-                )
-                property.on_finish()
+            for property in self.properties:
+                if not os.path.isfile(self.get_property_path(property)):
+                    rank_zero_info(f"Processing property {property.name}")
+                    # read all property values first, then encode
+                    rank_zero_info(f"\tReading property values of {property.name}...")
+                    property_values = [
+                        self.reader.read_property(mol, property)
+                        if mol is not None
+                        else None
+                        for mol in tqdm.tqdm(mols)
+                    ]
+                    rank_zero_info(f"\tEncoding property values of {property.name}...")
+                    property.encoder.on_start(property_values=property_values)
+                    encoded_values = [
+                        enc_if_not_none(property.encoder.encode, value)
+                        for value in tqdm.tqdm(property_values)
+                    ]
+                    assert len(encoded_values) == len(idents) == len(features)
+                    torch.save(
+                        [
+                            {property.name: torch.cat(feat), "ident": id}
+                            for feat, id in zip(encoded_values, idents)
+                            if feat is not None
+                        ],
+                        self.get_property_path(property),
+                    )
+                    property.on_finish()
 
     @property
     def processed_properties_dir(self) -> str:
@@ -185,20 +209,23 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         super()._after_setup(**kwargs)
 
     def _preprocess_smiles_for_pred(
-        self, idx, smiles: str, model_hparams: Optional[dict] = None
-    ) -> dict:
+        self, idx, raw_data: str | Chem.Mol, model_hparams: Optional[dict] = None
+    ) -> Optional[dict]:
         """Preprocess prediction data."""
         # Add dummy labels because the collate function requires them.
         # Note: If labels are set to `None`, the collator will insert a `non_null_labels` entry into `loss_kwargs`,
         # which later causes `_get_prediction_and_labels` method in the prediction pipeline to treat the data as empty.
         result = self.reader.to_data(
-            {"id": f"smiles_{idx}", "features": smiles, "labels": [1, 2]}
+            {"id": f"smiles_{idx}", "features": raw_data, "labels": [1, 2]}
         )
+        # _read_data can return an updated version of the input data (e.g. augmented molecule dict) along with the GeomData object
+        if isinstance(result["features"], tuple):
+            result["features"], raw_data = result["features"]
         if result is None or result["features"] is None:
             return None
         for property in self.properties:
             property.encoder.eval = True
-            property_value = self.reader.read_property(smiles, property)
+            property_value = self.reader.read_property(raw_data, property)
             if property_value is None or len(property_value) == 0:
                 encoded_value = None
             else:
@@ -250,7 +277,9 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             assert (
                 distribution is not None
                 and distribution in RandomFeatureInitializationReader.DISTRIBUTIONS
-            ), "When using padding for features, a valid distribution must be specified."
+            ), (
+                "When using padding for features, a valid distribution must be specified."
+            )
             self.distribution = distribution
             if self.pad_node_features:
                 print(
@@ -278,7 +307,12 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         Returns:
             A GeomData object with merged features.
         """
-        geom_data = row["features"]
+        if isinstance(row["features"], tuple):
+            geom_data, _ = row[
+                "features"
+            ]  # ignore additional returned data from _read_data (e.g. augmented molecule dict)
+        else:
+            geom_data = row["features"]
         assert isinstance(geom_data, GeomData)
         edge_attr = geom_data.edge_attr
         x = geom_data.x
@@ -538,6 +572,10 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         geom_data = row["features"]
         if geom_data is None:
             return None
+        if isinstance(geom_data, tuple):
+            geom_data = geom_data[
+                0
+            ]  # ignore additional returned data from _read_data (e.g. augmented molecule dict)
         assert isinstance(geom_data, GeomData)
 
         is_atom_node = geom_data.is_atom_node
@@ -550,9 +588,9 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         edge_attr = geom_data.edge_attr
 
         # Initialize node feature matrix
-        assert (
-            max_len_node_properties is not None
-        ), "Maximum len of node properties should not be None"
+        assert max_len_node_properties is not None, (
+            "Maximum len of node properties should not be None"
+        )
         x = torch.zeros((num_nodes, max_len_node_properties))
 
         # Track column offsets for each node type
@@ -607,9 +645,9 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
                 raise TypeError(f"Unsupported property type: {type(property).__name__}")
 
             total_used_columns = max(atom_offset, fg_offset, graph_offset)
-            assert (
-                total_used_columns <= max_len_node_properties
-            ), f"Used {total_used_columns} columns, but max allowed is {max_len_node_properties}"
+            assert total_used_columns <= max_len_node_properties, (
+                f"Used {total_used_columns} columns, but max allowed is {max_len_node_properties}"
+            )
 
         return GeomData(
             x=x,
@@ -805,3 +843,15 @@ class ChEBI50_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver50):
 
 class ChEBI100_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver100):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI25_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOverX):
+    READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+    THRESHOLD = 25
+
+
+if __name__ == "__main__":
+    dataset = ChEBI25_WFGE_WGN_AsPerNodeType(chebi_version=248, subset="3_STAR")
+    dataset.prepare_data()
+    dataset.setup()

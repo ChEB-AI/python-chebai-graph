@@ -7,7 +7,7 @@ init_args:
     hidden_channels: 256
     out_channels: 512
     num_layers: 4
-    edge_dim: 11 # number of bond properties
+    edge_dim: 12 # number of bond properties
     heads: 8  # the number of heads should be divisible by output channels (hidden channels if output channel not given)
     v2: True  # This uses `torch_geometric.nn.conv.GATv2Conv` convolution layers, set False to use `GATConv`
   n_molecule_properties: 0

@@ -156,6 +156,9 @@ class IndexEncoder(PropertyEncoder):
             return torch.tensor([self._unk_token_idx])
 
         if str(token) not in self.cache:
+            # Ensure cache is a mutable dict (jsonargparse may convert it to mappingproxy)
+            if not isinstance(self.cache, dict):
+                self.cache = dict(self.cache)
             self.cache[str(token)] = len(self.cache)
         return torch.tensor([self.cache[str(token)] + self.offset])
 
@@ -258,9 +261,9 @@ class AsIsEncoder(PropertyEncoder):
         """
         if token is None:
             return torch.zeros(1, self.get_encoding_length())
-        assert (
-            len(token) == self.get_encoding_length()
-        ), "Length of token should be equal to encoding length"
+        assert len(token) == self.get_encoding_length(), (
+            "Length of token should be equal to encoding length"
+        )
         # return torch.tensor([token]) # token is an ndarray, no need to create list of ndarray due to below warning
         # UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow.
         # Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor.

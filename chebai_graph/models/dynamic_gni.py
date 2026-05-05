@@ -85,9 +85,9 @@ class ResGatedDynamicGNI(GraphModelBase):
         print("Using complete randomness: ", self.complete_randomness)
 
         if not self.complete_randomness:
-            assert (
-                "pad_node_features" in config or "pad_edge_features" in config
-            ), "Missing 'pad_node_features' or 'pad_edge_features' in config when complete_randomness is False"
+            assert "pad_node_features" in config or "pad_edge_features" in config, (
+                "Missing 'pad_node_features' or 'pad_edge_features' in config when complete_randomness is False"
+            )
             self.pad_node_features = (
                 int(config["pad_node_features"])
                 if config.get("pad_node_features") is not None
@@ -112,9 +112,9 @@ class ResGatedDynamicGNI(GraphModelBase):
                     f"in each forward pass."
                 )
 
-            assert (
-                self.pad_node_features > 0 or self.pad_edge_features > 0
-            ), "'pad_node_features' or 'pad_edge_features' must be positive integers"
+            assert self.pad_node_features > 0 or self.pad_edge_features > 0, (
+                "'pad_node_features' or 'pad_edge_features' must be positive integers"
+            )
 
         self.resgated: BasicGNN = ResGatedModel(
             in_channels=self.in_channels,
@@ -182,9 +182,9 @@ class ResGatedDynamicGNI(GraphModelBase):
                 )
                 new_edge_attr = torch.cat((graph_data.edge_attr, pad_edge), dim=1)
 
-        assert (
-            new_x is not None and new_edge_attr is not None
-        ), "Feature initialization failed"
+        assert new_x is not None and new_edge_attr is not None, (
+            "Feature initialization failed"
+        )
         out = self.resgated(
             x=new_x.float(),
             edge_index=graph_data.edge_index.long(),
