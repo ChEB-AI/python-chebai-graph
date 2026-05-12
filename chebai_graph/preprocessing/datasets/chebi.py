@@ -14,6 +14,11 @@ from chebai.preprocessing.datasets.chebi import (
     ChEBIOverX,
     ChEBIOverXPartial,
 )
+from chebai.preprocessing.datasets.ml_overbagging import (
+    _BootstrapDynamicDataset,
+    _MLROSDynamicDataset,
+    _ResampledDynamicDataset,
+)
 from lightning_utilities.core.rank_zero import rank_zero_info
 from torch_geometric.data.data import Data as GeomData
 from rdkit import Chem
@@ -851,7 +856,21 @@ class ChEBI25_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOverX):
     THRESHOLD = 25
 
 
+class ChEBI50Resampled(_ResampledDynamicDataset, ChEBI50_WFGE_WGN_AsPerNodeType):
+    pass
+
+
+class ChEBI50Boostrapped(_BootstrapDynamicDataset, ChEBI50_WFGE_WGN_AsPerNodeType):
+    pass
+
+
+class ChEBI50MLROS(_MLROSDynamicDataset, ChEBI50_WFGE_WGN_AsPerNodeType):
+    pass
+
+
 if __name__ == "__main__":
-    dataset = ChEBI25_WFGE_WGN_AsPerNodeType(chebi_version=248, subset="3_STAR")
+    dataset = ChEBI50Resampled(chebi_version=248, splits_file_path=os.path.join(
+            "data", "chebi_v248", "ChEBI50", "processed", "splits_chebi50_v248.csv"
+        ))
     dataset.prepare_data()
     dataset.setup()
