@@ -1,7 +1,7 @@
-from chebai.preprocessing.datasets.pubchem import PubchemChem
+from chebai.preprocessing.datasets.pubchem import PubChem
 
 from chebai_graph.preprocessing.datasets.chebi import GraphPropertiesMixIn
 
 
-class PubChemGraphProperties(GraphPropertiesMixIn, PubchemChem):
+class PubChemGraphProperties(GraphPropertiesMixIn, PubChem):
     pass
