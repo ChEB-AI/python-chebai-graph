@@ -1,7 +1,7 @@
 [project]
 name = "chebai-graph"
 description = "GNNs for ChEB-AI"
-version = "1.0.0"
+version = "1.1.0"
 authors = [
     { name = "Martin Glauer", email = "martin.glauer@ovgu.de" }
 ]
