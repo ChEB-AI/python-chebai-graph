@@ -1,4 +1,4 @@
-class_path: chebai_graph.models.ResGatedGraphPred
+class_path: chebai_graph.models.GINEGraphPred
 init_args:
   optimizer_kwargs:
     lr: 1e-3

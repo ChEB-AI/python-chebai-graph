@@ -7,6 +7,7 @@ from .augmented import (
 from .dynamic_gni import ResGatedDynamicGNIGraphPred
 from .gat import GATGraphPred
 from .resgated import ResGatedGraphPred
+from .gin_net import GINEGraphPred
 
 __all__ = [
     "ResGatedGraphPred",
@@ -16,4 +17,5 @@ __all__ = [
     "GATAugNodePoolGraphPred",
     "GATGraphNodeFGNodePoolGraphPred",
     "ResGatedDynamicGNIGraphPred",
+    "GINEGraphPred",
 ]
