@@ -3,11 +3,11 @@ init_args:
   optimizer_kwargs:
     lr: 1e-3
   config:
-    in_channels: 158 # number of node/atom properties
+    in_channels: 161 # number of node/atom properties
     hidden_channels: 256
     out_channels: 512
     num_layers: 4
-    edge_dim: 7 # number of bond properties
+    edge_dim: 8 # number of bond properties
     heads: 8  # the number of heads should be divisible by output channels (hidden channels if output channel not given)
     v2: True  # This uses `torch_geometric.nn.conv.GATv2Conv` convolution layers, set False to use `GATConv`
     dropout: 0
