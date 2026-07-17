@@ -1,10 +1,10 @@
-from chebai.preprocessing.datasets.molecule_classfication import (
+from chebai.preprocessing.datasets.molecule_classification import (
     BaceChem,
     BBBPChem,
     ClinToxChem,
     HIVChem,
+    MUVChem,
     SiderChem,
-    Tox21Chem,
 )
 
 from chebai_graph.preprocessing.datasets.base import (
@@ -57,9 +57,15 @@ class SiderChem_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, SiderChem):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
-class Tox21ChemDataset(GraphPropertiesMixIn, Tox21Chem):
+class MUVChemDataset(GraphPropertiesMixIn, MUVChem):
     READER = GraphPropertyReader
 
 
-class Tox21Chem_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, Tox21Chem):
+class MUVChem_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, MUVChem):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+if __name__ == "__main__":
+    dataset = BaceChemDataset()
+    dataset.prepare_data()
+    dataset.setup()
