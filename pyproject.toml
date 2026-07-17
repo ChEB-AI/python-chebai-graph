@@ -13,18 +13,19 @@ dependencies = [
     # torch-geometric
     # torch_scatter
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 
 [project.optional-dependencies]
 dev = [
     "tox",
+    "omegaconf",
+    "chebi_utils",
 ]
 
 linters = [
-    "isort",
+    "ruff",
     "pre-commit",
-    "black",
 ]
 
 [build-system]
