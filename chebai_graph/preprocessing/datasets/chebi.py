@@ -50,7 +50,6 @@ class ChEBI50_StaticGNI(DataPropertiesSetter, ChEBIOver50):
             f"Use following values for given parameters for model configuration: \n\t"
             f"in_channels: {self.reader.num_node_properties} , "
             f"edge_dim: {self.reader.num_bond_properties}, "
-            f"n_molecule_properties: {self.reader.num_molecule_properties}"
         )
         return base_df[base_data[0].keys()].to_dict("records")
 
