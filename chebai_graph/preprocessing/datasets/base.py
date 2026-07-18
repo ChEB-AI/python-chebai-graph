@@ -413,7 +413,6 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             f"Use following values for given parameters for model configuration: \n\t"
             f"{in_channels_str} \n\t"
             f"{edge_dim_str} \n\t"
-            f"n_molecule_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, MoleculeProperty))}"
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
@@ -499,7 +498,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             f"n_bond_properties: {n_bond_properties}, "
             f"n_graph_node_properties: {n_graph_node_properties}\n\n"
             f"Use following values for given parameters for model configuration: \n\t"
-            f"in_channels: {n_node_properties}, edge_dim: {n_bond_properties}, n_molecule_properties: 0\n"
+            f"in_channels: {n_node_properties}, edge_dim: {n_bond_properties}\n"
         )
 
         for property in self.properties:
