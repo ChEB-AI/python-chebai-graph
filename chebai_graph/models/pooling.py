@@ -7,7 +7,7 @@ from torch_scatter import scatter_add
 from .architectures.base import GraphNetWrapper
 
 
-class AugmentedNodePoolingNet(GraphNetWrapper, ABC):
+class AAPool(GraphNetWrapper, ABC):
     """
     A pooling network that aggregates:
     - Atom node embeddings
@@ -76,7 +76,7 @@ class AugmentedNodePoolingNet(GraphNetWrapper, ABC):
         return self.lin_sequential(graph_vector)
 
 
-class GraphNodeFGNodePoolingNet(GraphNetWrapper, ABC):
+class AMGPool(GraphNetWrapper, ABC):
     """
     A pooling network that pools node embeddings by aggregating:
     - Atom nodes

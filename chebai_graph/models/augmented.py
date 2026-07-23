@@ -1,9 +1,9 @@
 from .architectures.gat import GATGraphPred
 from .architectures.resgated import ResGatedGraphPred
-from .pooling import AugmentedNodePoolingNet, GraphNodeFGNodePoolingNet
+from .pooling import AAPool, AMGPool
 
 
-class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedGraphPred):
+class ResGatedAAPoolGraphPred(AAPool, ResGatedGraphPred):
     """
     Combines:
     - AugmentedNodePoolingNet: Pools atom and augmented node embeddings (optionally with molecule attributes).
@@ -13,7 +13,7 @@ class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedGraphPred):
     ...
 
 
-class GATAugNodePoolGraphPred(AugmentedNodePoolingNet, GATGraphPred):
+class GATAAPoolGraphPred(AAPool, GATGraphPred):
     """
     Combines:
     - AugmentedNodePoolingNet: Pools atom and augmented node embeddings (optionally with molecule attributes).
@@ -23,9 +23,7 @@ class GATAugNodePoolGraphPred(AugmentedNodePoolingNet, GATGraphPred):
     ...
 
 
-class ResGatedGraphNodeFGNodePoolGraphPred(
-    GraphNodeFGNodePoolingNet, ResGatedGraphPred
-):
+class ResGatedGraphNodeFGNodePoolGraphPred(AMGPool, ResGatedGraphPred):
     """
     Combines:
     - GraphNodeFGNodePoolingNet: Pools atom, functional group, and graph nodes (optionally with molecule attributes).
@@ -35,7 +33,7 @@ class ResGatedGraphNodeFGNodePoolGraphPred(
     ...
 
 
-class GATGraphNodeFGNodePoolGraphPred(GraphNodeFGNodePoolingNet, GATGraphPred):
+class GATGraphNodeFGNodePoolGraphPred(AMGPool, GATGraphPred):
     """
     Combines:
     - GraphNodeFGNodePoolingNet: Pools atom, functional group, and graph nodes (optionally with molecule attributes).
