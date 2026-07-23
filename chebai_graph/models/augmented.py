@@ -23,7 +23,7 @@ class GATAAPoolGraphPred(AAPool, GATGraphPred):
     ...
 
 
-class ResGatedGraphNodeFGNodePoolGraphPred(AMGPool, ResGatedGraphPred):
+class ResGatedAMGPoolGraphPred(AMGPool, ResGatedGraphPred):
     """
     Combines:
     - GraphNodeFGNodePoolingNet: Pools atom, functional group, and graph nodes (optionally with molecule attributes).
@@ -33,7 +33,7 @@ class ResGatedGraphNodeFGNodePoolGraphPred(AMGPool, ResGatedGraphPred):
     ...
 
 
-class GATGraphNodeFGNodePoolGraphPred(AMGPool, GATGraphPred):
+class GATGraphAMGPoolGraphPred(AMGPool, GATGraphPred):
     """
     Combines:
     - GraphNodeFGNodePoolingNet: Pools atom, functional group, and graph nodes (optionally with molecule attributes).
