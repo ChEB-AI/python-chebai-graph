@@ -1,4 +1,4 @@
-class_path: chebai_graph.models.GATGraphNodeFGNodePoolGraphPred
+class_path: chebai_graph.models.GATAAPoolGraphPred
 init_args:
   optimizer_kwargs:
     lr: 1e-3

@@ -3,7 +3,9 @@ from .architectures.gine import GINEGraphPred
 from .architectures.resgated import ResGatedGraphPred
 from .augmented import (
     GATAAPoolGraphPred,
-    GATGraphAMGPoolGraphPred,
+    GATAMGPoolGraphPred,
+    GINEAAPoolGraphPred,
+    GINEAMGPoolGraphPred,
     ResGatedAAPoolGraphPred,
     ResGatedAMGPoolGraphPred,
 )
@@ -13,9 +15,11 @@ __all__ = [
     "ResGatedGraphPred",
     "ResGatedAAPoolGraphPred",
     "ResGatedAMGPoolGraphPred",
+    "ResGatedDynamicGNIGraphPred",
     "GATGraphPred",
     "GATAAPoolGraphPred",
-    "GATGraphAMGPoolGraphPred",
-    "ResGatedDynamicGNIGraphPred",
+    "GATAMGPoolGraphPred",
     "GINEGraphPred",
+    "GINEAAPoolGraphPred",
+    "GINEAMGPoolGraphPred",
 ]
