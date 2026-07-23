@@ -10,7 +10,7 @@ from torch_scatter import scatter_add, scatter_mean
 
 from chebai_graph.loss.pretraining import MaskPretrainingLoss
 
-from .base import GraphBaseNet
+from .architectures.base import GraphBaseNet
 
 logging.getLogger("pysmiles").setLevel(logging.CRITICAL)
 

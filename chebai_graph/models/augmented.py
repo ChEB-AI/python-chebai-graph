@@ -1,6 +1,6 @@
-from .gat import GATGraphPred
+from .architectures.gat import GATGraphPred
+from .architectures.resgated import ResGatedGraphPred
 from .pooling import AugmentedNodePoolingNet, GraphNodeFGNodePoolingNet
-from .resgated import ResGatedGraphPred
 
 
 class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedGraphPred):

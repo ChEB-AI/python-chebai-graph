@@ -1,3 +1,6 @@
+from .architectures.gat import GATGraphPred
+from .architectures.gine import GINEGraphPred
+from .architectures.resgated import ResGatedGraphPred
 from .augmented import (
     GATAugNodePoolGraphPred,
     GATGraphNodeFGNodePoolGraphPred,
@@ -5,9 +8,6 @@ from .augmented import (
     ResGatedGraphNodeFGNodePoolGraphPred,
 )
 from .dynamic_gni import ResGatedDynamicGNIGraphPred
-from .gat import GATGraphPred
-from .gine import GINEGraphPred
-from .resgated import ResGatedGraphPred
 
 __all__ = [
     "ResGatedGraphPred",

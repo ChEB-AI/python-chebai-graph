@@ -4,7 +4,7 @@ import torch
 from torch_geometric.data import Data as GraphData
 from torch_scatter import scatter_add
 
-from .base import GraphNetWrapper
+from .architectures.base import GraphNetWrapper
 
 
 class AugmentedNodePoolingNet(GraphNetWrapper, ABC):
