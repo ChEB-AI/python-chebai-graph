@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 import torch
 from chebai.models.base import ChebaiBaseNet
