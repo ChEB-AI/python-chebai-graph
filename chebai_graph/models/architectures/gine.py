@@ -21,6 +21,7 @@ class GINEModel(BasicGNN):
         - https://arxiv.org/abs/1810.00826 (GIN)
         - https://arxiv.org/abs/1905.12265 (GINE / edge-feature extension)
         - https://github.com/pyg-team/pytorch_geometric/blob/master/examples/mutag_gin.py
+        - https://github.com/pyg-team/pytorch_geometric/issues/1311
 
     Attributes:
         supports_edge_weight (bool): Indicates edge weights are not supported.
