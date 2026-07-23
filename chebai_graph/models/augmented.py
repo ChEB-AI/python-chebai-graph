@@ -1,5 +1,5 @@
-from .base import AugmentedNodePoolingNet, GraphNodeFGNodePoolingNet
 from .gat import GATGraphPred
+from .pooling import AugmentedNodePoolingNet, GraphNodeFGNodePoolingNet
 from .resgated import ResGatedGraphPred
 
 
