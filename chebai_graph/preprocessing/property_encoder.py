@@ -311,19 +311,20 @@ class OneHotEncoder(IndexEncoder):
                 :meth:`compress`.
 
         Returns:
-            One-hot tensor of shape ``(N, n_classes)`` with ``int64`` dtype.
+            One-hot tensor of shape ``(N, n_classes)`` keeping the compact
+            stored dtype (e.g. ``uint8``); it is promoted to float when merged
+            into the node/edge feature matrix at load time.
         """
         if tensor.dim() != 1:
             # already expanded / unexpected shape - leave untouched
             return tensor
         n_classes = self.get_encoding_length()
-        indices = tensor.to(torch.int64)
-        out = torch.zeros((indices.shape[0], n_classes), dtype=torch.int64)
-        non_zero = indices > 0
+        out = torch.zeros((tensor.shape[0], n_classes), dtype=tensor.dtype)
+        non_zero = tensor > 0
         if non_zero.any():
             out[non_zero] = torch.nn.functional.one_hot(
-                indices[non_zero] - 1, num_classes=n_classes
-            )
+                tensor[non_zero].to(torch.int64) - 1, num_classes=n_classes
+            ).to(out.dtype)
         return out
 
 
@@ -365,8 +366,6 @@ class AsIsEncoder(PropertyEncoder):
             return tensor.to(torch.float32)
         return tensor
 
-    # decompress is a no-op: float32 values are used as-is at load time.
-
 
 class BoolEncoder(PropertyEncoder):
     """
@@ -393,7 +392,3 @@ class BoolEncoder(PropertyEncoder):
     def compress(self, tensor: torch.Tensor) -> torch.Tensor:
         """Store the 0/1 values as ``uint8`` instead of ``int64`` (8x smaller)."""
         return tensor.to(torch.uint8)
-
-    def decompress(self, tensor: torch.Tensor) -> torch.Tensor:
-        """Restore the original ``int64`` dtype of the boolean encoding."""
-        return tensor.to(torch.int64)
