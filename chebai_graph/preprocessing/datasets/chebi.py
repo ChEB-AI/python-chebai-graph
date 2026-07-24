@@ -378,6 +378,7 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         """
         base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
+        base_df["ident"] = base_df["ident"].astype(str)
 
         for property in self.properties:
             property_data = torch.load(
@@ -392,6 +393,7 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             property_df.rename(
                 columns={property.name: f"{property.name}"}, inplace=True
             )
+            property_df["ident"] = property_df["ident"].astype(str)
             base_df = base_df.merge(property_df, on="ident", how="left")
 
         base_df["features"] = base_df.apply(
@@ -478,6 +480,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         """
         base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
+        base_df["ident"] = base_df["ident"].astype(str)
         props_categories = {
             "AllNodeTypeProperties": [],
             "FGNodeTypeProperties": [],
@@ -538,6 +541,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
                 )
 
             property_df = pd.DataFrame(property_data)
+            property_df["ident"] = property_df["ident"].astype(str)
             property_df.rename(
                 columns={property.name: f"{property.name}"}, inplace=True
             )
