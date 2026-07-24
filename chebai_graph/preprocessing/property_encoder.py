@@ -46,6 +46,39 @@ class PropertyEncoder(abc.ABC):
         """
         return value
 
+    def compress(self, tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Compress an encoded tensor into a more compact on-disk representation.
+
+        Called just before caching property values to disk. The default
+        implementation is a no-op; subclasses override it to reduce file size
+        (e.g. by downcasting the dtype or storing indices instead of one-hot
+        vectors). Must be losslessly invertible by :meth:`decompress` (except
+        for deliberate float precision reductions).
+
+        Args:
+            tensor: The encoded property tensor for a single molecule.
+
+        Returns:
+            A compact tensor to store on disk.
+        """
+        return tensor
+
+    def decompress(self, tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Reconstruct the full encoded tensor from its compressed on-disk form.
+
+        Inverse of :meth:`compress`, called right after loading cached property
+        values. The default implementation is a no-op.
+
+        Args:
+            tensor: The compressed property tensor as loaded from disk.
+
+        Returns:
+            The reconstructed encoded property tensor.
+        """
+        return tensor
+
     def on_start(self, **kwargs) -> None:
         """Hook called at the start of encoding process."""
         pass
@@ -238,6 +271,61 @@ class OneHotEncoder(IndexEncoder):
             self.tokens_dict[token], num_classes=self.get_encoding_length()
         )
 
+    def compress(self, tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Store one index per node instead of the full one-hot matrix.
+
+        A dense ``(N, n_classes)`` int64 one-hot matrix is reduced to an
+        ``(N,)`` vector of class indices. Index ``0`` is reserved for all-zero
+        rows (produced by :meth:`encode` for unknown tokens); real classes are
+        stored as ``argmax + 1``. The result uses ``uint8`` when it fits, else
+        ``int16``.
+
+        Args:
+            tensor: One-hot tensor of shape ``(N, n_classes)``.
+
+        Returns:
+            Index tensor of shape ``(N,)``.
+        """
+        if tensor.dim() != 2:
+            # already compressed / unexpected shape - leave untouched
+            return tensor
+        has_class = tensor.any(dim=1)
+        indices = torch.where(
+            has_class,
+            tensor.argmax(dim=1) + 1,
+            torch.zeros_like(has_class, dtype=torch.long),
+        )
+        dtype = torch.uint8 if tensor.shape[1] + 1 < 256 else torch.int16
+        return indices.to(dtype)
+
+    def decompress(self, tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Reconstruct the dense one-hot matrix from stored class indices.
+
+        Inverse of :meth:`compress`. Index ``0`` maps back to an all-zero row;
+        index ``i > 0`` maps to a one-hot with class ``i - 1`` set.
+
+        Args:
+            tensor: Index tensor of shape ``(N,)`` as produced by
+                :meth:`compress`.
+
+        Returns:
+            One-hot tensor of shape ``(N, n_classes)`` with ``int64`` dtype.
+        """
+        if tensor.dim() != 1:
+            # already expanded / unexpected shape - leave untouched
+            return tensor
+        n_classes = self.get_encoding_length()
+        indices = tensor.to(torch.int64)
+        out = torch.zeros((indices.shape[0], n_classes), dtype=torch.int64)
+        non_zero = indices > 0
+        if non_zero.any():
+            out[non_zero] = torch.nn.functional.one_hot(
+                indices[non_zero] - 1, num_classes=n_classes
+            )
+        return out
+
 
 class AsIsEncoder(PropertyEncoder):
     """
@@ -271,6 +359,14 @@ class AsIsEncoder(PropertyEncoder):
         # ----- fix: for above warning
         return torch.tensor(token).unsqueeze(0)  # shape: (1, len(token))
 
+    def compress(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Downcast float values to float32 to halve the on-disk size."""
+        if tensor.is_floating_point():
+            return tensor.to(torch.float32)
+        return tensor
+
+    # decompress is a no-op: float32 values are used as-is at load time.
+
 
 class BoolEncoder(PropertyEncoder):
     """
@@ -293,3 +389,11 @@ class BoolEncoder(PropertyEncoder):
             Tensor with 1 if True else 0.
         """
         return torch.tensor([1 if token else 0])
+
+    def compress(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Store the 0/1 values as ``uint8`` instead of ``int64`` (8x smaller)."""
+        return tensor.to(torch.uint8)
+
+    def decompress(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Restore the original ``int64`` dtype of the boolean encoding."""
+        return tensor.to(torch.int64)
