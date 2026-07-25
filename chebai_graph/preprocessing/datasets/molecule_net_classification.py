@@ -1,11 +1,11 @@
 from chebai.preprocessing.datasets.molecule_net_classification import (
+    BACE,
     BBBP,
     HIV,
     MUV,
     PCBA,
-    Bace,
+    SIDER,
     ClinTox,
-    Sider,
     Tox21,
     ToxCast,
 )
@@ -22,7 +22,7 @@ class PCBA_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, PCBA):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
-class Bace_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, Bace):
+class BACE_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, BACE):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
@@ -38,7 +38,7 @@ class HIV_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, HIV):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
-class Sider_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, Sider):
+class SIDER_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, SIDER):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
@@ -55,6 +55,6 @@ class ToxCast_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ToxCast):
 
 
 if __name__ == "__main__":
-    dataset = Bace_WFGE_WGN_AsPerNodeType()
+    dataset = BACE_WFGE_WGN_AsPerNodeType()
     dataset.prepare_data()
     dataset.setup()

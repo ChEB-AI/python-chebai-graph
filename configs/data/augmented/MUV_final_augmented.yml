@@ -1,4 +1,4 @@
-class_path: chebai_graph.preprocessing.datasets.BBBP_WFGE_WGN_AsPerNodeType
+class_path: chebai_graph.preprocessing.datasets.MUV_WFGE_WGN_AsPerNodeType
 init_args:
   properties:
       # All Node type properties
