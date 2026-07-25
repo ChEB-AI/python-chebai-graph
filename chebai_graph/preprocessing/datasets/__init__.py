@@ -14,6 +14,17 @@ from .chebi import (
     ChEBI50GraphProperties,
     ChEBI100GraphProperties,
 )
+from .molecule_net_classification import (
+    Bace_WFGE_WGN_AsPerNodeType,
+    BBBP_WFGE_WGN_AsPerNodeType,
+    ClinTox_WFGE_WGN_AsPerNodeType,
+    HIV_WFGE_WGN_AsPerNodeType,
+    MUV_WFGE_WGN_AsPerNodeType,
+    PCBA_WFGE_WGN_AsPerNodeType,
+    Sider_WFGE_WGN_AsPerNodeType,
+    Tox21_WFGE_WGN_AsPerNodeType,
+    ToxCast_WFGE_WGN_AsPerNodeType,
+)
 from .pubchem import PubChemGraphProperties
 
 __all__ = [
@@ -33,4 +44,13 @@ __all__ = [
     "ChEBI50_GN_WithAllNodes_FG_WithAtoms_NoFGE",
     "ChEBI50_GN_WithAtoms_FG_WithAtoms_FGE",
     "ChEBI50_GN_WithAtoms_FG_WithAtoms_NoFGE",
+    "Bace_WFGE_WGN_AsPerNodeType",
+    "BBBP_WFGE_WGN_AsPerNodeType",
+    "ClinTox_WFGE_WGN_AsPerNodeType",
+    "HIV_WFGE_WGN_AsPerNodeType",
+    "MUV_WFGE_WGN_AsPerNodeType",
+    "Sider_WFGE_WGN_AsPerNodeType",
+    "Tox21_WFGE_WGN_AsPerNodeType",
+    "ToxCast_WFGE_WGN_AsPerNodeType",
+    "PCBA_WFGE_WGN_AsPerNodeType",
 ]
