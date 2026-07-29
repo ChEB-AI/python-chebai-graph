@@ -9,6 +9,7 @@ from chebai_graph.preprocessing.reader.augmented_reader import _AugmentorReader
 import torch
 import tqdm
 from chebai.preprocessing.datasets.chebi import (
+    ChEBIOver25,
     ChEBIOver50,
     ChEBIOver100,
     ChEBIOverX,
@@ -703,6 +704,12 @@ class ChEBI50_StaticGNI(DataPropertiesSetter, ChEBIOver50):
             f"n_molecule_properties: {self.reader.num_molecule_properties}"
         )
         return base_df[base_data[0].keys()].to_dict("records")
+
+
+class ChEBI25GraphProperties(GraphPropertiesMixIn, ChEBIOver25):
+    """ChEBIOver25 dataset with molecular property encodings."""
+
+    THRESHOLD = 25
 
 
 class ChEBI50GraphProperties(GraphPropertiesMixIn, ChEBIOver50):
