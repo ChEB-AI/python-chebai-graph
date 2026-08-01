@@ -559,6 +559,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         is_fg_node = ~is_atom_node & ~is_graph_node
         num_nodes = geom_data.x.size(0)
         edge_attr = geom_data.edge_attr
+        assert edge_attr is not None, "edge_attr must be set in the geom_data"
 
         # Initialize node feature matrix
         assert max_len_node_properties is not None, (
@@ -581,41 +582,24 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
                     (0, property.encoder.get_encoding_length())
                 )
 
-            enc_len = property_values.shape[1]
-            # -------------- Node properties ---------------
-            if isinstance(property, AllNodeTypeProperty):
-                x[:, atom_offset : atom_offset + enc_len] = property_values
-                atom_offset += enc_len
-                fg_offset += enc_len
-                graph_offset += enc_len
+            build_node_property_tensor_result = self._build_node_property_tensor(
+                node_tensor=x,
+                atom_offset=atom_offset,
+                fg_offset=fg_offset,
+                graph_offset=graph_offset,
+                property_values=property_values,
+                is_atom_node=is_atom_node,
+                is_fg_node=is_fg_node,
+                is_graph_node=is_graph_node,
+            )
+            x = build_node_property_tensor_result["node_tensor"]
+            atom_offset = build_node_property_tensor_result["atom_offset"]
+            fg_offset = build_node_property_tensor_result["fg_offset"]
+            graph_offset = build_node_property_tensor_result["graph_offset"]
 
-            elif isinstance(property, AtomNodeTypeProperty):
-                x[is_atom_node, atom_offset : atom_offset + enc_len] = property_values[
-                    is_atom_node
-                ]
-                atom_offset += enc_len
-
-            elif isinstance(property, FGNodeTypeProperty):
-                x[is_fg_node, fg_offset : fg_offset + enc_len] = property_values[
-                    is_fg_node
-                ]
-                fg_offset += enc_len
-
-            elif isinstance(property, MoleculeProperty):
-                x[is_graph_node, graph_offset : graph_offset + enc_len] = (
-                    property_values
-                )
-                graph_offset += enc_len
-
-            # ------------- Bond Properties --------------
-            elif isinstance(property, BondProperty):
-                # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
-                edge_attr = torch.cat(
-                    [edge_attr, torch.cat([property_values, property_values], dim=0)],
-                    dim=1,
-                )
-            else:
-                raise TypeError(f"Unsupported property type: {type(property).__name__}")
+            edge_attr = self._build_edge_property_tensor(
+                edge_attr_tensor=edge_attr, property_values=property_values
+            )
 
             total_used_columns = max(atom_offset, fg_offset, graph_offset)
             assert total_used_columns <= max_len_node_properties, (
@@ -630,6 +614,71 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             is_fg_node=is_fg_node,
             is_graph_node=is_graph_node,
         )
+
+    def _build_node_property_tensor(
+        self,
+        node_tensor: torch.Tensor,
+        atom_offset: int,
+        fg_offset: int,
+        graph_offset: int,
+        property_values: torch.Tensor,
+        is_atom_node: torch.Tensor,
+        is_fg_node: torch.Tensor,
+        is_graph_node: torch.Tensor,
+    ) -> dict:
+        enc_len = property_values.shape[1]
+        # -------------- Node properties ---------------
+        if isinstance(property, AllNodeTypeProperty):
+            node_tensor[:, atom_offset : atom_offset + enc_len] = property_values
+            atom_offset += enc_len
+            fg_offset += enc_len
+            graph_offset += enc_len
+
+        elif isinstance(property, AtomNodeTypeProperty):
+            node_tensor[is_atom_node, atom_offset : atom_offset + enc_len] = (
+                property_values[is_atom_node]
+            )
+            atom_offset += enc_len
+
+        elif isinstance(property, FGNodeTypeProperty):
+            node_tensor[is_fg_node, fg_offset : fg_offset + enc_len] = property_values[
+                is_fg_node
+            ]
+            fg_offset += enc_len
+
+        elif isinstance(property, MoleculeProperty):
+            node_tensor[is_graph_node, graph_offset : graph_offset + enc_len] = (
+                property_values
+            )
+            graph_offset += enc_len
+        else:
+            raise TypeError(f"Unsupported property type: {type(property).__name__}")
+
+        return {
+            "node_tensor": node_tensor,
+            "atom_offset": atom_offset,
+            "fg_offset": fg_offset,
+            "graph_offset": graph_offset,
+        }
+
+    def _build_edge_property_tensor(
+        self,
+        edge_attr_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+    ) -> torch.Tensor:
+        if isinstance(property, BondProperty):
+            # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
+            edge_attr_tensor = torch.cat(
+                [
+                    edge_attr_tensor,
+                    torch.cat([property_values, property_values], dim=0),
+                ],
+                dim=1,
+            )
+        else:
+            raise TypeError(f"Unsupported property type: {type(property).__name__}")
+
+        return edge_attr_tensor
 
     def _prediction_merge_props_into_base_wrapper(
         self, row: pd.Series | dict, model_hparams: Optional[dict] = None
