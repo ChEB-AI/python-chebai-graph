@@ -78,54 +78,11 @@ class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):
     pass
 
 
+# ---- Augmentation: Variants with graph Node connected to FG nodes only -------------
 class ChEBI50_WFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
     """ChEBIOver50 with with FG nodes and FG edges and graph node."""
 
     READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI50_GN_WithAllNodes_FG_WithAtoms_FGE(
-    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
-):
-    """
-    ChEBIOver50 with FG nodes (connected to their respective atom nodes) with functional group
-    edges, and adds a graph-level node connected to all nodes (fg + atoms).
-    """
-
-    READER = GN_WithAllNodes_FG_WithAtoms_FGE
-
-
-class ChEBI50_GN_WithAllNodes_FG_WithAtoms_NoFGE(
-    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
-):
-    """
-    ChEBIOver50 with FG nodes (connected to their respective atom nodes) without functional group
-    edges, and adds a graph-level node connected to all nodes (fg + atoms).
-    """
-
-    READER = GN_WithAllNodes_FG_WithAtoms_NoFGE
-
-
-class ChEBI50_GN_WithAtoms_FG_WithAtoms_FGE(
-    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
-):
-    """
-    ChEBIOver50 with FG nodes (connected to their respective atom nodes) with functional group
-    edges, and adds a graph-level node connected to all atom nodes.
-    """
-
-    READER = GN_WithAtoms_FG_WithAtoms_FGE
-
-
-class ChEBI50_GN_WithAtoms_FG_WithAtoms_NoFGE(
-    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
-):
-    """
-    ChEBIOver50 with FG nodes (connected to their respective atom nodes) without functional group
-    edges, and adds a graph-level node connected to all atom nodes.
-    """
-
-    READER = GN_WithAtoms_FG_WithAtoms_NoFGE
 
 
 class ChEBI50_NFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
@@ -152,6 +109,53 @@ class ChEBI50_Atom_WGNOnly_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver5
     READER = AtomReader_WithGraphNodeOnly
 
 
+# ------- Augmentation: Variants with graph Node connected to all others nodes (FG and atoms) --------------
+class ChEBI50_GN_WithAllNodes_FG_WithAtoms_FGE(
+    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
+):
+    """
+    ChEBIOver50 with FG nodes (connected to their respective atom nodes) with functional group
+    edges, and adds a graph-level node connected to all nodes (fg + atoms).
+    """
+
+    READER = GN_WithAllNodes_FG_WithAtoms_FGE
+
+
+class ChEBI50_GN_WithAllNodes_FG_WithAtoms_NoFGE(
+    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
+):
+    """
+    ChEBIOver50 with FG nodes (connected to their respective atom nodes) without functional group
+    edges, and adds a graph-level node connected to all nodes (fg + atoms).
+    """
+
+    READER = GN_WithAllNodes_FG_WithAtoms_NoFGE
+
+
+# ------- Augmentation: Variants with graph node connected to atom nodes ONLY -----------
+class ChEBI50_GN_WithAtoms_FG_WithAtoms_FGE(
+    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
+):
+    """
+    ChEBIOver50 with FG nodes (connected to their respective atom nodes) with functional group
+    edges, and adds a graph-level node connected to all atom nodes.
+    """
+
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
+class ChEBI50_GN_WithAtoms_FG_WithAtoms_NoFGE(
+    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
+):
+    """
+    ChEBIOver50 with FG nodes (connected to their respective atom nodes) without functional group
+    edges, and adds a graph-level node connected to all atom nodes.
+    """
+
+    READER = GN_WithAtoms_FG_WithAtoms_NoFGE
+
+
+# ---------------------- Ablation: Properties ------------------------------
 class ChEBI50_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver50):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
@@ -186,6 +190,7 @@ class ChEBI50_WFGE_WGN_ForFGLevelAndGraphNodeOnly(
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+# ---------- Final Augmentation: Different Thresholds ------------------------------
 class ChEBI100_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver100):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
