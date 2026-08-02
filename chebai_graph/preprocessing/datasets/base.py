@@ -582,24 +582,28 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
                     (0, property.encoder.get_encoding_length())
                 )
 
-            build_node_property_tensor_result = self._build_node_property_tensor(
-                node_tensor=x,
-                atom_offset=atom_offset,
-                fg_offset=fg_offset,
-                graph_offset=graph_offset,
-                property_values=property_values,
-                is_atom_node=is_atom_node,
-                is_fg_node=is_fg_node,
-                is_graph_node=is_graph_node,
-            )
-            x = build_node_property_tensor_result["node_tensor"]
-            atom_offset = build_node_property_tensor_result["atom_offset"]
-            fg_offset = build_node_property_tensor_result["fg_offset"]
-            graph_offset = build_node_property_tensor_result["graph_offset"]
+            if isinstance(property, AtomProperty):
+                build_node_property_tensor_result = self._build_node_property_tensor(
+                    node_tensor=x,
+                    atom_offset=atom_offset,
+                    fg_offset=fg_offset,
+                    graph_offset=graph_offset,
+                    property_values=property_values,
+                    is_atom_node=is_atom_node,
+                    is_fg_node=is_fg_node,
+                    is_graph_node=is_graph_node,
+                )
+                x = build_node_property_tensor_result["node_tensor"]
+                atom_offset = build_node_property_tensor_result["atom_offset"]
+                fg_offset = build_node_property_tensor_result["fg_offset"]
+                graph_offset = build_node_property_tensor_result["graph_offset"]
 
-            edge_attr = self._build_edge_property_tensor(
-                edge_attr_tensor=edge_attr, property_values=property_values
-            )
+            elif isinstance(property, BondProperty):
+                edge_attr = self._build_edge_property_tensor(
+                    edge_attr_tensor=edge_attr, property_values=property_values
+                )
+            else:
+                raise TypeError(f"Unsupported property type: {type(property).__name__}")
 
             total_used_columns = max(atom_offset, fg_offset, graph_offset)
             assert total_used_columns <= max_len_node_properties, (
@@ -664,8 +668,6 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
                 is_graph_node=is_graph_node,
             )
             graph_offset += enc_len
-        else:
-            raise TypeError(f"Unsupported property type: {type(property).__name__}")
 
         return {
             "node_tensor": node_tensor,
@@ -721,18 +723,14 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         edge_attr_tensor: torch.Tensor,
         property_values: torch.Tensor,
     ) -> torch.Tensor:
-        if isinstance(property, BondProperty):
-            # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
-            edge_attr_tensor = torch.cat(
-                [
-                    edge_attr_tensor,
-                    torch.cat([property_values, property_values], dim=0),
-                ],
-                dim=1,
-            )
-        else:
-            raise TypeError(f"Unsupported property type: {type(property).__name__}")
-
+        # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
+        edge_attr_tensor = torch.cat(
+            [
+                edge_attr_tensor,
+                torch.cat([property_values, property_values], dim=0),
+            ],
+            dim=1,
+        )
         return edge_attr_tensor
 
     def _prediction_merge_props_into_base_wrapper(
