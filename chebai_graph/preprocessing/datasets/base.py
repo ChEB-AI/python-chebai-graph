@@ -582,8 +582,9 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
                     (0, property.encoder.get_encoding_length())
                 )
 
-            if isinstance(property, AtomProperty):
+            if isinstance(property, (AtomProperty, MoleculeProperty)):
                 build_node_property_tensor_result = self._build_node_property_tensor(
+                    property=property,
                     node_tensor=x,
                     atom_offset=atom_offset,
                     fg_offset=fg_offset,
@@ -621,6 +622,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
 
     def _build_node_property_tensor(
         self,
+        property: MolecularProperty,
         node_tensor: torch.Tensor,
         atom_offset: int,
         fg_offset: int,
