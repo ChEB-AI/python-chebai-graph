@@ -111,7 +111,7 @@ class GraphPropForFGLevelOnly(GraphPropAsPerNodeType):
         return node_tensor
 
 
-class GraphPropForGraphLevelOnly(GraphPropAsPerNodeType):
+class GraphPropForGraphNodeOnly(GraphPropAsPerNodeType):
     def _fill_node_tensor_with_atom_type_property(
         self,
         node_tensor: torch.Tensor,
@@ -157,7 +157,7 @@ class GraphPropForAtomAndFGLevelOnly(GraphPropAsPerNodeType):
         return node_tensor
 
 
-class GraphPropForAtomAndGraphLevelOnly(GraphPropAsPerNodeType):
+class GraphPropForAtomLevelAndGraphNodeOnly(GraphPropAsPerNodeType):
     def _fill_node_tensor_with_fg_type_property(
         self,
         node_tensor: torch.Tensor,
@@ -173,7 +173,7 @@ class GraphPropForAtomAndGraphLevelOnly(GraphPropAsPerNodeType):
         return node_tensor
 
 
-class GraphPropForFGAndGraphLevelOnly(GraphPropAsPerNodeType):
+class GraphPropForFGLevelAndGraphNodeOnly(GraphPropAsPerNodeType):
     def _fill_node_tensor_with_atom_type_property(
         self,
         node_tensor: torch.Tensor,
