@@ -691,6 +691,10 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         offset: int,
         is_atom_node: torch.Tensor,
     ) -> torch.Tensor:
+        # We need a to mask property values
+        # node_tensor.shape : torch.Size([85, 203])
+        # is_atom_node.shape : torch.Size([85])
+        # property_values.shape : torch.Size([85, 1])
         node_tensor[is_atom_node, offset : offset + property_values.shape[1]] = (
             property_values[is_atom_node]
         )
@@ -715,8 +719,12 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         offset: int,
         is_graph_node: torch.Tensor,
     ) -> torch.Tensor:
+        # No mask for graph properties is required
+        # is_graph_node.shape : torch.Size([85])
+        # node_tensor.shape : torch.Size([85, 203])
+        # property_values.shape : torch.Size([1, 200])
         node_tensor[is_graph_node, offset : offset + property_values.shape[1]] = (
-            property_values[is_graph_node]
+            property_values
         )
         return node_tensor
 
