@@ -629,26 +629,39 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         enc_len = property_values.shape[1]
         # -------------- Node properties ---------------
         if isinstance(property, AllNodeTypeProperty):
-            node_tensor[:, atom_offset : atom_offset + enc_len] = property_values
+            node_tensor = self._fill_node_tensor_with_all_node_type_property(
+                node_tensor=node_tensor,
+                property_values=property_values,
+                offset=atom_offset,
+            )
             atom_offset += enc_len
             fg_offset += enc_len
             graph_offset += enc_len
 
         elif isinstance(property, AtomNodeTypeProperty):
-            node_tensor[is_atom_node, atom_offset : atom_offset + enc_len] = (
-                property_values[is_atom_node]
+            node_tensor = self._fill_node_tensor_with_atom_type_property(
+                node_tensor=node_tensor,
+                property_values=property_values,
+                offset=atom_offset,
+                is_atom_node=is_atom_node,
             )
             atom_offset += enc_len
 
         elif isinstance(property, FGNodeTypeProperty):
-            node_tensor[is_fg_node, fg_offset : fg_offset + enc_len] = property_values[
-                is_fg_node
-            ]
+            node_tensor = self._fill_node_tensor_with_fg_type_property(
+                node_tensor=node_tensor,
+                property_values=property_values,
+                offset=fg_offset,
+                is_fg_node=is_fg_node,
+            )
             fg_offset += enc_len
 
         elif isinstance(property, MoleculeProperty):
-            node_tensor[is_graph_node, graph_offset : graph_offset + enc_len] = (
-                property_values
+            node_tensor = self._fill_node_tensor_with_molecule_type_property(
+                node_tensor=node_tensor,
+                property_values=property_values,
+                offset=graph_offset,
+                is_graph_node=is_graph_node,
             )
             graph_offset += enc_len
         else:
@@ -660,6 +673,48 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             "fg_offset": fg_offset,
             "graph_offset": graph_offset,
         }
+
+    def _fill_node_tensor_with_all_node_type_property(
+        self, node_tensor: torch.Tensor, property_values: torch.Tensor, offset: int
+    ) -> torch.Tensor:
+        node_tensor[:, offset : offset + property_values.shape[1]] = property_values
+        return node_tensor
+
+    def _fill_node_tensor_with_atom_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_atom_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_atom_node, offset : offset + property_values.shape[1]] = (
+            property_values[is_atom_node]
+        )
+        return node_tensor
+
+    def _fill_node_tensor_with_fg_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_fg_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_fg_node, offset : offset + property_values.shape[1]] = (
+            property_values[is_fg_node]
+        )
+        return node_tensor
+
+    def _fill_node_tensor_with_molecule_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_graph_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_graph_node, offset : offset + property_values.shape[1]] = (
+            property_values[is_graph_node]
+        )
+        return node_tensor
 
     def _build_edge_property_tensor(
         self,

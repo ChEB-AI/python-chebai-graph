@@ -1,9 +1,10 @@
 from abc import ABC
 
 import pandas as pd
+import torch
 from torch_geometric.data.data import Data as GeomData
 
-from .base import GraphPropertiesMixIn
+from .base import GraphPropAsPerNodeType, GraphPropertiesMixIn
 
 
 class AugGraphPropMixIn_NoGraphNode(GraphPropertiesMixIn, ABC):
@@ -48,3 +49,141 @@ class AugGraphPropMixIn_WithGraphNode(AugGraphPropMixIn_NoGraphNode, ABC):
         assert is_graph_node is not None, "is_graph_node must be set in the geom_data"
         data.is_graph_node = is_graph_node
         return data
+
+
+class GraphPropForAtomLevelOnly(GraphPropAsPerNodeType):
+    def _fill_node_tensor_with_fg_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_fg_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_fg_node, offset : offset + property_values.shape[1]] = (
+            torch.tensor.zeros(
+                property_values[is_fg_node].shape, dtype=property_values.dtype
+            )
+        )
+        return node_tensor
+
+    def _fill_node_tensor_with_molecule_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_graph_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_graph_node, offset : offset + property_values.shape[1]] = (
+            torch.tensor.zeros(
+                property_values[is_graph_node].shape, dtype=property_values.dtype
+            )
+        )
+        return node_tensor
+
+
+class GraphPropForFGLevelOnly(GraphPropAsPerNodeType):
+    def _fill_node_tensor_with_atom_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_atom_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_atom_node, offset : offset + property_values.shape[1]] = (
+            torch.tensor.zeros(
+                property_values[is_atom_node].shape, dtype=property_values.dtype
+            )
+        )
+        return node_tensor
+
+    def _fill_node_tensor_with_molecule_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_graph_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_graph_node, offset : offset + property_values.shape[1]] = (
+            torch.tensor.zeros(
+                property_values[is_graph_node].shape, dtype=property_values.dtype
+            )
+        )
+        return node_tensor
+
+
+class GraphPropForGraphLevelOnly(GraphPropAsPerNodeType):
+    def _fill_node_tensor_with_atom_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_atom_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_atom_node, offset : offset + property_values.shape[1]] = (
+            torch.tensor.zeros(
+                property_values[is_atom_node].shape, dtype=property_values.dtype
+            )
+        )
+        return node_tensor
+
+    def _fill_node_tensor_with_fg_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_fg_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_fg_node, offset : offset + property_values.shape[1]] = (
+            torch.tensor.zeros(
+                property_values[is_fg_node].shape, dtype=property_values.dtype
+            )
+        )
+        return node_tensor
+
+
+class GraphPropForAtomAndFGLevelOnly(GraphPropAsPerNodeType):
+    def _fill_node_tensor_with_molecule_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_graph_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_graph_node, offset : offset + property_values.shape[1]] = (
+            torch.tensor.zeros(
+                property_values[is_graph_node].shape, dtype=property_values.dtype
+            )
+        )
+        return node_tensor
+
+
+class GraphPropForAtomAndGraphLevelOnly(GraphPropAsPerNodeType):
+    def _fill_node_tensor_with_fg_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_fg_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_fg_node, offset : offset + property_values.shape[1]] = (
+            torch.tensor.zeros(
+                property_values[is_fg_node].shape, dtype=property_values.dtype
+            )
+        )
+        return node_tensor
+
+
+class GraphPropForFGAndGraphLevelOnly(GraphPropAsPerNodeType):
+    def _fill_node_tensor_with_atom_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_atom_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_atom_node, offset : offset + property_values.shape[1]] = (
+            torch.tensor.zeros(
+                property_values[is_atom_node].shape, dtype=property_values.dtype
+            )
+        )
+        return node_tensor
