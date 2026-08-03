@@ -296,8 +296,7 @@ class OneHotEncoder(IndexEncoder):
             tensor.argmax(dim=1) + 1,
             torch.zeros_like(has_class, dtype=torch.long),
         )
-        dtype = torch.uint8 if tensor.shape[1] + 1 < 256 else torch.int16
-        return indices.to(dtype)
+        return indices.to(torch.int16)
 
     def decompress(self, tensor: torch.Tensor) -> torch.Tensor:
         """
