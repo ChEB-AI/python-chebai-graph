@@ -14,7 +14,10 @@ class AugGraphPropMixIn_NoGraphNode(GraphPropertiesMixIn, ABC):
 
     def _merge_props_into_base(self, row: pd.Series) -> GeomData:
         data = super()._merge_props_into_base(row)
-        geom_data = row["features"]
+        if isinstance(row["features"], tuple):
+            geom_data, _ = row["features"]
+        else:
+            geom_data = row["features"]
         assert isinstance(geom_data, GeomData) and isinstance(data, GeomData)
 
         is_atom_node = geom_data.is_atom_node
@@ -43,7 +46,10 @@ class AugGraphPropMixIn_WithGraphNode(AugGraphPropMixIn_NoGraphNode, ABC):
         Returns:
             Modified GeomData with graph node mask added.
         """
-        geom_data = row["features"]
+        if isinstance(row["features"], tuple):
+            geom_data, _ = row["features"]
+        else:
+            geom_data = row["features"]
         assert isinstance(geom_data, GeomData) and isinstance(data, GeomData)
         is_graph_node = geom_data.is_graph_node
         assert is_graph_node is not None, "is_graph_node must be set in the geom_data"
