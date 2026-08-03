@@ -169,7 +169,12 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
                     assert len(encoded_values) == len(idents) == len(features)
                     torch.save(
                         [
-                            {property.name: torch.cat(feat), "ident": id}
+                            {
+                                property.name: property.encoder.compress(
+                                    torch.cat(feat)
+                                ),
+                                "ident": id,
+                            }
                             for feat, id in zip(encoded_values, idents)
                             if feat is not None
                         ],
@@ -385,6 +390,8 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             property_data = torch.load(
                 self.get_property_path(property), weights_only=False
             )
+            for entry in property_data:
+                entry[property.name] = property.encoder.decompress(entry[property.name])
             if len(property_data[0][property.name].shape) > 1:
                 property.encoder.set_encoding_length(
                     property_data[0][property.name].shape[1]
@@ -536,6 +543,8 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             property_data = torch.load(
                 self.get_property_path(property), weights_only=False
             )
+            for entry in property_data:
+                entry[property.name] = property.encoder.decompress(entry[property.name])
             if len(property_data[0][property.name].shape) > 1:
                 property.encoder.set_encoding_length(
                     property_data[0][property.name].shape[1]
