@@ -8,6 +8,7 @@ authors = [
 ]
 dependencies = [
     "chebai",
+    "chebi_utils>=0.4",
     "descriptastorus",
     # below packages need to manually installed as mentioned in readme
     # torch-geometric
