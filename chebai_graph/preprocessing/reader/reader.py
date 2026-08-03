@@ -1,7 +1,7 @@
 import os
 
 import chebai.preprocessing.reader as dr
-from chebi_utils.sdf_extractor import _sanitize_molecule
+from chebi_utils.read_molecule import smiles_or_inchi_to_mol
 import networkx as nx
 import rdkit.Chem as Chem
 import torch
@@ -29,7 +29,7 @@ class GraphPropertyReader(dr.DataReader):
         """
         super().__init__(*args, **kwargs)
         self.failed_counter = 0
-        self.mol_object_buffer: dict[str, Chem.rdchem.Mol | None] = {}
+        self.mol_object_buffer: dict[str, Chem.Mol | None] = {}
 
     @classmethod
     def name(cls) -> str:
@@ -41,7 +41,7 @@ class GraphPropertyReader(dr.DataReader):
         """
         return "graph_properties"
 
-    def _smiles_to_mol(self, smiles: str) -> Chem.rdchem.Mol | None:
+    def _smiles_to_mol(self, smiles: str) -> Chem.Mol | None:
         """
         Load SMILES string into an RDKit molecule object and cache it.
 
@@ -49,21 +49,12 @@ class GraphPropertyReader(dr.DataReader):
             smiles (str): The SMILES string to parse.
 
         Returns:
-            Chem.rdchem.Mol | None: Parsed molecule object or None if parsing failed.
+            Chem.Mol | None: Parsed molecule object or None if parsing failed.
         """
         if smiles in self.mol_object_buffer:
             return self.mol_object_buffer[smiles]
 
-        mol = Chem.MolFromSmiles(smiles, sanitize=False)
-        if mol is None:
-            print(f"RDKit failed to at parsing {smiles} (returned None)")
-            self.failed_counter += 1
-        else:
-            try:
-                mol = _sanitize_molecule(mol)
-            except Exception as e:
-                print(f"Rdkit failed at sanitizing {smiles}, \n Error: {e}")
-                self.failed_counter += 1
+        mol = smiles_or_inchi_to_mol(smiles)
         self.mol_object_buffer[smiles] = mol
         return mol
 
@@ -162,7 +153,9 @@ class GraphReader(dr.ChemDataReader):
         # raw_data is a SMILES string
         try:
             mol = (
-                self._smiles_to_mol(raw_data) if isinstance(raw_data, str) else raw_data
+                smiles_or_inchi_to_mol(raw_data)
+                if isinstance(raw_data, str)
+                else raw_data
             )
         except ValueError:
             return None
@@ -195,27 +188,6 @@ class GraphReader(dr.ChemDataReader):
         nx.set_edge_attributes(mol, de, "edge_attr")
         data = from_networkx(mol)
         return data
-
-    def _smiles_to_mol(self, smiles: str) -> Chem.rdchem.Mol | None:
-        """
-        Load SMILES string into an RDKit molecule object.
-
-        Args:
-            smiles (str): The SMILES string to parse.
-
-        Returns:
-            Chem.rdchem.Mol | None: Parsed molecule object or None if parsing failed.
-        """
-
-        mol = Chem.MolFromSmiles(smiles, sanitize=False)
-        if mol is None:
-            print(f"RDKit failed to at parsing {smiles} (returned None)")
-        else:
-            try:
-                mol = _sanitize_molecule(mol)
-            except Exception as e:
-                print(f"Rdkit failed at sanitizing {smiles}, \n Error: {e}")
-        return mol
 
     def collate(self, list_of_tuples: list) -> any:
         """
