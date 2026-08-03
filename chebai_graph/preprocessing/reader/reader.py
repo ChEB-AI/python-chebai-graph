@@ -166,7 +166,6 @@ class GraphReader(dr.ChemDataReader):
             )
         except ValueError:
             return None
-        assert isinstance(mol, nx.Graph)
         d: dict[int, int] = {}
         de: dict[tuple[int, int], int] = {}
         for node in mol.nodes:
