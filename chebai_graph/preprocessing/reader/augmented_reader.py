@@ -4,7 +4,7 @@ from abc import ABC
 
 import torch
 from chebai.preprocessing.reader import DataReader
-from chebi_utils.sdf_extractor import _sanitize_molecule
+from chebi_utils.read_molecule import smiles_or_inchi_to_mol
 from rdkit import Chem
 from torch_geometric.data import Data as GeomData
 
@@ -75,7 +75,7 @@ class _AugmentorReader(DataReader, ABC):
             RuntimeError: If an unexpected error occurs during graph augmentation.
         """
         if isinstance(raw_data, str):
-            mol = self._smiles_to_mol(raw_data)
+            mol = smiles_or_inchi_to_mol(raw_data)
             smiles = raw_data
         else:
             mol = raw_data
@@ -138,29 +138,6 @@ class _AugmentorReader(DataReader, ABC):
             ),
             augmented_molecule,
         )
-
-    def _smiles_to_mol(self, smiles: str) -> Chem.Mol | None:
-        """
-        Converts a SMILES string to an RDKit molecule object. Sanitizes the molecule.
-
-        Args:
-            smiles (str): SMILES string representing the molecule.
-
-        Returns:
-            Chem.Mol | None: RDKit molecule object if successful, else None.
-        """
-        mol = Chem.MolFromSmiles(smiles, sanitize=False)
-        if mol is None:
-            print(f"RDKit failed to parse {smiles} (returned None)")
-            self.f_cnt_for_smiles += 1
-        else:
-            try:
-                mol = _sanitize_molecule(mol)
-            except Exception as e:
-                print(f"RDKit failed at sanitizing {smiles}, Error {e}")
-                self.f_cnt_for_smiles += 1
-                mol = None
-        return mol
 
     def _create_augmented_graph(
         self, mol: Chem.Mol
@@ -315,7 +292,7 @@ class _AugmentorReader(DataReader, ABC):
                 smiles = raw_data
                 if smiles in self.mol_object_buffer:
                     return property.get_property_value(self.mol_object_buffer[smiles])
-                mol = self._smiles_to_mol(smiles)
+                mol = smiles_or_inchi_to_mol(smiles)
             if mol is None:
                 return None
             try:

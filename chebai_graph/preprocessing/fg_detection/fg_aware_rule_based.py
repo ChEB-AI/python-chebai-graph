@@ -8,7 +8,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import MolToSmiles as m2s
 
-from chebi_utils.sdf_extractor import _sanitize_molecule
+from chebi_utils.read_molecule import smiles_or_inchi_to_mol
 
 from .fg_constants import ELEMENTS, FLAG_NO_FG
 
@@ -1913,11 +1913,7 @@ def get_structure(mol):
         structure[frag] = {"atom": atom_idx, "is_ring_fg": False}
 
         # Convert fragment SMILES back to mol to match with fused ring atom indices
-        frag_mol = Chem.MolFromSmiles(frag, sanitize=False)
-        try:
-            frag_mol = _sanitize_molecule(frag_mol)
-        except Exception:
-            pass
+        frag_mol = smiles_or_inchi_to_mol(frag)
         frag_rings = frag_mol.GetRingInfo().AtomRings()
         if len(frag_rings) >= 1:
             structure[frag]["is_ring_fg"] = True
