@@ -11,6 +11,7 @@ from .chebi import (
     ChEBI50_WFGE_WGN_AsPerNodeType,
     ChEBI50_WFGE_WGN_GraphProp,
     ChEBI50GraphData,
+    ChEBI25GraphProperties,
     ChEBI50GraphProperties,
     ChEBI100GraphProperties,
 )
@@ -18,6 +19,7 @@ from .pubchem import PubChemGraphProperties
 
 __all__ = [
     "ChEBI50GraphFGAugmentorReader",
+    "ChEBI25GraphProperties",
     "ChEBI50GraphProperties",
     "ChEBI100GraphProperties",
     "ChEBI50GraphData",
