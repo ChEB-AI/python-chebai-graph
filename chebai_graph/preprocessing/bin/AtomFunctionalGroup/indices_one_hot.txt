@@ -157,3 +157,4 @@ RING_71
 RING_46
 orthoester
 RING_55
+triiodomethyl
