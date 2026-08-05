@@ -1,4 +1,4 @@
-class_path: chebai_graph.models.ResGatedGraphNodeFGNodePoolGraphPred
+class_path: chebai_graph.models.GINEAMGPoolGraphPred
 init_args:
   optimizer_kwargs:
     lr: 1e-3
@@ -9,4 +9,5 @@ init_args:
     num_layers: 4
     edge_dim: 12 # number of bond properties
     dropout: 0
+    train_eps: true
   n_linear_layers: 1
