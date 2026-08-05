@@ -15,7 +15,7 @@ assert sys.version_info >= (
     3,
     7,
 ), "This code requires Python 3.7 or higher."
-# Order preservation is necessary to to create `prop_list`in Augmented properties
+# Order preservation is necessary to to create `prop_list` in Augmented properties
 
 
 class MolecularProperty(ABC):

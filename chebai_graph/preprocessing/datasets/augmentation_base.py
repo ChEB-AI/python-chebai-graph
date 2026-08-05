@@ -148,3 +148,32 @@ class GraphPropForFGLevelAndGraphNodeOnly(GraphPropAsPerNodeType):
         is_atom_node: torch.Tensor,
     ) -> torch.Tensor:
         return node_tensor
+
+
+class GraphPropNodeLevelPropOnlyForAllNodes(GraphPropAsPerNodeType):
+    def _fill_node_tensor_with_atom_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_atom_node: torch.Tensor,
+    ) -> torch.Tensor:
+        return node_tensor
+
+    def _fill_node_tensor_with_fg_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_fg_node: torch.Tensor,
+    ) -> torch.Tensor:
+        return node_tensor
+
+    def _fill_node_tensor_with_molecule_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_graph_node: torch.Tensor,
+    ) -> torch.Tensor:
+        return node_tensor

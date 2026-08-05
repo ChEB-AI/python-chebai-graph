@@ -30,6 +30,7 @@ from .augmentation_base import (
     GraphPropForFGLevelAndGraphNodeOnly,
     GraphPropForFGLevelOnly,
     GraphPropForGraphNodeOnly,
+    GraphPropNodeLevelPropOnlyForAllNodes,
 )
 from .base import DataPropertiesSetter, GraphPropAsPerNodeType, GraphPropertiesMixIn
 
@@ -186,6 +187,12 @@ class ChEBI50_WFGE_WGN_ForAtomLevelAndGraphNodeOnly(
 
 class ChEBI50_WFGE_WGN_ForFGLevelAndGraphNodeOnly(
     GraphPropForFGLevelAndGraphNodeOnly, ChEBIOver50
+):
+    READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI50_WFGE_WGN_ForNodeLevelPropOnlyForAllNodes(
+    GraphPropNodeLevelPropOnlyForAllNodes, ChEBIOver50
 ):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
