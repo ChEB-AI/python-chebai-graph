@@ -143,7 +143,12 @@ class DataPropertiesSetter(XYBaseDataModule, ABC):
                     assert len(encoded_values) == len(idents) == len(features)
                     torch.save(
                         [
-                            {property.name: torch.cat(feat), "ident": id}
+                            {
+                                property.name: property.encoder.compress(
+                                    torch.cat(feat)
+                                ),
+                                "ident": id,
+                            }
                             for feat, id in zip(encoded_values, idents)
                             if feat is not None
                         ],
@@ -352,11 +357,15 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         """
         base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
+        base_df["ident"] = base_df["ident"].astype(str)
 
         for property in self.properties:
             property_data = torch.load(
                 self.get_property_path(property), weights_only=False
             )
+
+            for entry in property_data:
+                entry[property.name] = property.encoder.decompress(entry[property.name])
             if len(property_data[0][property.name].shape) > 1:
                 property.encoder.set_encoding_length(
                     property_data[0][property.name].shape[1]
@@ -366,6 +375,7 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             property_df.rename(
                 columns={property.name: f"{property.name}"}, inplace=True
             )
+            property_df["ident"] = property_df["ident"].astype(str)
             base_df = base_df.merge(property_df, on="ident", how="left")
 
         base_df["features"] = base_df.apply(
@@ -451,6 +461,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         """
         base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
+        base_df["ident"] = base_df["ident"].astype(str)
         props_categories = {
             "AllNodeTypeProperties": [],
             "FGNodeTypeProperties": [],
@@ -505,12 +516,15 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             property_data = torch.load(
                 self.get_property_path(property), weights_only=False
             )
+            for entry in property_data:
+                entry[property.name] = property.encoder.decompress(entry[property.name])
             if len(property_data[0][property.name].shape) > 1:
                 property.encoder.set_encoding_length(
                     property_data[0][property.name].shape[1]
                 )
 
             property_df = pd.DataFrame(property_data)
+            property_df["ident"] = property_df["ident"].astype(str)
             property_df.rename(
                 columns={property.name: f"{property.name}"}, inplace=True
             )
