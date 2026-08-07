@@ -41,7 +41,7 @@ def resolve_property(
         module_name = property[:last_dot]
         class_name = property[last_dot + 1 :]
         module = importlib.import_module(module_name)
-        return getattr(module, class_name)()
+        return getattr(module, class_name)(data_type=data_type)
     except ValueError:
         # if only a class name is given, assume the module is chebai_graph.processing.properties
-        return getattr(graph_properties, property)()
+        return getattr(graph_properties, property)(data_type=data_type)
