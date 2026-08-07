@@ -19,8 +19,9 @@ class AtomType(AtomProperty):
     Uses a one-hot encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or OneHotEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        data_type = kwargs.get("data_type")
+        super().__init__(encoder or OneHotEncoder(self, data_type=data_type))
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> int:
         """

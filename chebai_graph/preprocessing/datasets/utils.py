@@ -4,7 +4,9 @@ import chebai_graph.preprocessing.properties as graph_properties
 from chebai_graph.preprocessing.properties import MolecularProperty
 
 
-def resolve_property(property: str | MolecularProperty) -> MolecularProperty:
+def resolve_property(
+    property: str | MolecularProperty, data_type: str
+) -> MolecularProperty:
     """
     Resolves a molecular property specification (either as a class instance or class path string)
     into a MolecularProperty instance.
@@ -19,6 +21,8 @@ def resolve_property(property: str | MolecularProperty) -> MolecularProperty:
         property (str | MolecularProperty): The property to resolve. Can be a class instance,
             a fully qualified class name (e.g. "module.ClassName"), or a class name assumed
             to be in `chebai_graph.preprocessing.properties`.
+        data_type (str): The data type associated with the property. This used to determine or set
+            tokens file path for the property if applicable.
 
     Returns:
         MolecularProperty: An instance of the resolved MolecularProperty.

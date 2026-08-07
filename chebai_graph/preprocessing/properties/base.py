@@ -31,10 +31,15 @@ class MolecularProperty(ABC):
                  Defaults to IndexEncoder if not provided.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
+    def __init__(
+        self,
+        data_type: str,
+        encoder: PropertyEncoder | None = None,
+    ) -> None:
         if encoder is None:
-            encoder = IndexEncoder(self)
+            encoder = IndexEncoder(self, data_type=data_type)
         self.encoder: PropertyEncoder = encoder
+        self._data_type = data_type
 
     @property
     def name(self) -> str:
