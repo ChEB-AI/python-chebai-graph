@@ -31,10 +31,16 @@ class MolecularProperty(ABC):
                  Defaults to IndexEncoder if not provided.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
+    def __init__(
+        self,
+        data_type: str,
+        encoder: PropertyEncoder | None = None,
+    ) -> None:
+        assert data_type is not None, "data_type must be provided for MolecularProperty"
         if encoder is None:
-            encoder = IndexEncoder(self)
+            encoder = IndexEncoder(self, data_type=data_type)
         self.encoder: PropertyEncoder = encoder
+        self._data_type = data_type
 
     @property
     def name(self) -> str:
@@ -174,8 +180,8 @@ class FrozenPropertyAlias(MolecularProperty, ABC):
         ValueError: If new tokens are added to the frozen encoder during processing.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder)
+    def __init__(self, encoder: PropertyEncoder, **kwargs) -> None:
+        super().__init__(encoder=encoder, **kwargs)
         # Lock the encoder's cache to prevent adding new tokens
         if hasattr(self.encoder, "cache") and isinstance(self.encoder.cache, dict):
             self.encoder.cache = MappingProxyType(self.encoder.cache)

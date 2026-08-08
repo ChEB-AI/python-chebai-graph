@@ -19,8 +19,11 @@ class AtomType(AtomProperty):
     Uses a one-hot encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or OneHotEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> int:
         """
@@ -42,8 +45,11 @@ class NumAtomBonds(AtomProperty):
     Uses a one-hot encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or OneHotEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> int:
         """
@@ -65,8 +71,11 @@ class AtomCharge(AtomProperty):
     Uses a one-hot encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or OneHotEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> int:
         """
@@ -88,8 +97,11 @@ class AtomChirality(AtomProperty):
     Uses a one-hot encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or OneHotEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> Chem.rdchem.ChiralType:
         """
@@ -111,8 +123,11 @@ class AtomHybridization(AtomProperty):
     Uses a one-hot encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or OneHotEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> Chem.rdchem.HybridizationType:
         """
@@ -134,8 +149,11 @@ class AtomNumHs(AtomProperty):
     Uses a one-hot encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or OneHotEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> int:
         """
@@ -157,8 +175,8 @@ class AtomAromaticity(AtomProperty):
     Uses a boolean encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or BoolEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        super().__init__(encoder=encoder or BoolEncoder(self), **kwargs)
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> bool:
         """
@@ -180,8 +198,8 @@ class BondAromaticity(BondProperty):
     Uses a boolean encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or BoolEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        super().__init__(encoder=encoder or BoolEncoder(self), **kwargs)
 
     def get_bond_value(self, bond: Chem.rdchem.Bond) -> bool:
         """
@@ -203,8 +221,11 @@ class BondType(BondProperty):
     Uses a one-hot encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or OneHotEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_bond_value(self, bond: Chem.rdchem.Bond) -> Chem.rdchem.BondType:
         """
@@ -226,8 +247,8 @@ class BondInRing(BondProperty):
     Uses a boolean encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or BoolEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        super().__init__(encoder=encoder or BoolEncoder(self), **kwargs)
 
     def get_bond_value(self, bond: Chem.rdchem.Bond) -> bool:
         """
@@ -249,8 +270,11 @@ class MoleculeNumRings(MoleculeProperty):
     Uses a one-hot encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or OneHotEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_property_value(self, mol: Chem.rdchem.Mol) -> list[int]:
         """
@@ -272,8 +296,8 @@ class RDKit2DNormalized(MoleculeProperty):
     Uses an identity encoder by default.
     """
 
-    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
-        super().__init__(encoder or AsIsEncoder(self))
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
+        super().__init__(encoder=encoder or AsIsEncoder(self), **kwargs)
         self.generator_normalized = rdNormalizedDescriptors.RDKit2DNormalized()
         # Create a dummy molecule (e.g., methane) to extract the length of descriptor vector
         dummy_mol = Chem.MolFromSmiles("C")
