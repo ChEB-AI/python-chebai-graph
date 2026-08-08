@@ -25,6 +25,7 @@ from chebai_graph.preprocessing.reader import (
 from .augmentation_base import (
     AugGraphPropMixIn_NoGraphNode,
     AugGraphPropMixIn_WithGraphNode,
+    GraphPropAllPropsExceptNodeLevel,
     GraphPropForAtomAndFGLevelOnly,
     GraphPropForAtomLevelAndGraphNodeOnly,
     GraphPropForAtomLevelOnly,
@@ -200,6 +201,12 @@ class ChEBI50_WFGE_WGN_ForFGLevelAndGraphNodeOnly(
 
 class ChEBI50_WFGE_WGN_ForNodeLevelPropOnlyForAllNodes(
     GraphPropNodeLevelPropOnlyForAllNodes, ChEBIOver50
+):
+    READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI50_WFGE_WGN_ForAllPropsExceptNodeLevel(
+    GraphPropAllPropsExceptNodeLevel, ChEBIOver50
 ):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 

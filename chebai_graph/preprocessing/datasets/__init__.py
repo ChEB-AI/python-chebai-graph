@@ -1,4 +1,5 @@
 from .chebi import (
+    ChEBI25GraphProperties,
     ChEBI50_Atom_WGNOnly_GraphProp,
     ChEBI50_GN_WithAllNodes_FG_WithAtoms_FGE,
     ChEBI50_GN_WithAllNodes_FG_WithAtoms_NoFGE,
@@ -9,6 +10,7 @@ from .chebi import (
     ChEBI50_StaticGNI,
     ChEBI50_WFGE_NGN_GraphProp,
     ChEBI50_WFGE_WGN_AsPerNodeType,
+    ChEBI50_WFGE_WGN_ForAllPropsExceptNodeLevel,
     ChEBI50_WFGE_WGN_ForAtomAndFGLevelOnly,
     ChEBI50_WFGE_WGN_ForAtomLevelAndGraphNodeOnly,
     ChEBI50_WFGE_WGN_ForAtomLevelOnly,
@@ -18,7 +20,6 @@ from .chebi import (
     ChEBI50_WFGE_WGN_ForNodeLevelPropOnlyForAllNodes,
     ChEBI50_WFGE_WGN_GraphProp,
     ChEBI50GraphData,
-    ChEBI25GraphProperties,
     ChEBI50GraphProperties,
     ChEBI100GraphProperties,
 )
@@ -60,6 +61,7 @@ __all__ = [
     "ChEBI50_WFGE_WGN_ForAtomLevelAndGraphNodeOnly",
     "ChEBI50_WFGE_WGN_ForFGLevelAndGraphNodeOnly",
     "ChEBI50_WFGE_WGN_ForNodeLevelPropOnlyForAllNodes",
+    "ChEBI50_WFGE_WGN_ForAllPropsExceptNodeLevel",
     "BACE_WFGE_WGN_AsPerNodeType",
     "BBBP_WFGE_WGN_AsPerNodeType",
     "ClinTox_WFGE_WGN_AsPerNodeType",
