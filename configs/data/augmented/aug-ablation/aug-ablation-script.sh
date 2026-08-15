@@ -39,7 +39,6 @@ set -euo pipefail
 
 SEEDS=(0 42 12345)
 
-
 # ============================================================
 # Data configurations
 #
@@ -64,7 +63,6 @@ DATA_CONFIGS=(
     "../python-chebai-graph/configs/data/augmented/aug-ablation/WGN.yml"
 )
 
-
 # ============================================================
 # Determine data config and seed from array task ID
 # ============================================================
@@ -85,15 +83,12 @@ DATA_INDEX=$((SLURM_ARRAY_TASK_ID % NUM_DATA_CONFIGS))
 DATA_CONFIG=${DATA_CONFIGS[$DATA_INDEX]}
 SEED=${SEEDS[$SEED_INDEX]}
 
-
 # ============================================================
 # Create experiment name
 # ============================================================
 
 DATA_NAME=$(basename "$DATA_CONFIG" .yml)
-
 RUN_NAME="${DATA_NAME}_s${SEED}"
-
 
 # ============================================================
 # Print job information
@@ -118,15 +113,11 @@ nvidia-smi
 
 echo "============================================================"
 
-
 # ============================================================
 # Temporary directory
 # ============================================================
 
 export TMPDIR=/home/staff/a/akhedekar/atmp_dir/
-
-export SSL_CERT_FILE=$(python -m certifi)
-
 
 # ============================================================
 # Activate Python environment
@@ -134,15 +125,13 @@ export SSL_CERT_FILE=$(python -m certifi)
 
 source /home/staff/a/akhedekar/python-chebai-graph/.venv/bin/activate
 
-
 # ============================================================
 # Set working directory
 # ============================================================
 
 CHEBAI_DIR="/home/staff/a/akhedekar/python-chebai"
-
 cd "$CHEBAI_DIR"
-
+export SSL_CERT_FILE=$(python -m certifi)
 
 # ============================================================
 # Check selected configuration
@@ -153,16 +142,6 @@ if [[ ! -f "$DATA_CONFIG" ]]; then
     echo "$DATA_CONFIG"
     exit 1
 fi
-
-
-# ============================================================
-# Set seed
-# ============================================================
-
-echo "Using seed: $SEED"
-
-export SEED="$SEED"
-
 
 # ============================================================
 # Run training
