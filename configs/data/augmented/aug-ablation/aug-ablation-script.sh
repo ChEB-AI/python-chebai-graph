@@ -13,11 +13,11 @@
 # ============================================================
 # Job array
 #
-# 9 data configurations × 3 seeds = 27 experiments
-# Maximum 3 experiments running simultaneously
+# 10 data configurations × 3 seeds = 30 experiments
+# Maximum 10 experiments running simultaneously
 # ============================================================
 
-#SBATCH --array=0-26%9
+#SBATCH --array=0-29%10
 
 #SBATCH --job-name=aug-ablation
 
@@ -61,6 +61,7 @@ DATA_CONFIGS=(
     "../python-chebai-graph/configs/data/augmented/aug-ablation/gnwa_fgwa_nfge.yml"
     "../python-chebai-graph/configs/data/augmented/aug-ablation/gnwa_fgwa_wfge.yml"
     "../python-chebai-graph/configs/data/augmented/aug-ablation/WGN.yml"
+    "../python-chebai-graph/configs/data/chebi50_baseline.yml"
 )
 
 # ============================================================
