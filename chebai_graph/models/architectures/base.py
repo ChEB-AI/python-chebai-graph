@@ -31,8 +31,13 @@ class GraphBaseNet(ChebaiBaseNet, ABC):
         labels = labels.int()
 
         if valid_label_mask is not None:
-            predictions = predictions[valid_label_mask]
-            labels = labels[valid_label_mask]
+            labels[~valid_label_mask] = -1  # Mark invalid labels as -1
+            # https://lightning.ai/docs/torchmetrics/stable/classification/auroc#multilabelauroc
+            # -1 as we torchmetrics ignores -1 labels in multilabel metrics
+            # metric = MultilabelAUROC(
+            #    num_labels=labels.shape[1],
+            #    ignore_index=-1,
+            # )
 
         return predictions, labels
 
