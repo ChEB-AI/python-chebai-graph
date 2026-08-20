@@ -26,7 +26,15 @@ class GraphBaseNet(ChebaiBaseNet, ABC):
         Returns:
             tuple[torch.Tensor, torch.Tensor]: Tuple of (predictions, labels).
         """
-        return torch.sigmoid(output), labels.int()
+        valid_label_mask = data["loss_kwargs"]["valid_label_mask"]
+        predictions = torch.sigmoid(output)
+        labels = labels.int()
+
+        if valid_label_mask is not None:
+            predictions = predictions[valid_label_mask]
+            labels = labels[valid_label_mask]
+
+        return predictions, labels
 
     def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor | None:
         """
