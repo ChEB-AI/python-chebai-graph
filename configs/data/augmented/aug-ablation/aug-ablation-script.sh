@@ -13,11 +13,11 @@
 # ============================================================
 # Job array
 #
-# 9 data configurations × 3 seeds = 27 experiments
-# Maximum 3 experiments running simultaneously
+# 10 data configurations × 3 seeds = 30 experiments
+# Maximum 10 experiments running simultaneously
 # ============================================================
 
-#SBATCH --array=0-26%9
+#SBATCH --array=0-29%10
 
 #SBATCH --job-name=aug-ablation
 
@@ -38,7 +38,6 @@ set -euo pipefail
 # ============================================================
 
 SEEDS=(0 42 12345)
-
 
 # ============================================================
 # Data configurations
@@ -62,8 +61,8 @@ DATA_CONFIGS=(
     "../python-chebai-graph/configs/data/augmented/aug-ablation/gnwa_fgwa_nfge.yml"
     "../python-chebai-graph/configs/data/augmented/aug-ablation/gnwa_fgwa_wfge.yml"
     "../python-chebai-graph/configs/data/augmented/aug-ablation/WGN.yml"
+    "../python-chebai-graph/configs/data/chebi50_baseline.yml"
 )
-
 
 # ============================================================
 # Determine data config and seed from array task ID
@@ -85,15 +84,12 @@ DATA_INDEX=$((SLURM_ARRAY_TASK_ID % NUM_DATA_CONFIGS))
 DATA_CONFIG=${DATA_CONFIGS[$DATA_INDEX]}
 SEED=${SEEDS[$SEED_INDEX]}
 
-
 # ============================================================
 # Create experiment name
 # ============================================================
 
 DATA_NAME=$(basename "$DATA_CONFIG" .yml)
-
 RUN_NAME="${DATA_NAME}_s${SEED}"
-
 
 # ============================================================
 # Print job information
@@ -118,15 +114,11 @@ nvidia-smi
 
 echo "============================================================"
 
-
 # ============================================================
 # Temporary directory
 # ============================================================
 
 export TMPDIR=/home/staff/a/akhedekar/atmp_dir/
-
-export SSL_CERT_FILE=$(python -m certifi)
-
 
 # ============================================================
 # Activate Python environment
@@ -134,15 +126,13 @@ export SSL_CERT_FILE=$(python -m certifi)
 
 source /home/staff/a/akhedekar/python-chebai-graph/.venv/bin/activate
 
-
 # ============================================================
 # Set working directory
 # ============================================================
 
 CHEBAI_DIR="/home/staff/a/akhedekar/python-chebai"
-
 cd "$CHEBAI_DIR"
-
+export SSL_CERT_FILE=$(python -m certifi)
 
 # ============================================================
 # Check selected configuration
@@ -153,16 +143,6 @@ if [[ ! -f "$DATA_CONFIG" ]]; then
     echo "$DATA_CONFIG"
     exit 1
 fi
-
-
-# ============================================================
-# Set seed
-# ============================================================
-
-echo "Using seed: $SEED"
-
-export SEED="$SEED"
-
 
 # ============================================================
 # Run training
