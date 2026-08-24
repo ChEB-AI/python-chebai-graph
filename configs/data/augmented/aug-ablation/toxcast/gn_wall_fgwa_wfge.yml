@@ -1,4 +1,4 @@
-class_path: chebai_graph.preprocessing.datasets.ChEBI50_GN_WithAllNodes_FG_WithAtoms_FGE
+class_path: chebai_graph.preprocessing.datasets.ToxCast_GN_WithAllNodes_FG_WithAtoms_FGE
 init_args:
   properties:
       - chebai_graph.preprocessing.properties.AugAtomType

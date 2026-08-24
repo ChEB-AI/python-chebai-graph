@@ -12,6 +12,7 @@ from chebai.preprocessing.datasets.molecule_net_classification import (
 
 from chebai_graph.preprocessing.datasets.base import (
     GraphPropAsPerNodeType,
+    GraphPropertiesMixIn,
 )
 from chebai_graph.preprocessing.reader import (
     AtomFGReader_NoFGEdges_WithGraphNode,
@@ -204,6 +205,19 @@ class ToxCast_GN_WithAtoms_FG_WithAtoms_NoFGE(AugGraphPropMixIn_WithGraphNode, T
     """
 
     READER = GN_WithAtoms_FG_WithAtoms_NoFGE
+
+
+# ---------------------------Baselines classes for Tox21 and ToxCast datasets
+class Tox21GraphProperties(GraphPropertiesMixIn, Tox21):
+    """Tox21 dataset with molecular property encodings."""
+
+    pass
+
+
+class ToxCastGraphProperties(GraphPropertiesMixIn, ToxCast):
+    """ToxCast dataset with molecular property encodings."""
+
+    pass
 
 
 if __name__ == "__main__":

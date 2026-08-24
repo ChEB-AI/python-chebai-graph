@@ -1,4 +1,4 @@
-class_path: chebai_graph.preprocessing.datasets.ChEBI50_NFGE_WGN_GraphProp
+class_path: chebai_graph.preprocessing.datasets.Tox21_NFGE_WGN_GraphProp
 init_args:
   properties:
       - chebai_graph.preprocessing.properties.AugAtomType
