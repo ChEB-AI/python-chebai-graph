@@ -174,3 +174,6 @@ electra_pretrained.ckpt
 *.out
 *.sh
 *.ckpt
+
+!configs/data/augmented/aug-ablation/aug-ablation-local.sh
+!configs/data/augmented/aug-ablation/aug-ablation-script.sh
