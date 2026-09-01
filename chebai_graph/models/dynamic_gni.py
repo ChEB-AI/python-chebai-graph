@@ -28,8 +28,8 @@ from torch_geometric.nn.models.basic_gnn import BasicGNN
 
 from chebai_graph.preprocessing.reader import RandomFeatureInitializationReader
 
-from .architectures.base import GraphModelBase, GraphNetWrapper
-from .architectures.resgated import ResGatedModel
+from .base import GraphModelBase, GraphNetWrapper
+from .resgated import ResGatedModel
 
 
 class ResGatedDynamicGNI(GraphModelBase):

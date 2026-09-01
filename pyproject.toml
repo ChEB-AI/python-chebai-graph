@@ -2,7 +2,7 @@
 name = "chebai-graph"
 description = "GNNs for ChEB-AI"
 readme = "README.md"
-version = "1.2.2"
+version = "1.2.3"
 authors = [
     { name = "Martin Glauer", email = "martin.glauer@ovgu.de" }
 ]
@@ -14,22 +14,19 @@ dependencies = [
     # torch-geometric
     # torch_scatter
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 
 
 [project.optional-dependencies]
 dev = [
     "tox",
-    "omegaconf",
-    "chebi_utils",
 ]
 
 linters = [
-    "ruff",
+    "isort",
     "pre-commit",
+    "black",
 ]
-
-wandb = ["wandb"]
 
 [build-system]
 build-backend = "flit_core.buildapi"
