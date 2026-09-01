@@ -214,7 +214,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         self._setup_properties()
         super()._after_setup(**kwargs)
 
-    def _preprocess_smiles_for_pred(
+    def _preprocess_molecule_for_pred(
         self, idx, raw_data: str | Chem.Mol, model_hparams: Optional[dict] = None
     ) -> Optional[dict]:
         """Preprocess prediction data."""

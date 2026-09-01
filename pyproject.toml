@@ -2,7 +2,7 @@
 name = "chebai-graph"
 description = "GNNs for ChEB-AI"
 readme = "README.md"
-version = "1.2.0"
+version = "1.2.3"
 authors = [
     { name = "Martin Glauer", email = "martin.glauer@ovgu.de" }
 ]
