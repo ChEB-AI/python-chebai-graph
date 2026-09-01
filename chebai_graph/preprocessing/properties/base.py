@@ -15,7 +15,7 @@ assert sys.version_info >= (
     3,
     7,
 ), "This code requires Python 3.7 or higher."
-# Order preservation is necessary to to create `prop_list` in Augmented properties
+# Order preservation is necessary to to create `prop_list`in Augmented properties
 
 
 class MolecularProperty(ABC):
@@ -31,16 +31,10 @@ class MolecularProperty(ABC):
                  Defaults to IndexEncoder if not provided.
     """
 
-    def __init__(
-        self,
-        data_type: str,
-        encoder: PropertyEncoder | None = None,
-    ) -> None:
-        assert data_type is not None, "data_type must be provided for MolecularProperty"
+    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
         if encoder is None:
-            encoder = IndexEncoder(self, data_type=data_type)
+            encoder = IndexEncoder(self)
         self.encoder: PropertyEncoder = encoder
-        self._data_type = data_type
 
     @property
     def name(self) -> str:
@@ -180,8 +174,8 @@ class FrozenPropertyAlias(MolecularProperty, ABC):
         ValueError: If new tokens are added to the frozen encoder during processing.
     """
 
-    def __init__(self, encoder: PropertyEncoder, **kwargs) -> None:
-        super().__init__(encoder=encoder, **kwargs)
+    def __init__(self, encoder: PropertyEncoder | None = None) -> None:
+        super().__init__(encoder)
         # Lock the encoder's cache to prevent adding new tokens
         if hasattr(self.encoder, "cache") and isinstance(self.encoder.cache, dict):
             self.encoder.cache = MappingProxyType(self.encoder.cache)
