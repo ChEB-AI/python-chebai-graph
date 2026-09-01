@@ -10,7 +10,7 @@ from torch_scatter import scatter_add, scatter_mean
 
 from chebai_graph.loss.pretraining import MaskPretrainingLoss
 
-from .base import GraphBaseNet
+from .architectures.base import GraphBaseNet
 
 logging.getLogger("pysmiles").setLevel(logging.CRITICAL)
 
@@ -88,11 +88,6 @@ class ResGatedGraphConvNetBase(GraphBaseNet):
         self.n_bond_properties = (
             int(config["n_bond_properties"]) if "n_bond_properties" in config else 7
         )
-        self.n_molecule_properties = (
-            int(config["n_molecule_properties"])
-            if "n_molecule_properties" in config
-            else 0
-        )
 
         self.activation = F.elu
         self.dropout = nn.Dropout(self.dropout_rate)
@@ -158,7 +153,7 @@ class ResGatedGraphConvNetGraphPred(GraphBaseNet):
         self.linear_layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(
-                    self.gnn.hidden_length + (i == 0) * self.gnn.n_molecule_properties,
+                    self.gnn.hidden_length,
                     self.gnn.hidden_length,
                 )
                 for i in range(n_linear_layers - 1)
@@ -196,9 +191,7 @@ class ResGatedAugmentedGraphPred(GraphBaseNet):
         self.linear_layers = torch.nn.ModuleList(
             [
                 torch.nn.Linear(
-                    self.gnn.hidden_length
-                    + (i == 0) * self.gnn.n_molecule_properties
-                    + (i == 0) * self.gnn.hidden_length,
+                    self.gnn.hidden_length + (i == 0) * self.gnn.hidden_length,
                     self.gnn.hidden_length,
                 )
                 for i in range(n_linear_layers - 1)

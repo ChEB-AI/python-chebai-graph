@@ -1,52 +1,36 @@
-import pandas as pd
-from chebai.preprocessing.datasets.chebi import (
-    ChEBIOver25,
-    ChEBIOver50,
-    ChEBIOver100,
-    ChEBIOverX,
-    ChEBIOverXPartial,
-)
-from lightning_utilities.core.rank_zero import rank_zero_info
+import os
+from abc import ABC
+from collections.abc import Callable
+from pprint import pformat
+from typing import Optional
 
+import pandas as pd
+import torch
+import tqdm
+from chebai.preprocessing.datasets.base import XYBaseDataModule
+from lightning_utilities.core.rank_zero import rank_zero_info
+from rdkit import Chem
+from torch_geometric.data.data import Data as GeomData
+
+from chebai_graph.preprocessing.datasets.utils import resolve_property
+from chebai_graph.preprocessing.properties import (
+    AllNodeTypeProperty,
+    AtomNodeTypeProperty,
+    AtomProperty,
+    BondProperty,
+    FGNodeTypeProperty,
+    MolecularProperty,
+    MoleculeProperty,
+)
 from chebai_graph.preprocessing.reader import (
-    AtomFGReader_NoFGEdges_WithGraphNode,
-    AtomFGReader_WithFGEdges_NoGraphNode,
-    AtomFGReader_WithFGEdges_WithGraphNode,
-    AtomReader_WithGraphNodeOnly,
-    AtomsFGReader_NoFGEdges_NoGraphNode,
-    GN_WithAllNodes_FG_WithAtoms_FGE,
-    GN_WithAllNodes_FG_WithAtoms_NoFGE,
-    GN_WithAtoms_FG_WithAtoms_FGE,
-    GN_WithAtoms_FG_WithAtoms_NoFGE,
-    GraphReader,
+    GraphPropertyReader,
     RandomFeatureInitializationReader,
 )
-
-from .augmentation_base import (
-    AugGraphPropMixIn_NoGraphNode,
-    AugGraphPropMixIn_WithGraphNode,
-    GraphPropForAtomAndFGLevelOnly,
-    GraphPropForAtomLevelAndGraphNodeOnly,
-    GraphPropForAtomLevelOnly,
-    GraphPropForFGLevelAndGraphNodeOnly,
-    GraphPropForFGLevelOnly,
-    GraphPropForGraphNodeOnly,
-    GraphPropNodeLevelPropOnlyForAllNodes,
-)
-from .base import DataPropertiesSetter, GraphPropAsPerNodeType, GraphPropertiesMixIn
+from chebai_graph.preprocessing.reader.augmented_reader import _AugmentorReader
 
 
-class ChEBI50GraphData(ChEBIOver50):
-    """ChEBI dataset with at least 50 samples per class, using GraphReader."""
-
-    READER = GraphReader
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
-class DataPropertiesSetter(ChEBIOverX, ABC):
-    """Mixin for adding molecular property encodings to graph-based ChEBI datasets."""
+class DataPropertiesSetter(XYBaseDataModule, ABC):
+    """Mixin for adding molecular property encodings to graph-based given datasets."""
 
     READER = GraphPropertyReader
 
@@ -66,7 +50,7 @@ class DataPropertiesSetter(ChEBIOverX, ABC):
         super().__init__(**kwargs)
         # atom_properties and bond_properties are given as lists containing class_paths
         if properties is not None:
-            properties = [resolve_property(prop) for prop in properties]
+            properties = [resolve_property(prop, self.data_type) for prop in properties]
             properties = self._sort_properties(properties)
         else:
             properties = []
@@ -261,8 +245,8 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
         self,
         properties=None,
         transform=None,
-        pad_node_features: int = None,
-        pad_edge_features: int = None,
+        pad_node_features: int | None = None,
+        pad_edge_features: int | None = None,
         distribution: str = "normal",
         **kwargs,
     ):
@@ -357,7 +341,6 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             x=x,
             edge_index=geom_data.edge_index,
             edge_attr=edge_attr,
-            molecule_attr=molecule_attr,
         )
 
     def load_processed_data(
@@ -380,6 +363,7 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             property_data = torch.load(
                 self.get_property_path(property), weights_only=False
             )
+
             for entry in property_data:
                 entry[property.name] = property.encoder.decompress(entry[property.name])
             if len(property_data[0][property.name].shape) > 1:
@@ -438,7 +422,6 @@ class GraphPropertiesMixIn(DataPropertiesSetter, ABC):
             f"Use following values for given parameters for model configuration: \n\t"
             f"{in_channels_str} \n\t"
             f"{edge_dim_str} \n\t"
-            f"n_molecule_properties: {sum(p.encoder.get_encoding_length() for p in self.properties if isinstance(p, MoleculeProperty))}"
         )
 
         return base_df[base_data[0].keys()].to_dict("records")
@@ -525,7 +508,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             f"n_bond_properties: {n_bond_properties}, "
             f"n_graph_node_properties: {n_graph_node_properties}\n\n"
             f"Use following values for given parameters for model configuration: \n\t"
-            f"in_channels: {n_node_properties}, edge_dim: {n_bond_properties}, n_molecule_properties: 0\n"
+            f"in_channels: {n_node_properties}, edge_dim: {n_bond_properties}\n"
         )
 
         for property in self.properties:
@@ -590,6 +573,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         is_fg_node = ~is_atom_node & ~is_graph_node
         num_nodes = geom_data.x.size(0)
         edge_attr = geom_data.edge_attr
+        assert edge_attr is not None, "edge_attr must be set in the geom_data"
 
         # Initialize node feature matrix
         assert max_len_node_properties is not None, (
@@ -612,38 +596,26 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
                     (0, property.encoder.get_encoding_length())
                 )
 
-            enc_len = property_values.shape[1]
-            # -------------- Node properties ---------------
-            if isinstance(property, AllNodeTypeProperty):
-                x[:, atom_offset : atom_offset + enc_len] = property_values
-                atom_offset += enc_len
-                fg_offset += enc_len
-                graph_offset += enc_len
-
-            elif isinstance(property, AtomNodeTypeProperty):
-                x[is_atom_node, atom_offset : atom_offset + enc_len] = property_values[
-                    is_atom_node
-                ]
-                atom_offset += enc_len
-
-            elif isinstance(property, FGNodeTypeProperty):
-                x[is_fg_node, fg_offset : fg_offset + enc_len] = property_values[
-                    is_fg_node
-                ]
-                fg_offset += enc_len
-
-            elif isinstance(property, MoleculeProperty):
-                x[is_graph_node, graph_offset : graph_offset + enc_len] = (
-                    property_values
+            if isinstance(property, (AtomProperty, MoleculeProperty)):
+                build_node_property_tensor_result = self._build_node_property_tensor(
+                    property=property,
+                    node_tensor=x,
+                    atom_offset=atom_offset,
+                    fg_offset=fg_offset,
+                    graph_offset=graph_offset,
+                    property_values=property_values,
+                    is_atom_node=is_atom_node,
+                    is_fg_node=is_fg_node,
+                    is_graph_node=is_graph_node,
                 )
-                graph_offset += enc_len
+                x = build_node_property_tensor_result["node_tensor"]
+                atom_offset = build_node_property_tensor_result["atom_offset"]
+                fg_offset = build_node_property_tensor_result["fg_offset"]
+                graph_offset = build_node_property_tensor_result["graph_offset"]
 
-            # ------------- Bond Properties --------------
             elif isinstance(property, BondProperty):
-                # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
-                edge_attr = torch.cat(
-                    [edge_attr, torch.cat([property_values, property_values], dim=0)],
-                    dim=1,
+                edge_attr = self._build_edge_property_tensor(
+                    edge_attr_tensor=edge_attr, property_values=property_values
                 )
             else:
                 raise TypeError(f"Unsupported property type: {type(property).__name__}")
@@ -657,11 +629,133 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             x=x,
             edge_index=geom_data.edge_index,
             edge_attr=edge_attr,
-            molecule_attr=torch.empty((1, 0)),  # empty as not used for this class
             is_atom_node=is_atom_node,
             is_fg_node=is_fg_node,
             is_graph_node=is_graph_node,
         )
+
+    def _build_node_property_tensor(
+        self,
+        property: MolecularProperty,
+        node_tensor: torch.Tensor,
+        atom_offset: int,
+        fg_offset: int,
+        graph_offset: int,
+        property_values: torch.Tensor,
+        is_atom_node: torch.Tensor,
+        is_fg_node: torch.Tensor,
+        is_graph_node: torch.Tensor,
+    ) -> dict:
+        enc_len = property_values.shape[1]
+        # -------------- Node properties ---------------
+        if isinstance(property, AllNodeTypeProperty):
+            node_tensor = self._fill_node_tensor_with_all_node_type_property(
+                node_tensor=node_tensor,
+                property_values=property_values,
+                offset=atom_offset,
+            )
+            atom_offset += enc_len
+            fg_offset += enc_len
+            graph_offset += enc_len
+
+        elif isinstance(property, AtomNodeTypeProperty):
+            node_tensor = self._fill_node_tensor_with_atom_type_property(
+                node_tensor=node_tensor,
+                property_values=property_values,
+                offset=atom_offset,
+                is_atom_node=is_atom_node,
+            )
+            atom_offset += enc_len
+
+        elif isinstance(property, FGNodeTypeProperty):
+            node_tensor = self._fill_node_tensor_with_fg_type_property(
+                node_tensor=node_tensor,
+                property_values=property_values,
+                offset=fg_offset,
+                is_fg_node=is_fg_node,
+            )
+            fg_offset += enc_len
+
+        elif isinstance(property, MoleculeProperty):
+            node_tensor = self._fill_node_tensor_with_molecule_type_property(
+                node_tensor=node_tensor,
+                property_values=property_values,
+                offset=graph_offset,
+                is_graph_node=is_graph_node,
+            )
+            graph_offset += enc_len
+
+        return {
+            "node_tensor": node_tensor,
+            "atom_offset": atom_offset,
+            "fg_offset": fg_offset,
+            "graph_offset": graph_offset,
+        }
+
+    def _fill_node_tensor_with_all_node_type_property(
+        self, node_tensor: torch.Tensor, property_values: torch.Tensor, offset: int
+    ) -> torch.Tensor:
+        node_tensor[:, offset : offset + property_values.shape[1]] = property_values
+        return node_tensor
+
+    def _fill_node_tensor_with_atom_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_atom_node: torch.Tensor,
+    ) -> torch.Tensor:
+        # We need a to mask property values
+        # node_tensor.shape : torch.Size([85, 203])
+        # is_atom_node.shape : torch.Size([85])
+        # property_values.shape : torch.Size([85, 1])
+        node_tensor[is_atom_node, offset : offset + property_values.shape[1]] = (
+            property_values[is_atom_node]
+        )
+        return node_tensor
+
+    def _fill_node_tensor_with_fg_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_fg_node: torch.Tensor,
+    ) -> torch.Tensor:
+        node_tensor[is_fg_node, offset : offset + property_values.shape[1]] = (
+            property_values[is_fg_node]
+        )
+        return node_tensor
+
+    def _fill_node_tensor_with_molecule_type_property(
+        self,
+        node_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+        offset: int,
+        is_graph_node: torch.Tensor,
+    ) -> torch.Tensor:
+        # No mask for graph properties is required
+        # is_graph_node.shape : torch.Size([85])
+        # node_tensor.shape : torch.Size([85, 203])
+        # property_values.shape : torch.Size([1, 200])
+        node_tensor[is_graph_node, offset : offset + property_values.shape[1]] = (
+            property_values
+        )
+        return node_tensor
+
+    def _build_edge_property_tensor(
+        self,
+        edge_attr_tensor: torch.Tensor,
+        property_values: torch.Tensor,
+    ) -> torch.Tensor:
+        # Concat/Duplicate properties values for undirected graph as `edge_index` has first src to tgt edges, then tgt to src edges
+        edge_attr_tensor = torch.cat(
+            [
+                edge_attr_tensor,
+                torch.cat([property_values, property_values], dim=0),
+            ],
+            dim=1,
+        )
+        return edge_attr_tensor
 
     def _prediction_merge_props_into_base_wrapper(
         self, row: pd.Series | dict, model_hparams: Optional[dict] = None
@@ -685,179 +779,3 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             )
         max_len_node_properties = int(model_hparams["config"]["in_channels"])
         return self._merge_props_into_base(row, max_len_node_properties)
-
-
-class ChEBI50_StaticGNI(DataPropertiesSetter, ChEBIOver50):
-    READER = RandomFeatureInitializationReader
-
-    def _setup_properties(self): ...
-
-    def load_processed_data_from_file(self, filename):
-        base_data = super().load_processed_data_from_file(filename)
-        base_df = pd.DataFrame(base_data)
-
-        rank_zero_info(
-            f"Use following values for given parameters for model configuration: \n\t"
-            f"in_channels: {self.reader.num_node_properties} , "
-            f"edge_dim: {self.reader.num_bond_properties}, "
-        )
-        return base_df[base_data[0].keys()].to_dict("records")
-
-
-class ChEBI25GraphProperties(GraphPropertiesMixIn, ChEBIOver25):
-    """ChEBIOver25 dataset with molecular property encodings."""
-
-    THRESHOLD = 25
-
-
-class ChEBI50GraphProperties(GraphPropertiesMixIn, ChEBIOver50):
-    """ChEBIOver50 dataset with molecular property encodings."""
-
-    pass
-
-
-class ChEBI100GraphProperties(GraphPropertiesMixIn, ChEBIOver100):
-    """ChEBIOver100 dataset with molecular property encodings."""
-
-    pass
-
-
-class ChEBI50GraphPropertiesPartial(ChEBI50GraphProperties, ChEBIOverXPartial):
-    """Partial version of ChEBIOver50 with molecular properties."""
-
-    pass
-
-
-# ---- Augmentation: Variants with graph Node connected to FG nodes only -------------
-class ChEBI50_WFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
-    """ChEBIOver50 with with FG nodes and FG edges and graph node."""
-
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI50_NFGE_WGN_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
-    """ChEBIOver50 with FG nodes but without FG edges, with graph node."""
-
-    READER = AtomFGReader_NoFGEdges_WithGraphNode
-
-
-class ChEBI50_WFGE_NGN_GraphProp(AugGraphPropMixIn_NoGraphNode, ChEBIOver50):
-    """ChEBIOver50 with FG nodes and FG edges, no graph node."""
-
-    READER = AtomFGReader_WithFGEdges_NoGraphNode
-
-
-class ChEBI50_NFGE_NGN_GraphProp(AugGraphPropMixIn_NoGraphNode, ChEBIOver50):
-    """ChEBIOver50 with FG nodes but without FG edges or graph node."""
-
-    READER = AtomsFGReader_NoFGEdges_NoGraphNode
-
-
-class ChEBI50_Atom_WGNOnly_GraphProp(AugGraphPropMixIn_WithGraphNode, ChEBIOver50):
-    """ChEBIOver50 with atom-level nodes and graph node only."""
-
-    READER = AtomReader_WithGraphNodeOnly
-
-
-# ------- Augmentation: Variants with graph Node connected to all others nodes (FG and atoms) --------------
-class ChEBI50_GN_WithAllNodes_FG_WithAtoms_FGE(
-    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
-):
-    """
-    ChEBIOver50 with FG nodes (connected to their respective atom nodes) with functional group
-    edges, and adds a graph-level node connected to all nodes (fg + atoms).
-    """
-
-    READER = GN_WithAllNodes_FG_WithAtoms_FGE
-
-
-class ChEBI50_GN_WithAllNodes_FG_WithAtoms_NoFGE(
-    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
-):
-    """
-    ChEBIOver50 with FG nodes (connected to their respective atom nodes) without functional group
-    edges, and adds a graph-level node connected to all nodes (fg + atoms).
-    """
-
-    READER = GN_WithAllNodes_FG_WithAtoms_NoFGE
-
-
-# ------- Augmentation: Variants with graph node connected to atom nodes ONLY -----------
-class ChEBI50_GN_WithAtoms_FG_WithAtoms_FGE(
-    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
-):
-    """
-    ChEBIOver50 with FG nodes (connected to their respective atom nodes) with functional group
-    edges, and adds a graph-level node connected to all atom nodes.
-    """
-
-    READER = GN_WithAtoms_FG_WithAtoms_FGE
-
-
-class ChEBI50_GN_WithAtoms_FG_WithAtoms_NoFGE(
-    AugGraphPropMixIn_WithGraphNode, ChEBIOver50
-):
-    """
-    ChEBIOver50 with FG nodes (connected to their respective atom nodes) without functional group
-    edges, and adds a graph-level node connected to all atom nodes.
-    """
-
-    READER = GN_WithAtoms_FG_WithAtoms_NoFGE
-
-
-# ---------------------- Ablation: Properties ------------------------------
-class ChEBI50_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver50):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI50_WFGE_WGN_ForAtomLevelOnly(GraphPropForAtomLevelOnly, ChEBIOver50):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI50_WFGE_WGN_ForFGLevelOnly(GraphPropForFGLevelOnly, ChEBIOver50):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI50_WFGE_WGN_ForGraphNodeOnly(GraphPropForGraphNodeOnly, ChEBIOver50):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI50_WFGE_WGN_ForAtomAndFGLevelOnly(
-    GraphPropForAtomAndFGLevelOnly, ChEBIOver50
-):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI50_WFGE_WGN_ForAtomLevelAndGraphNodeOnly(
-    GraphPropForAtomLevelAndGraphNodeOnly, ChEBIOver50
-):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI50_WFGE_WGN_ForFGLevelAndGraphNodeOnly(
-    GraphPropForFGLevelAndGraphNodeOnly, ChEBIOver50
-):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI50_WFGE_WGN_ForNodeLevelPropOnlyForAllNodes(
-    GraphPropNodeLevelPropOnlyForAllNodes, ChEBIOver50
-):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-# ---------- Final Augmentation: Different Thresholds ------------------------------
-class ChEBI100_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver100):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-
-class ChEBI25_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOverX):
-    READER = AtomFGReader_WithFGEdges_WithGraphNode
-
-    THRESHOLD = 25
-
-
-if __name__ == "__main__":
-    dataset = ChEBI25_WFGE_WGN_AsPerNodeType(chebi_version=248, subset="3_STAR")
-    dataset.prepare_data()
-    dataset.setup()

@@ -1,9 +1,10 @@
-from .base import AugmentedNodePoolingNet, GraphNodeFGNodePoolingNet
-from .gat import GATGraphPred
-from .resgated import ResGatedGraphPred
+from .architectures.gat import GATGraphPred
+from .architectures.gine import GINEGraphPred
+from .architectures.resgated import ResGatedGraphPred
+from .pooling import AAPool, AMGPool
 
 
-class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedGraphPred):
+class ResGatedAAPoolGraphPred(AAPool, ResGatedGraphPred):
     """
     Combines:
     - AugmentedNodePoolingNet: Pools atom and augmented node embeddings (optionally with molecule attributes).
@@ -13,7 +14,7 @@ class ResGatedAugNodePoolGraphPred(AugmentedNodePoolingNet, ResGatedGraphPred):
     ...
 
 
-class GATAugNodePoolGraphPred(AugmentedNodePoolingNet, GATGraphPred):
+class GATAAPoolGraphPred(AAPool, GATGraphPred):
     """
     Combines:
     - AugmentedNodePoolingNet: Pools atom and augmented node embeddings (optionally with molecule attributes).
@@ -23,9 +24,17 @@ class GATAugNodePoolGraphPred(AugmentedNodePoolingNet, GATGraphPred):
     ...
 
 
-class ResGatedGraphNodeFGNodePoolGraphPred(
-    GraphNodeFGNodePoolingNet, ResGatedGraphPred
-):
+class GINEAAPoolGraphPred(AAPool, GINEGraphPred):
+    """
+    Combines:
+    - AugmentedNodePoolingNet: Pools atom and augmented node embeddings (optionally with molecule attributes).
+    - GINEGraphPred: Graph isomorphism network for final graph prediction.
+    """
+
+    ...
+
+
+class ResGatedAMGPoolGraphPred(AMGPool, ResGatedGraphPred):
     """
     Combines:
     - GraphNodeFGNodePoolingNet: Pools atom, functional group, and graph nodes (optionally with molecule attributes).
@@ -35,11 +44,21 @@ class ResGatedGraphNodeFGNodePoolGraphPred(
     ...
 
 
-class GATGraphNodeFGNodePoolGraphPred(GraphNodeFGNodePoolingNet, GATGraphPred):
+class GATAMGPoolGraphPred(AMGPool, GATGraphPred):
     """
     Combines:
     - GraphNodeFGNodePoolingNet: Pools atom, functional group, and graph nodes (optionally with molecule attributes).
     - GATGraphPred: Graph attention network for final graph prediction.
+    """
+
+    ...
+
+
+class GINEAMGPoolGraphPred(AMGPool, GINEGraphPred):
+    """
+    Combines:
+    - GraphNodeFGNodePoolingNet: Pools atom, functional group, and graph nodes (optionally with molecule attributes).
+    - GINEGraphPred: Graph isomorphism network for final graph prediction.
     """
 
     ...
