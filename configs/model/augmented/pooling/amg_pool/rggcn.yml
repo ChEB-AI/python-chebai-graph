@@ -1,4 +1,4 @@
-class_path: chebai_graph.models.ResGatedGraphNodeFGNodePoolGraphPred
+class_path: chebai_graph.models.ResGatedAMGPoolGraphPred
 init_args:
   optimizer_kwargs:
     lr: 1e-3

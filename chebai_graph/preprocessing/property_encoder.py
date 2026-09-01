@@ -99,12 +99,15 @@ class IndexEncoder(PropertyEncoder):
         **kwargs: Additional keyword arguments.
     """
 
-    def __init__(self, property, indices_dir: str | None = None, **kwargs) -> None:
+    def __init__(
+        self, property, data_type: str, indices_dir: str | None = None, **kwargs
+    ) -> None:
         super().__init__(property, **kwargs)
         if indices_dir is None:
             indices_dir = os.path.dirname(inspect.getfile(self.__class__))
         self.dirname = indices_dir
         # load already existing cache
+        self._data_type = data_type
         with open(self.index_path, "r") as pk:
             self.cache: dict[str, int] = {
                 token.strip(): idx for idx, token in enumerate(pk)
@@ -126,12 +129,15 @@ class IndexEncoder(PropertyEncoder):
         Returns:
             Path to index file.
         """
+        assert self._data_type is not None, "data_type must be set for IndexEncoder"
         index_path = os.path.join(
-            self.dirname, "bin", self.property.name, f"indices_{self.name}.txt"
+            self.dirname,
+            "bin",
+            self._data_type,
+            self.property.name,
+            f"indices_{self.name}.txt",
         )
-        os.makedirs(
-            os.path.join(self.dirname, "bin", self.property.name), exist_ok=True
-        )
+        os.makedirs(os.path.dirname(index_path), exist_ok=True)
         if not os.path.exists(index_path):
             with open(index_path, "x"):
                 pass
