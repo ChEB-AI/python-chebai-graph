@@ -38,17 +38,20 @@ SEEDS=(0 42 12345)
 # ============================================================
 # Data configurations (all resolved to absolute local paths)
 # ============================================================
+DATA_CONFIG_DIR=(
+    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/tox21"
+)
 DATA_CONFIGS=(
-    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/FGN.yml"
-    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/FGN+E.yml"
-    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/FGN+E+WGN.yml"
-    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/FGN+WGN.yml"
-    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/gn_wall_fgwa_nfge.yml"
-    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/gn_wall_fgwa_wfge.yml"
-    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/gnwa_fgwa_nfge.yml"
-    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/gnwa_fgwa_wfge.yml"
-    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/WGN.yml"
-    "$CHEBAI_GRAPH_DIR/configs/data/chebi50_baseline.yml"
+    "$DATA_CONFIG_DIR/FGN.yml"
+    "$DATA_CONFIG_DIR/FGN+E.yml"
+    "$DATA_CONFIG_DIR/FGN+E+WGN.yml"
+    "$DATA_CONFIG_DIR/FGN+WGN.yml"
+    "$DATA_CONFIG_DIR/gn_wall_fgwa_nfge.yml"
+    "$DATA_CONFIG_DIR/gn_wall_fgwa_wfge.yml"
+    "$DATA_CONFIG_DIR/gnwa_fgwa_nfge.yml"
+    "$DATA_CONFIG_DIR/gnwa_fgwa_wfge.yml"
+    "$DATA_CONFIG_DIR/WGN.yml"
+    "$DATA_CONFIG_DIR/baseline.yml"
 )
 
 # ============================================================
@@ -94,22 +97,21 @@ for SEED in "${SEEDS[@]}"; do
             --trainer=configs/training/default_trainer.yml \
             --trainer.logger=configs/training/wandb_logger.yml \
             --model="$CHEBAI_GRAPH_DIR/configs/model/baselines/gat.yml" \
-            --model.train_metrics=configs/metrics/micro-macro-f1.yml \
-            --model.test_metrics=configs/metrics/micro-macro-f1.yml \
-            --model.val_metrics=configs/metrics/micro-macro-f1.yml \
+            --model.train_metrics=configs/metrics/micro-macro-f1-roc-auc.yml \
+            --model.test_metrics=configs/metrics/micro-macro-f1-roc-auc.yml \
+            --model.val_metrics=configs/metrics/micro-macro-f1-roc-auc.yml \
             --data="$DATA_CONFIG" \
             --data.init_args.batch_size=64 \
-            --trainer.accumulate_grad_batches=1 \
+            --trainer.accumulate_grad_batches=2 \
             --data.init_args.num_workers=10 \
             --model.pass_loss_kwargs=false \
-            --data.init_args.chebi_version=252 \
             --trainer.min_epochs=200 \
             --trainer.max_epochs=200 \
             --model.criterion=configs/loss/bce_unweighted.yml \
             --trainer.logger.init_args.name="$RUN_NAME" \
-            --model.init_args.optimizer_kwargs.lr=0.002 \
-            --data.init_args.splits_file_path=data/chebi_v252/ChEBI50/processed/splits.csv \
-            --trainer.logger.init_args.tags='["augmented_paper","aug-ablation"]' \
+            --data.init_args.splits_file_path=data/Tox21:MNClassification/Tox21/processed/splits.csv \
+            --trainer.logger.init_args.tags='["augmented_paper","aug-ablation", "tox21"]' \
+            --model.config.edge_dim=10 \
             --seed_everything="$SEED"
 
         echo "============================================================"
