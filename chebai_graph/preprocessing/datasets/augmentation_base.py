@@ -177,3 +177,10 @@ class GraphPropNodeLevelPropOnlyForAllNodes(GraphPropAsPerNodeType):
         is_graph_node: torch.Tensor,
     ) -> torch.Tensor:
         return node_tensor
+
+
+class GraphPropAllPropsExceptNodeLevel(GraphPropAsPerNodeType):
+    def _fill_node_tensor_with_all_node_type_property(
+        self, node_tensor: torch.Tensor, property_values: torch.Tensor, offset: int
+    ) -> torch.Tensor:
+        return node_tensor

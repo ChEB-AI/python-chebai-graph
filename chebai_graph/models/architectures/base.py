@@ -26,7 +26,20 @@ class GraphBaseNet(ChebaiBaseNet, ABC):
         Returns:
             tuple[torch.Tensor, torch.Tensor]: Tuple of (predictions, labels).
         """
-        return torch.sigmoid(output), labels.int()
+        valid_label_mask = data["loss_kwargs"]["valid_label_mask"]
+        predictions = torch.sigmoid(output)
+        labels = labels.int()
+
+        if valid_label_mask is not None:
+            labels[~valid_label_mask] = -1  # Mark invalid labels as -1
+            # https://lightning.ai/docs/torchmetrics/stable/classification/auroc#multilabelauroc
+            # -1 as we torchmetrics ignores -1 labels in multilabel metrics
+            # metric = MultilabelAUROC(
+            #    num_labels=labels.shape[1],
+            #    ignore_index=-1,
+            # )
+
+        return predictions, labels
 
     def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor | None:
         """

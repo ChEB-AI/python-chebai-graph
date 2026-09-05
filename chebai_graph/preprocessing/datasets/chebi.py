@@ -25,6 +25,7 @@ from chebai_graph.preprocessing.reader import (
 from .augmentation_base import (
     AugGraphPropMixIn_NoGraphNode,
     AugGraphPropMixIn_WithGraphNode,
+    GraphPropAllPropsExceptNodeLevel,
     GraphPropForAtomAndFGLevelOnly,
     GraphPropForAtomLevelAndGraphNodeOnly,
     GraphPropForAtomLevelOnly,
@@ -810,16 +811,32 @@ class ChEBI50_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver50):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class ChEBI50_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, ChEBIOver50):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
 class ChEBI50_WFGE_WGN_ForAtomLevelOnly(GraphPropForAtomLevelOnly, ChEBIOver50):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI50_GNWA_FGWA_WFGE_ForAtomLevelOnly(GraphPropForAtomLevelOnly, ChEBIOver50):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
 
 
 class ChEBI50_WFGE_WGN_ForFGLevelOnly(GraphPropForFGLevelOnly, ChEBIOver50):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class ChEBI50_GNWA_FGWA_WFGE_ForFGLevelOnly(GraphPropForFGLevelOnly, ChEBIOver50):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
 class ChEBI50_WFGE_WGN_ForGraphNodeOnly(GraphPropForGraphNodeOnly, ChEBIOver50):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI50_GNWA_FGWA_WFGE_ForGraphNodeOnly(GraphPropForGraphNodeOnly, ChEBIOver50):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
 
 
 class ChEBI50_WFGE_WGN_ForAtomAndFGLevelOnly(
@@ -828,10 +845,22 @@ class ChEBI50_WFGE_WGN_ForAtomAndFGLevelOnly(
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class ChEBI50_GNWA_FGWA_WFGE_ForAtomAndFGLevelOnly(
+    GraphPropForAtomAndFGLevelOnly, ChEBIOver50
+):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
 class ChEBI50_WFGE_WGN_ForAtomLevelAndGraphNodeOnly(
     GraphPropForAtomLevelAndGraphNodeOnly, ChEBIOver50
 ):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI50_GNWA_FGWA_WFGE_ForAtomLevelAndGraphNodeOnly(
+    GraphPropForAtomLevelAndGraphNodeOnly, ChEBIOver50
+):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
 
 
 class ChEBI50_WFGE_WGN_ForFGLevelAndGraphNodeOnly(
@@ -840,10 +869,34 @@ class ChEBI50_WFGE_WGN_ForFGLevelAndGraphNodeOnly(
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class ChEBI50_GNWA_FGWA_WFGE_ForFGLevelAndGraphNodeOnly(
+    GraphPropForFGLevelAndGraphNodeOnly, ChEBIOver50
+):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
 class ChEBI50_WFGE_WGN_ForNodeLevelPropOnlyForAllNodes(
     GraphPropNodeLevelPropOnlyForAllNodes, ChEBIOver50
 ):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI50_GNWA_FGWA_WFGE_ForNodeLevelPropOnlyForAllNodes(
+    GraphPropNodeLevelPropOnlyForAllNodes, ChEBIOver50
+):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
+class ChEBI50_WFGE_WGN_ForAllPropsExceptNodeLevel(
+    GraphPropAllPropsExceptNodeLevel, ChEBIOver50
+):
+    READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ChEBI50_GNWA_FGWA_WFGE_ForAllPropsExceptNodeLevel(
+    GraphPropAllPropsExceptNodeLevel, ChEBIOver50
+):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
 
 
 # ---------- Final Augmentation: Different Thresholds ------------------------------
