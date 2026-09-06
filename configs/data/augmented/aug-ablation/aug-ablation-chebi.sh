@@ -51,17 +51,20 @@ SEEDS=(0 42 12345)
 #
 # ============================================================
 
+DATA_CONFIG_DIR=(
+    "$CHEBAI_GRAPH_DIR/configs/data/augmented/aug-ablation/tox21"
+)
 DATA_CONFIGS=(
-    "../python-chebai-graph/configs/data/augmented/aug-ablation/FGN.yml"
-    "../python-chebai-graph/configs/data/augmented/aug-ablation/FGN+E.yml"
-    "../python-chebai-graph/configs/data/augmented/aug-ablation/FGN+E+WGN.yml"
-    "../python-chebai-graph/configs/data/augmented/aug-ablation/FGN+WGN.yml"
-    "../python-chebai-graph/configs/data/augmented/aug-ablation/gn_wall_fgwa_nfge.yml"
-    "../python-chebai-graph/configs/data/augmented/aug-ablation/gn_wall_fgwa_wfge.yml"
-    "../python-chebai-graph/configs/data/augmented/aug-ablation/gnwa_fgwa_nfge.yml"
-    "../python-chebai-graph/configs/data/augmented/aug-ablation/gnwa_fgwa_wfge.yml"
-    "../python-chebai-graph/configs/data/augmented/aug-ablation/WGN.yml"
-    "../python-chebai-graph/configs/data/chebi50_baseline.yml"
+    "$DATA_CONFIG_DIR/FGN.yml"
+    "$DATA_CONFIG_DIR/FGN+E.yml"
+    "$DATA_CONFIG_DIR/FGN+E+WGN.yml"
+    "$DATA_CONFIG_DIR/FGN+WGN.yml"
+    "$DATA_CONFIG_DIR/gn_wall_fgwa_nfge.yml"
+    "$DATA_CONFIG_DIR/gn_wall_fgwa_wfge.yml"
+    "$DATA_CONFIG_DIR/gnwa_fgwa_nfge.yml"
+    "$DATA_CONFIG_DIR/gnwa_fgwa_wfge.yml"
+    "$DATA_CONFIG_DIR/WGN.yml"
+    "$DATA_CONFIG_DIR/baseline.yml"
 )
 
 # ============================================================
