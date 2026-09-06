@@ -2,6 +2,7 @@
 
 # ============================================================
 # Local single-GPU adaptation of ../aug-ablation-script.sh
+# # Run this script using:  `bash configs/data/augmented/aug-ablation/aug-ablation-toxcast.sh`
 #
 # The original is a Slurm job-array script (10 data configs x 3
 # seeds = 30 experiments, 10 concurrent). This version runs the
@@ -68,7 +69,6 @@ export SSL_CERT_FILE=$(python -m certifi)
 echo "============================================================"
 echo "Node:   $(hostname)"
 echo "Date:   $(date)"
-echo "TMPDIR: $TMPDIR"
 echo "GPU:"
 nvidia-smi
 echo "============================================================"
@@ -96,6 +96,7 @@ for SEED in "${SEEDS[@]}"; do
         python -m chebai fit \
             --trainer=configs/training/default_trainer.yml \
             --trainer.logger=configs/training/wandb_logger.yml \
+            --trainer.callbacks=configs/training/roc-auc_callbacks.yml \
             --model="$CHEBAI_GRAPH_DIR/configs/model/baselines/gat.yml" \
             --model.train_metrics=configs/metrics/micro-macro-f1-roc-auc.yml \
             --model.test_metrics=configs/metrics/micro-macro-f1-roc-auc.yml \
@@ -105,13 +106,14 @@ for SEED in "${SEEDS[@]}"; do
             --trainer.accumulate_grad_batches=2 \
             --data.init_args.num_workers=10 \
             --model.pass_loss_kwargs=false \
-            --trainer.min_epochs=200 \
-            --trainer.max_epochs=200 \
+            --trainer.min_epochs=100 \
+            --trainer.max_epochs=100 \
             --model.criterion=configs/loss/bce_unweighted.yml \
             --trainer.logger.init_args.name="$RUN_NAME" \
             --data.init_args.splits_file_path=data/ToxCast:MNClassification/ToxCast/processed/splits.csv \
             --trainer.logger.init_args.tags='["augmented_paper","aug-ablation", "toxcast"]' \
-            --model.config.edge_dim=10 \
+            --model.config.edge_dim=6 \
+            --model.config.in_channels=79 \
             --seed_everything="$SEED"
 
         echo "============================================================"
