@@ -196,3 +196,25 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         if self.use_batch_norm:
             a = self.batch_norm(a)
         return self.lin_sequential(a)
+
+    def configure_optimizers(self, **kwargs) -> torch.optim.Optimizer:
+        optimizer_kwargs = dict(self.optimizer_kwargs)
+
+        default_lr = optimizer_kwargs.pop("lr", None)
+        gnn_lr = optimizer_kwargs.pop("lr_gnn", default_lr)
+        linear_lr = optimizer_kwargs.pop("lr_linear", default_lr)
+
+        if gnn_lr is None or linear_lr is None:
+            raise ValueError("Set lr or both lr_gnn and lr_linear")
+
+        linear_params = list(self.lin_sequential.parameters())
+        if self.use_batch_norm:
+            linear_params.extend(self.batch_norm.parameters())
+
+        return torch.optim.Adamax(
+            [
+                {"params": self.gnn.parameters(), "lr": gnn_lr},
+                {"params": linear_params, "lr": linear_lr},
+            ],
+            **optimizer_kwargs,
+        )
