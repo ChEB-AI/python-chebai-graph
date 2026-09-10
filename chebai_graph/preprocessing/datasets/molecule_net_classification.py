@@ -36,36 +36,72 @@ class PCBA_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, PCBA):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class PCBA_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, PCBA):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
 class BACE_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, BACE):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class BACE_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, BACE):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
 
 
 class BBBP_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, BBBP):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class BBBP_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, BBBP):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
 class ClinTox_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ClinTox):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ClinTox_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, ClinTox):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
 
 
 class HIV_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, HIV):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class HIV_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, HIV):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
 class SIDER_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, SIDER):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class SIDER_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, SIDER):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
 
 
 class MUV_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, MUV):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class MUV_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, MUV):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
 class Tox21_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, Tox21):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
 
 
+class Tox21_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, Tox21):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
+
+
 class ToxCast_WFGE_WGN_AsPerNodeType(GraphPropAsPerNodeType, ToxCast):
     READER = AtomFGReader_WithFGEdges_WithGraphNode
+
+
+class ToxCast_GNWA_FGWA_WFGE_AsPerNodeType(GraphPropAsPerNodeType, ToxCast):
+    READER = GN_WithAtoms_FG_WithAtoms_FGE
 
 
 # ---- Augmentation: Variants with graph Node connected to FG nodes only -------------
