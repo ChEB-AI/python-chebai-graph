@@ -75,12 +75,7 @@ class DataPropertiesSetter(XYBaseDataModule, ABC):
         raw_data = []
         os.makedirs(self.processed_properties_dir, exist_ok=True)
 
-        try:
-            file_names = self.processed_main_file_names
-        except NotImplementedError:
-            file_names = self.raw_file_names
-
-        for file in file_names:
+        for file in self.property_source_file_names:
             # processed_dir_main only exists for ChEBI datasets
             path = os.path.join(
                 (
@@ -155,6 +150,14 @@ class DataPropertiesSetter(XYBaseDataModule, ABC):
                         self.get_property_path(property),
                     )
                     property.on_finish()
+
+    @property
+    def property_source_file_names(self) -> list[str]:
+        """Files from which the molecules for property computation are loaded."""
+        try:
+            return self.processed_main_file_names
+        except NotImplementedError:
+            return self.raw_file_names
 
     @property
     def processed_properties_dir(self) -> str:

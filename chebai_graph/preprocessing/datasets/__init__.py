@@ -22,17 +22,22 @@ from .chebi import (
     ChEBI50GraphProperties,
     ChEBI100GraphProperties,
 )
-from .molecule_net_classification import (
-    BACE_WFGE_WGN_AsPerNodeType,
-    BBBP_WFGE_WGN_AsPerNodeType,
-    ClinTox_WFGE_WGN_AsPerNodeType,
-    HIV_WFGE_WGN_AsPerNodeType,
-    MUV_WFGE_WGN_AsPerNodeType,
-    PCBA_WFGE_WGN_AsPerNodeType,
-    SIDER_WFGE_WGN_AsPerNodeType,
-    Tox21_WFGE_WGN_AsPerNodeType,
-    ToxCast_WFGE_WGN_AsPerNodeType,
-)
+
+try:
+    from .molecule_net_classification import (
+        BACE_WFGE_WGN_AsPerNodeType,
+        BBBP_WFGE_WGN_AsPerNodeType,
+        ClinTox_WFGE_WGN_AsPerNodeType,
+        HIV_WFGE_WGN_AsPerNodeType,
+        MUV_WFGE_WGN_AsPerNodeType,
+        PCBA_WFGE_WGN_AsPerNodeType,
+        SIDER_WFGE_WGN_AsPerNodeType,
+        Tox21_WFGE_WGN_AsPerNodeType,
+        ToxCast_WFGE_WGN_AsPerNodeType,
+    )
+except ImportError:
+    # chebai.preprocessing.datasets.molecule_net_classification is not available in all chebai versions
+    pass
 from .pubchem import PubChemGraphProperties
 
 __all__ = [

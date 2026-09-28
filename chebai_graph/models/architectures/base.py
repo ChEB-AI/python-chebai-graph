@@ -26,7 +26,34 @@ class GraphBaseNet(ChebaiBaseNet, ABC):
         Returns:
             tuple[torch.Tensor, torch.Tensor]: Tuple of (predictions, labels).
         """
-        return torch.sigmoid(output), labels.int()
+        preds = torch.sigmoid(output)
+        missing_labels = data.get("loss_kwargs", dict()).get("missing_labels")
+        if missing_labels is not None and labels is not None:
+            # set predictions and labels for missing labels to 0
+            not_missing = (~missing_labels).int().to(device=preds.device)
+            preds = preds * not_missing
+            labels = labels * not_missing
+        return preds, labels.int()
+
+    def _process_for_loss(
+        self,
+        model_output: torch.Tensor,
+        labels: torch.Tensor,
+        loss_kwargs: dict,
+    ) -> tuple[torch.Tensor, torch.Tensor, dict]:
+        """
+        Mask missing labels (e.g. from REMEDIAL resampling) by setting the corresponding logits to a large negative
+        value and the labels to 0, so they do not contribute to the loss.
+        """
+        kwargs_copy = dict(loss_kwargs)
+        missing_labels = kwargs_copy.pop("missing_labels", None)
+        if missing_labels is not None and labels is not None:
+            missing_labels = missing_labels.to(device=model_output.device)
+            model_output = (
+                model_output * (~missing_labels).int() - 10000 * missing_labels.int()
+            )
+            labels = labels * (~missing_labels).int()
+        return model_output, labels, kwargs_copy
 
     def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor | None:
         """

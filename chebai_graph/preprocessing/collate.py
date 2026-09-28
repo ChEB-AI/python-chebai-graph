@@ -15,10 +15,18 @@ class GraphCollator(RaggedCollator):
         # Unpack labels and optional identifiers
         y, idents = zip(*((d["labels"], d.get("ident")) for d in data))
 
+        # Samples can have missing labels (None, e.g. masked by REMEDIAL resampling)
+        missing_labels = self._get_missing_labels(data, y)
+
         # Replace labels with `y` inside graph features and collect them
         merged_data = []
-        for row in data:
-            row["features"].y = row["labels"]
+        for row, row_missing_labels in zip(data, missing_labels):
+            labels = row["labels"]
+            if any(row_missing_labels):
+                labels = [
+                    bool(label) if label is not None else False for label in labels
+                ]
+            row["features"].y = labels
             merged_data.append(row["features"])
 
         # Add empty edge_attr for graphs with no edges to prevent PyG errors
@@ -65,6 +73,8 @@ class GraphCollator(RaggedCollator):
             y = None
             loss_kwargs["non_null_labels"] = []
 
+        loss_kwargs["missing_labels"] = torch.tensor(missing_labels)
+
         # Set node features (x) to long dtype (e.g., for categorical features)
         x[0].x = x[0].x.to(dtype=torch.int64)
         # x is a Tuple[BaseData, Mapping, Mapping]
@@ -76,3 +86,20 @@ class GraphCollator(RaggedCollator):
             model_kwargs={},
             loss_kwargs=loss_kwargs,
         )
+
+    @staticmethod
+    def _get_missing_labels(data, y) -> list[list[bool]]:
+        """
+        Collect the `missing_labels` mask of each sample. Samples without a valid mask (no entry, or e.g. NaN after
+        being loaded from a DataFrame in which only some rows have missing labels) get an all-False mask.
+        """
+        n_labels = next((len(ye) for ye in y if ye is not None), 1)
+        return [
+            (
+                list(d["missing_labels"])
+                if hasattr(d.get("missing_labels"), "__len__")
+                and len(d["missing_labels"]) == n_labels
+                else [False] * n_labels
+            )
+            for d in data
+        ]
