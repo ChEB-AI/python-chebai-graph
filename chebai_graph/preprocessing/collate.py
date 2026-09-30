@@ -15,11 +15,16 @@ class GraphCollator(RaggedCollator):
         # Unpack labels and optional identifiers
         y, idents = zip(*((d["labels"], d.get("ident")) for d in data))
 
-        # Replace labels with `y` inside graph features and collect them
+        valid_label_mask = self._get_valid_label_mask(y)
+
+        # Keep labels in XYGraphData.y instead of graph attributes. Mixed labelled
+        # and unlabelled batches otherwise make PyG collate a partial `y` key.
         merged_data = []
         for row in data:
-            row["features"].y = row["labels"]
-            merged_data.append(row["features"])
+            features = row["features"]
+            if "y" in features:
+                del features.y
+            merged_data.append(features)
 
         # Add empty edge_attr for graphs with no edges to prevent PyG errors
         for mdata in merged_data:
@@ -31,6 +36,11 @@ class GraphCollator(RaggedCollator):
         for attr in merged_data[0].keys():
             for data in merged_data:
                 for store in data.stores:
+                    if attr not in store:
+                        continue
+                    if store[attr] is None:
+                        del store[attr]
+                        continue
                     # Im not sure why the following conversion is needed, but it solves this error:
                     # packages/torch_geometric/data/collate.py", line 177, in _collate
                     #     value = torch.cat(values, dim=cat_dim or 0, out=out)
@@ -69,6 +79,7 @@ class GraphCollator(RaggedCollator):
         x[0].x = x[0].x.to(dtype=torch.int64)
         # x is a Tuple[BaseData, Mapping, Mapping]
 
+        loss_kwargs["valid_label_mask"] = valid_label_mask
         return XYGraphData(
             x,
             y,

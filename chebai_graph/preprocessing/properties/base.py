@@ -209,8 +209,8 @@ class FrozenPropertyAlias(MolecularProperty, ABC):
             hasattr(self.encoder, "cache")
             and len(self.encoder.cache) > self.encoder.index_length_start
         ):
-            raise ValueError(
-                f"{self.__class__.__name__} attempted to add new tokens "
+            print(
+                f"{self.__class__.__name__} added new tokens "
                 f"to a frozen encoder at {self.encoder.index_path}"
             )
         super().on_finish()

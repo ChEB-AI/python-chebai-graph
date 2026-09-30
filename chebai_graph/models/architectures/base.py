@@ -26,7 +26,20 @@ class GraphBaseNet(ChebaiBaseNet, ABC):
         Returns:
             tuple[torch.Tensor, torch.Tensor]: Tuple of (predictions, labels).
         """
-        return torch.sigmoid(output), labels.int()
+        valid_label_mask = data["loss_kwargs"]["valid_label_mask"]
+        predictions = torch.sigmoid(output)
+        labels = labels.int()
+
+        if valid_label_mask is not None:
+            labels[~valid_label_mask] = -1  # Mark invalid labels as -1
+            # https://lightning.ai/docs/torchmetrics/stable/classification/auroc#multilabelauroc
+            # -1 as we torchmetrics ignores -1 labels in multilabel metrics
+            # metric = MultilabelAUROC(
+            #    num_labels=labels.shape[1],
+            #    ignore_index=-1,
+            # )
+
+        return predictions, labels
 
     def _process_labels_in_batch(self, batch: XYData) -> torch.Tensor | None:
         """
@@ -183,3 +196,25 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         if self.use_batch_norm:
             a = self.batch_norm(a)
         return self.lin_sequential(a)
+
+    def configure_optimizers(self, **kwargs) -> torch.optim.Optimizer:
+        optimizer_kwargs = dict(self.optimizer_kwargs)
+
+        default_lr = optimizer_kwargs.pop("lr", None)
+        gnn_lr = optimizer_kwargs.pop("lr_gnn", default_lr)
+        linear_lr = optimizer_kwargs.pop("lr_linear", default_lr)
+
+        if gnn_lr is None or linear_lr is None:
+            raise ValueError("Set lr or both lr_gnn and lr_linear")
+
+        linear_params = list(self.lin_sequential.parameters())
+        if self.use_batch_norm:
+            linear_params.extend(self.batch_norm.parameters())
+
+        return torch.optim.Adamax(
+            [
+                {"params": self.gnn.parameters(), "lr": gnn_lr},
+                {"params": linear_params, "lr": linear_lr},
+            ],
+            **optimizer_kwargs,
+        )
