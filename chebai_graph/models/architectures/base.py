@@ -91,6 +91,7 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         config: dict,
         n_linear_layers: int,
         use_batch_norm: bool = False,
+        pretrained_checkpoint: str | None = None,
         **kwargs,
     ):
         """
@@ -101,6 +102,8 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         """
         super().__init__(**kwargs)
         self.gnn = self._get_gnn(config)
+        if pretrained_checkpoint is not None:
+            self._load_pretrained_gnn(pretrained_checkpoint)
         gnn_out_dim = int(config["out_channels"])
         self.activation = torch.nn.ELU
         self.lin_input_dim = self._get_lin_seq_input_dim(
@@ -117,6 +120,65 @@ class GraphNetWrapper(GraphBaseNet, ABC):
             hidden_dim=lin_hidden_dim,
             out_dim=self.out_dim,
         )
+
+    def _load_pretrained_gnn(self, checkpoint_path: str) -> None:
+        """Load encoder weights while leaving the task-specific head untouched."""
+        checkpoint = torch.load(checkpoint_path, weights_only=False)
+        state_dict = checkpoint.get("state_dict", checkpoint)
+
+        if not isinstance(state_dict, dict):
+            raise ValueError(
+                f"Checkpoint {checkpoint_path!r} does not contain a state dictionary."
+            )
+
+        gnn_state = self.gnn.state_dict()
+        gnn_keys = set(gnn_state)
+        matching_keys = set(state_dict) & gnn_keys
+        if not matching_keys:
+            for prefix in ("gnn.", "model.gnn."):
+                prefixed_keys = {
+                    key.removeprefix(prefix): value
+                    for key, value in state_dict.items()
+                    if key.startswith(prefix)
+                }
+                if set(prefixed_keys) & gnn_keys:
+                    state_dict = prefixed_keys
+                    matching_keys = set(state_dict) & gnn_keys
+                    break
+
+        if not matching_keys:
+            raise ValueError(
+                f"Checkpoint {checkpoint_path!r} contains no weights matching the GNN."
+            )
+
+        pretrained_gnn_state = {
+            key: value for key, value in state_dict.items() if key in gnn_keys
+        }
+        skipped_edge_weights = []
+        for key in list(pretrained_gnn_state):
+            if (
+                key.endswith(".lin_edge.weight")
+                and pretrained_gnn_state[key].shape != gnn_state[key].shape
+            ):
+                skipped_edge_weights.append(key)
+                del pretrained_gnn_state[key]
+
+        load_result = self.gnn.load_state_dict(pretrained_gnn_state, strict=False)
+        allowed_missing = set(skipped_edge_weights)
+        unexpected_keys = set(load_result.unexpected_keys)
+        missing_keys = set(load_result.missing_keys) - allowed_missing
+        if unexpected_keys or missing_keys:
+            raise RuntimeError(
+                "Pretrained GNN checkpoint is incompatible: "
+                f"missing={sorted(missing_keys)}, "
+                f"unexpected={sorted(unexpected_keys)}"
+            )
+
+        if skipped_edge_weights:
+            print(
+                "Skipped incompatible pretrained edge weights: "
+                + ", ".join(sorted(skipped_edge_weights))
+            )
 
     @abstractmethod
     def _get_gnn(self, config: dict) -> torch.nn.Module:
