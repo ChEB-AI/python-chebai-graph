@@ -96,14 +96,14 @@ for SEED in "${SEEDS[@]}"; do
         python -m chebai fit \
             --trainer=configs/training/default_trainer.yml \
             --trainer.logger=configs/training/wandb_logger.yml \
+            --trainer.logger.init_args.tags='["augmented_paper","aug-ablation", "tox21"]' \
             --trainer.callbacks=configs/training/roc-auc_callbacks.yml \
             --model="$CHEBAI_GRAPH_DIR/configs/model/baselines/gat.yml" \
             --model.train_metrics=configs/metrics/micro-macro-f1-roc-auc.yml \
             --model.test_metrics=configs/metrics/micro-macro-f1-roc-auc.yml \
             --model.val_metrics=configs/metrics/micro-macro-f1-roc-auc.yml \
             --data="$DATA_CONFIG" \
-            --data.init_args.batch_size=64 \
-            --trainer.accumulate_grad_batches=2 \
+            --data.init_args.batch_size=32 \
             --data.init_args.num_workers=10 \
             --model.pass_loss_kwargs=false \
             --trainer.min_epochs=100 \
@@ -111,9 +111,11 @@ for SEED in "${SEEDS[@]}"; do
             --model.criterion=configs/loss/bce_unweighted.yml \
             --trainer.logger.init_args.name="$RUN_NAME" \
             --data.init_args.splits_file_path=data/Tox21:MNClassification/Tox21/processed/splits.csv \
-            --trainer.logger.init_args.tags='["augmented_paper","aug-ablation", "tox21"]' \
             --model.config.edge_dim=6 \
             --model.config.in_channels=77 \
+            --model.config.dropout=0.7 \
+            --model.optimizer_kwargs.lr_gnn=0.0005 \
+            --model.optimizer_kwargs.lr_linear=0.001 \
             --seed_everything="$SEED"
 
         echo "============================================================"
