@@ -1,3 +1,0 @@
-atom_node_lvl
-fg_node_lvl
-graph_node_level
