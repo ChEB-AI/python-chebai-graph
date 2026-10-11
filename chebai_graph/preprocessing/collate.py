@@ -26,11 +26,16 @@ class GraphCollator(RaggedCollator):
                 del features.y
             merged_data.append(features)
 
+        custom_metadata = []
         # Add empty edge_attr for graphs with no edges to prevent PyG errors
         for mdata in merged_data:
+            graph_metadata = []
             for store in mdata.stores:
                 if "edge_attr" not in store:
                     store["edge_attr"] = torch.tensor([])
+                if "custom_metadata" in store:
+                    graph_metadata.append(store.pop("custom_metadata", None))
+            custom_metadata.append(graph_metadata)
 
         # Ensure all attributes are float tensors to prevent torch.cat dtype issues
         for attr in merged_data[0].keys():
@@ -86,4 +91,5 @@ class GraphCollator(RaggedCollator):
             idents=idents,
             model_kwargs={},
             loss_kwargs=loss_kwargs,
+            custom_metadata=custom_metadata,
         )

@@ -176,3 +176,4 @@ electra_pretrained.ckpt
 *.ckpt
 
 !configs/data/augmented/aug-ablation/*.sh
+!.vscode/launch.json
