@@ -72,6 +72,7 @@ from .molecule_net_classification import (
     ToxCast_WFGE_WGN_GraphProp,
     ToxCastGraphProperties,
 )
+from .pretrain_zinc15 import Zinc15Pretrain_GNWA_FGWA_WFGE_AsPerNodeType
 from .pubchem import PubChemGraphProperties
 
 __all__ = [
@@ -154,4 +155,5 @@ __all__ = [
     "ChEBI100GraphProperties",
     "ChEBI50GraphData",
     "PubChemGraphProperties",
+    "Zinc15Pretrain_GNWA_FGWA_WFGE_AsPerNodeType",
 ]

@@ -571,9 +571,10 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         if geom_data is None:
             return None
         if isinstance(geom_data, tuple):
-            geom_data = geom_data[
-                0
-            ]  # ignore additional returned data from _read_data (e.g. augmented molecule dict)
+            # include custom metadata returned data from _read_data (e.g. augmented molecule dict)
+            custom_metadata = geom_data[1]
+            geom_data = geom_data[0]
+            geom_data["custom_metadata"] = custom_metadata
         assert isinstance(geom_data, GeomData)
 
         is_atom_node = geom_data.is_atom_node
@@ -643,6 +644,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             is_atom_node=is_atom_node,
             is_fg_node=is_fg_node,
             is_graph_node=is_graph_node,
+            custom_metadata=geom_data.custom_metadata,
         )
 
     def _build_node_property_tensor(
