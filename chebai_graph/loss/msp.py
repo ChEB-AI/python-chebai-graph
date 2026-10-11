@@ -2,7 +2,7 @@
 Multi-level Self-supervised Pre-training from
 Zang, X., Zhao, X. & Tang, B. Hierarchical Molecular Graph Self-Supervised Learning for property prediction. Commun Chem 6, 34 (2023). https://doi.org/10.1038/s42004-023-00825-5
 
-The files containes modified code from:
+This file contains modified code from:
     - https://github.com/ZangXuan/HiMol/blob/main/pretrain.py
 """
 
@@ -141,28 +141,28 @@ class MSPPretrainingLoss(torch.nn.Module):
         atom_vocab = list(range(1, 119))  # Atomic numbers from 1 to 118
         bond_vocab = ["SINGLE", "DOUBLE", "AROMATIC", "TRIPLE", "DATIVE", "UNSPECIFIED"]
         atom_mol = metadata["nodes"]["atom_nodes"]
-        atom_targets = torch.tensor(
+        atom_type_targets = torch.tensor(
             [atom_vocab.index(atom.GetAtomicNum()) for atom in atom_mol.GetAtoms()],
             dtype=torch.long,
             device=device,
         )
         within_atoms = metadata["edges"]["within_atoms_lvl"]
         bond_indices = []
-        bond_targets = []
+        bond_type_targets = []
         for bond in within_atoms.GetBonds():
             begin = bond.GetBeginAtomIdx()
             end = bond.GetEndAtomIdx()
             bond_class = bond_vocab.index(str(bond.GetBondType()))
             bond_indices.extend(((begin, end), (end, begin)))
-            bond_targets.extend((bond_class, bond_class))
+            bond_type_targets.extend((bond_class, bond_class))
         edge_index = (
             torch.tensor(bond_indices, dtype=torch.long, device=device).t()
             if bond_indices
             else torch.empty((2, 0), dtype=torch.long, device=device)
         )
         return (
-            atom_targets,
-            torch.tensor(bond_targets, dtype=torch.long, device=device),
+            atom_type_targets,
+            torch.tensor(bond_type_targets, dtype=torch.long, device=device),
             edge_index,
         )
 
@@ -183,6 +183,7 @@ class MSPPretrainingLoss(torch.nn.Module):
         ]
         graph_node_embeddings = self._super(graph_data, node_embeddings, graph_nodes)
 
+        # Number of atoms prediction loss
         atom_counts = torch.stack(
             [
                 (is_atom_node & (batch_index == graph_index)).sum()
@@ -202,15 +203,16 @@ class MSPPretrainingLoss(torch.nn.Module):
         for graph_index, nodes in enumerate(graph_nodes):
             metadata = self._molecule_metadata(custom_metadata, graph_index)
             mol = metadata["nodes"]["atom_nodes"]
-            atom_targets, bond_targets, local_edges = self._metadata_targets(
+            atom_type_targets, bond_type_targets, local_edges = self._metadata_targets(
                 metadata, node_embeddings.device
             )
-            # Bond existence prediction
+
+            # Bond existence prediction loss
             atoms = nodes[is_atom_node[nodes]]
-            if atoms.numel() != atom_targets.numel():
+            if atoms.numel() != atom_type_targets.numel():
                 raise ValueError(
                     f"Graph {graph_index} has {atoms.numel()} atom nodes but metadata has "
-                    f"{atom_targets.numel()} atoms"
+                    f"{atom_type_targets.numel()} atoms"
                 )
             atom_embeddings = self.feat_drop(self.bond_if_proj(node_embeddings[atoms]))
             bond_counts.append(mol.GetNumBonds())
@@ -227,6 +229,7 @@ class MSPPretrainingLoss(torch.nn.Module):
             if local_edges.numel():
                 bond_target[local_edges[0], local_edges[1]] = 1
             bond_if_loss = bond_if_loss + self.bond_if_loss(bond_pred, bond_target)
+
             if loss_kwargs.get("compute_metrics", True) and local_edges.numel():
                 target_cpu = bond_target.flatten().detach().cpu()
                 pred_cpu = bond_pred.flatten().detach().sigmoid().cpu()
@@ -234,12 +237,15 @@ class MSPPretrainingLoss(torch.nn.Module):
                     auc_values.append(roc_auc_score(target_cpu, pred_cpu))
                 ap_values.append(average_precision_score(target_cpu, pred_cpu))
 
+            # Atom type prediction loss
             atom_pred = self.atom_type_s(node_embeddings[atoms])
             atom_type_loss = atom_type_loss + self.atom_type_loss(
-                atom_pred, atom_targets
+                atom_pred, atom_type_targets
             )
-            atom_correct += int((atom_pred.argmax(1) == atom_targets).sum())
-            atom_total += atom_targets.numel()
+            atom_correct += int((atom_pred.argmax(1) == atom_type_targets).sum())
+            atom_total += atom_type_targets.numel()
+
+            # Bond type prediction loss
             if local_edges.numel():
                 edge_rep = torch.cat(
                     [atom_embeddings[local_edges[0]], atom_embeddings[local_edges[1]]],
@@ -247,11 +253,14 @@ class MSPPretrainingLoss(torch.nn.Module):
                 )
                 bond_pred_type = self.bond_type_s(edge_rep)
                 bond_type_loss = bond_type_loss + self.bond_type_loss(
-                    bond_pred_type, bond_targets
+                    bond_pred_type, bond_type_targets
                 )
-                bond_correct += int((bond_pred_type.argmax(1) == bond_targets).sum())
-                bond_total += bond_targets.numel()
+                bond_correct += int(
+                    (bond_pred_type.argmax(1) == bond_type_targets).sum()
+                )
+                bond_total += bond_type_targets.numel()
 
+        # Number of bonds prediction loss
         bond_counts = torch.tensor(
             bond_counts,
             dtype=graph_node_embeddings.dtype,
@@ -259,8 +268,8 @@ class MSPPretrainingLoss(torch.nn.Module):
         )
         bond_count_pred = self.bond_num_s(graph_node_embeddings).squeeze(-1)
         bond_count_loss = self.count_loss(bond_count_pred, bond_counts)
-        divisor = max(len(graph_nodes), 1)
 
+        divisor = max(len(graph_nodes), 1)
         losses = torch.stack(
             [
                 bond_if_loss / divisor,

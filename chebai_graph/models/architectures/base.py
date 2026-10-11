@@ -123,7 +123,9 @@ class GraphNetWrapper(GraphBaseNet, ABC):
 
     def _load_pretrained_gnn(self, checkpoint_path: str) -> None:
         """Load encoder weights while leaving the task-specific head untouched."""
-        checkpoint = torch.load(checkpoint_path, weights_only=False)
+        checkpoint = torch.load(
+            checkpoint_path, weights_only=False, map_location=self.device
+        )
         state_dict = checkpoint.get("state_dict", checkpoint)
 
         if not isinstance(state_dict, dict):
@@ -155,13 +157,13 @@ class GraphNetWrapper(GraphBaseNet, ABC):
             key: value for key, value in state_dict.items() if key in gnn_keys
         }
         skipped_edge_weights = []
-        for key in list(pretrained_gnn_state):
-            if (
-                key.endswith(".lin_edge.weight")
-                and pretrained_gnn_state[key].shape != gnn_state[key].shape
-            ):
-                skipped_edge_weights.append(key)
-                del pretrained_gnn_state[key]
+        # for key in list(pretrained_gnn_state):
+        #     if (
+        #         key.endswith(".lin_edge.weight")
+        #         and pretrained_gnn_state[key].shape != gnn_state[key].shape
+        #     ):
+        #         skipped_edge_weights.append(key)
+        #         del pretrained_gnn_state[key]
 
         load_result = self.gnn.load_state_dict(pretrained_gnn_state, strict=False)
         allowed_missing = set(skipped_edge_weights)
