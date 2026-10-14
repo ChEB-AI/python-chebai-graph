@@ -10,6 +10,12 @@ import torch
 from sklearn.metrics import average_precision_score, roc_auc_score
 from torch_geometric.data import Data
 
+from chebai_graph.preprocessing.properties.augmented_properties import (
+    AugAtomType,
+    AugBondType,
+)
+from chebai_graph.preprocessing.property_encoder import IndexEncoder
+
 
 class MSPPretrainingLoss(torch.nn.Module):
     """HiMol-style molecular structure pretraining loss.
@@ -22,19 +28,15 @@ class MSPPretrainingLoss(torch.nn.Module):
     def __init__(
         self,
         hidden_size: int,
-        atom_num_classes: int = 118,
-        bond_num_classes: int = 4,
-        atom_target_start: int = 0,
-        atom_target_width: int = 1,
-        bond_target_start: int = 0,
-        bond_target_width: int = 1,
         dropout: float = 0.2,
     ) -> None:
         super().__init__()
-        self.atom_target_start = atom_target_start
-        self.atom_target_width = atom_target_width
-        self.bond_target_start = bond_target_start
-        self.bond_target_width = bond_target_width
+        self.atom_type_encoder = IndexEncoder(
+            property=AugAtomType(), use_one_hot_cache=True, eval=True
+        )
+        self.bond_type_encoder = IndexEncoder(
+            property=AugBondType(), use_one_hot_cache=True, eval=True
+        )
 
         # Bond existence projection
         self.bond_if_proj = torch.nn.Sequential(
@@ -53,13 +55,13 @@ class MSPPretrainingLoss(torch.nn.Module):
         self.bond_type_s = torch.nn.Sequential(
             torch.nn.Linear(2 * hidden_size, hidden_size),
             torch.nn.ReLU(),
-            torch.nn.Linear(hidden_size, bond_num_classes),
+            torch.nn.Linear(hidden_size, len(self.bond_type_encoder.cache)),
         )
         # Atom type classifier
         self.atom_type_s = torch.nn.Sequential(
             torch.nn.Linear(hidden_size, hidden_size),
             torch.nn.ReLU(),
-            torch.nn.Linear(hidden_size, atom_num_classes),
+            torch.nn.Linear(hidden_size, len(self.atom_type_encoder.cache)),
         )
 
         count_hidden = max(hidden_size // 4, 1)
@@ -136,13 +138,16 @@ class MSPPretrainingLoss(torch.nn.Module):
             )
         return metadata
 
-    @staticmethod
-    def _metadata_targets(metadata: dict, device: torch.device):
-        atom_vocab = list(range(1, 119))  # Atomic numbers from 1 to 118
-        bond_vocab = ["SINGLE", "DOUBLE", "AROMATIC", "TRIPLE", "DATIVE", "UNSPECIFIED"]
+    def _metadata_targets(self, metadata: dict, device: torch.device):
+        # atom_vocab = list(range(1, 119))  # Atomic numbers from 1 to 118
+        # bond_vocab = ["SINGLE", "DOUBLE", "AROMATIC", "TRIPLE", "DATIVE", "UNSPECIFIED"]
         atom_mol = metadata["nodes"]["atom_nodes"]
+
         atom_type_targets = torch.tensor(
-            [atom_vocab.index(atom.GetAtomicNum()) for atom in atom_mol.GetAtoms()],
+            [
+                self.atom_type_encoder.encode(str(atom.GetAtomicNum()))
+                for atom in atom_mol.GetAtoms()
+            ],
             dtype=torch.long,
             device=device,
         )
@@ -152,7 +157,7 @@ class MSPPretrainingLoss(torch.nn.Module):
         for bond in within_atoms.GetBonds():
             begin = bond.GetBeginAtomIdx()
             end = bond.GetEndAtomIdx()
-            bond_class = bond_vocab.index(str(bond.GetBondType()))
+            bond_class = self.bond_type_encoder.encode(str(bond.GetBondType()))
             bond_indices.extend(((begin, end), (end, begin)))
             bond_type_targets.extend((bond_class, bond_class))
         edge_index = (
