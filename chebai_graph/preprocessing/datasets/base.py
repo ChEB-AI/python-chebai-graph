@@ -50,7 +50,7 @@ class DataPropertiesSetter(XYBaseDataModule, ABC):
         super().__init__(**kwargs)
         # atom_properties and bond_properties are given as lists containing class_paths
         if properties is not None:
-            properties = [resolve_property(prop) for prop in properties]
+            properties = [resolve_property(prop, self.data_type) for prop in properties]
             properties = self._sort_properties(properties)
         else:
             properties = []

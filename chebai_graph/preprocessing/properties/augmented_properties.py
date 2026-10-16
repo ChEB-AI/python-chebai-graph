@@ -23,14 +23,17 @@ from .base import (
 
 
 class AtomNodeLevel(AllNodeTypeProperty):
-    def __init__(self, encoder: PropertyEncoder | None = None):
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
         """
         Initialize AtomNodeLevel with an optional encoder.
 
         Args:
             encoder (PropertyEncoder | None): Property encoder to use. Defaults to OneHotEncoder.
         """
-        super().__init__(encoder or OneHotEncoder(self))
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | dict) -> str | int | bool:
         """
@@ -46,14 +49,17 @@ class AtomNodeLevel(AllNodeTypeProperty):
 
 
 class AtomFunctionalGroup(FGNodeTypeProperty):
-    def __init__(self, encoder: PropertyEncoder | None = None):
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
         """
         Initialize AtomFunctionalGroup with an optional encoder.
 
         Args:
             encoder (PropertyEncoder | None): Property encoder to use. Defaults to OneHotEncoder.
         """
-        super().__init__(encoder or OneHotEncoder(self))
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | dict) -> str | int | bool:
         """
@@ -69,14 +75,17 @@ class AtomFunctionalGroup(FGNodeTypeProperty):
 
 
 class AtomRingSize(FGNodeTypeProperty):
-    def __init__(self, encoder: PropertyEncoder | None = None):
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
         """
         Initialize AtomRingSize with an optional encoder.
 
         Args:
             encoder (PropertyEncoder | None): Property encoder to use. Defaults to OneHotEncoder.
         """
-        super().__init__(encoder or OneHotEncoder(self))
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | dict) -> int:
         """
@@ -113,14 +122,14 @@ class AtomRingSize(FGNodeTypeProperty):
 
 
 class IsHydrogenBondDonorFG(FGNodeTypeProperty):
-    def __init__(self, encoder: PropertyEncoder | None = None):
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
         """
         Initialize IsHydrogenBondDonorFG with an optional encoder.
 
         Args:
             encoder (PropertyEncoder | None): Property encoder to use. Defaults to BoolEncoder.
         """
-        super().__init__(encoder or BoolEncoder(self))
+        super().__init__(encoder=encoder or BoolEncoder(self), **kwargs)
         # fmt: off
         # https://github.com/thaonguyen217/farm_molecular_representation/blob/main/src/(6)gen_FG_KG.py#L26-L31
         self._hydrogen_bond_donor: set[str] = {
@@ -146,14 +155,14 @@ class IsHydrogenBondDonorFG(FGNodeTypeProperty):
 
 
 class IsHydrogenBondAcceptorFG(FGNodeTypeProperty):
-    def __init__(self, encoder: PropertyEncoder | None = None):
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
         """
         Initialize IsHydrogenBondAcceptorFG with an optional encoder.
 
         Args:
             encoder (PropertyEncoder | None): Property encoder to use. Defaults to BoolEncoder.
         """
-        super().__init__(encoder or BoolEncoder(self))
+        super().__init__(encoder=encoder or BoolEncoder(self), **kwargs)
         # fmt: off
         # https://github.com/thaonguyen217/farm_molecular_representation/blob/main/src/(6)gen_FG_KG.py#L33-L39
         self._hydrogen_bond_acceptor: set[str] = {
@@ -180,13 +189,13 @@ class IsHydrogenBondAcceptorFG(FGNodeTypeProperty):
 
 
 class IsFGAlkyl(FGNodeTypeProperty):
-    def __init__(self, encoder: PropertyEncoder | None = None):
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
         """
         Args:
             encoder (PropertyEncoder | None): Optional encoder to use for this property.
                 Defaults to BoolEncoder if not provided.
         """
-        super().__init__(encoder or BoolEncoder(self))
+        super().__init__(encoder=encoder or BoolEncoder(self), **kwargs)
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | dict) -> int:
         """
@@ -323,12 +332,15 @@ class AugAtomAromaticity(AugNodeValueDefaulter, pr.AtomAromaticity):
 
 
 class BondLevel(AugmentedBondProperty):
-    def __init__(self, encoder: PropertyEncoder | None = None):
+    def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
         """
         Args:
             encoder (PropertyEncoder | None): Optional encoder to use. Defaults to OneHotEncoder.
         """
-        super().__init__(encoder or OneHotEncoder(self))
+        data_type = kwargs.get("data_type")
+        super().__init__(
+            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+        )
 
     def get_bond_value(self, bond: Chem.rdchem.Bond | dict) -> str:
         """
