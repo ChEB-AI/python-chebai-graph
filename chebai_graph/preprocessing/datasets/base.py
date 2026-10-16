@@ -462,6 +462,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         base_data = super().load_processed_data(kind, filename)
         base_df = pd.DataFrame(base_data)
         base_df["ident"] = base_df["ident"].astype(str)
+        len_base_df_before_merge = len(base_df)
         props_categories = {
             "AllNodeTypeProperties": [],
             "FGNodeTypeProperties": [],
@@ -524,11 +525,21 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
                 )
 
             property_df = pd.DataFrame(property_data)
+            assert len(property_df) == len(property_df["ident"].unique()), (
+                f"Duplicate entries found in property {property.name} data. "
+                f"Unique entries {len(property_df['ident'].unique())}. "
+                f"Total entries {len(property_df)}. "
+            )
             property_df["ident"] = property_df["ident"].astype(str)
             property_df.rename(
                 columns={property.name: f"{property.name}"}, inplace=True
             )
+
             base_df = base_df.merge(property_df, on="ident", how="left")
+            assert len(base_df) == len_base_df_before_merge, (
+                f"Length mismatch after merging property {property.name}. "
+                f"Expected {len_base_df_before_merge}, got {len(base_df)}"
+            )
 
         base_df["features"] = base_df.apply(
             lambda row: self._merge_props_into_base(
@@ -560,9 +571,10 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
         if geom_data is None:
             return None
         if isinstance(geom_data, tuple):
-            geom_data = geom_data[
-                0
-            ]  # ignore additional returned data from _read_data (e.g. augmented molecule dict)
+            # include custom metadata returned data from _read_data (e.g. augmented molecule dict)
+            custom_metadata = geom_data[1]
+            geom_data = geom_data[0]
+            geom_data["custom_metadata"] = custom_metadata
         assert isinstance(geom_data, GeomData)
 
         is_atom_node = geom_data.is_atom_node
@@ -632,6 +644,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             is_atom_node=is_atom_node,
             is_fg_node=is_fg_node,
             is_graph_node=is_graph_node,
+            custom_metadata=geom_data.custom_metadata,
         )
 
     def _build_node_property_tensor(

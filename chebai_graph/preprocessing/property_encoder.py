@@ -106,6 +106,7 @@ class IndexEncoder(PropertyEncoder):
         if indices_dir is None:
             indices_dir = os.path.dirname(inspect.getfile(self.__class__))
         self.dirname = indices_dir
+        self._use_one_hot_cache = kwargs.get("use_one_hot_cache", False)
         # load already existing cache
         self._data_type = data_type
         with open(self.index_path, "r") as pk:
@@ -120,6 +121,8 @@ class IndexEncoder(PropertyEncoder):
     @property
     def name(self) -> str:
         """Name of this encoder."""
+        if self._use_one_hot_cache:
+            return "one_hot"
         return "index"
 
     @property
