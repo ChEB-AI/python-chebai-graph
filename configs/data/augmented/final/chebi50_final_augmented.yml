@@ -1,5 +1,7 @@
 class_path: chebai_graph.preprocessing.datasets.ChEBI50_GNWA_FGWA_WFGE_AsPerNodeType
 init_args:
+  splits_file_path: data/chebi_v252/ChEBI50/processed/splits.csv
+  chebi_version: 252
   properties:
       # All Node type properties
       - chebai_graph.preprocessing.properties.AtomNodeLevel
