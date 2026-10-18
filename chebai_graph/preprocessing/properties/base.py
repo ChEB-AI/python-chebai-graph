@@ -33,14 +33,16 @@ class MolecularProperty(ABC):
 
     def __init__(
         self,
-        data_type: str,
+        tokens_directory: str,
         encoder: PropertyEncoder | None = None,
     ) -> None:
-        assert data_type is not None, "data_type must be provided for MolecularProperty"
+        assert tokens_directory is not None, (
+            "tokens_directory must be provided for MolecularProperty"
+        )
         if encoder is None:
-            encoder = IndexEncoder(self, data_type=data_type)
+            encoder = IndexEncoder(self, tokens_directory=tokens_directory)
         self.encoder: PropertyEncoder = encoder
-        self._data_type = data_type
+        self.tokens_directory = tokens_directory
 
     @property
     def name(self) -> str:

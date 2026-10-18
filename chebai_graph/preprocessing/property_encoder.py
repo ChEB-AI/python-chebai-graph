@@ -100,7 +100,7 @@ class IndexEncoder(PropertyEncoder):
     """
 
     def __init__(
-        self, property, data_type: str, indices_dir: str | None = None, **kwargs
+        self, property, tokens_directory: str, indices_dir: str | None = None, **kwargs
     ) -> None:
         super().__init__(property, **kwargs)
         if indices_dir is None:
@@ -108,7 +108,7 @@ class IndexEncoder(PropertyEncoder):
         self.dirname = indices_dir
         self._use_one_hot_cache = kwargs.get("use_one_hot_cache", False)
         # load already existing cache
-        self._data_type = data_type
+        self.tokens_directory = tokens_directory
         with open(self.index_path, "r") as pk:
             self.cache: dict[str, int] = {
                 token.strip(): idx for idx, token in enumerate(pk)
@@ -132,11 +132,13 @@ class IndexEncoder(PropertyEncoder):
         Returns:
             Path to index file.
         """
-        assert self._data_type is not None, "data_type must be set for IndexEncoder"
+        assert self.tokens_directory is not None, (
+            "tokens_directory must be set for IndexEncoder"
+        )
         index_path = os.path.join(
             self.dirname,
             "bin",
-            self._data_type,
+            self.tokens_directory,
             self.property.name,
             f"indices_{self.name}.txt",
         )

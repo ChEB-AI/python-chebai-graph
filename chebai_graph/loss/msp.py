@@ -32,10 +32,16 @@ class MSPPretrainingLoss(torch.nn.Module):
     ) -> None:
         super().__init__()
         self.atom_type_encoder = IndexEncoder(
-            property=AugAtomType(), use_one_hot_cache=True, eval=True
+            property=AugAtomType(),
+            use_one_hot_cache=True,
+            eval=True,
+            tokens_directory="_shared",
         )
         self.bond_type_encoder = IndexEncoder(
-            property=AugBondType(), use_one_hot_cache=True, eval=True
+            property=AugBondType(),
+            use_one_hot_cache=True,
+            eval=True,
+            tokens_directory="_shared",
         )
 
         # Bond existence projection
