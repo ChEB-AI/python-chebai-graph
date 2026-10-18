@@ -181,6 +181,7 @@ class GraphNetWrapper(GraphBaseNet, ABC):
                 "Skipped incompatible pretrained edge weights: "
                 + ", ".join(sorted(skipped_edge_weights))
             )
+        print(f"Loaded pretrained GNN weights from {checkpoint_path!r} successfully.")
 
     @abstractmethod
     def _get_gnn(self, config: dict) -> torch.nn.Module:

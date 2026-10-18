@@ -53,7 +53,9 @@ class TestGraphCollator(unittest.TestCase):
         second_batch = GraphCollator()([row])
 
         self.assertEqual(first_batch.additional_fields["custom_metadata"], [[metadata]])
-        self.assertEqual(second_batch.additional_fields["custom_metadata"], [[metadata]])
+        self.assertEqual(
+            second_batch.additional_fields["custom_metadata"], [[metadata]]
+        )
         self.assertIn("custom_metadata", graph)
 
 
