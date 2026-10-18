@@ -29,19 +29,21 @@ class MSPPretrainingLoss(torch.nn.Module):
         self,
         hidden_size: int,
         dropout: float = 0.2,
+        tokens_directory: str = "_shared",
     ) -> None:
         super().__init__()
+        self.tokens_directory = tokens_directory
         self.atom_type_encoder = IndexEncoder(
-            property=AugAtomType(),
+            property=AugAtomType(tokens_directory=self.tokens_directory),
             use_one_hot_cache=True,
             eval=True,
-            tokens_directory="_shared",
+            tokens_directory=self.tokens_directory,
         )
         self.bond_type_encoder = IndexEncoder(
-            property=AugBondType(),
+            property=AugBondType(tokens_directory=self.tokens_directory),
             use_one_hot_cache=True,
             eval=True,
-            tokens_directory="_shared",
+            tokens_directory=self.tokens_directory,
         )
 
         # Bond existence projection
