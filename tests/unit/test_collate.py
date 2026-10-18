@@ -43,6 +43,19 @@ class TestGraphCollator(unittest.TestCase):
         )
         self.assertNotIn("y", batch.x[0])
 
+    def test_custom_metadata_survives_repeated_collation(self):
+        metadata = {"nodes": {"atom_nodes": [6]}, "edges": {}}
+        graph = self._graph()
+        graph.custom_metadata = metadata
+        row = {"features": graph, "labels": None, "ident": "a"}
+
+        first_batch = GraphCollator()([row])
+        second_batch = GraphCollator()([row])
+
+        self.assertEqual(first_batch.additional_fields["custom_metadata"], [[metadata]])
+        self.assertEqual(second_batch.additional_fields["custom_metadata"], [[metadata]])
+        self.assertIn("custom_metadata", graph)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -21,7 +21,9 @@ class GraphCollator(RaggedCollator):
         # and unlabelled batches otherwise make PyG collate a partial `y` key.
         merged_data = []
         for row in data:
-            features = row["features"]
+            # Dataset samples may be cached and reused across epochs. Collation
+            # removes temporary attributes below, so never mutate the source graph.
+            features = row["features"].clone()
             if "y" in features:
                 del features.y
             merged_data.append(features)
@@ -34,7 +36,9 @@ class GraphCollator(RaggedCollator):
                 if "edge_attr" not in store:
                     store["edge_attr"] = torch.tensor([])
                 if "custom_metadata" in store:
-                    graph_metadata.append(store.pop("custom_metadata", None))
+                    graph_metadata.append(store.pop("custom_metadata"))
+                else:
+                    pass
             custom_metadata.append(graph_metadata)
 
         # Ensure all attributes are float tensors to prevent torch.cat dtype issues
