@@ -190,7 +190,7 @@ class DataPropertiesSetter(XYBaseDataModule, ABC):
         self._setup_properties()
         super()._after_setup(**kwargs)
 
-    def _preprocess_smiles_for_pred(
+    def _preprocess_molecule_for_pred(
         self, idx, raw_data: str | Chem.Mol, model_hparams: Optional[dict] = None
     ) -> Optional[dict]:
         """Preprocess prediction data."""
@@ -646,7 +646,7 @@ class GraphPropAsPerNodeType(DataPropertiesSetter, ABC):
             is_atom_node=is_atom_node,
             is_fg_node=is_fg_node,
             is_graph_node=is_graph_node,
-            custom_metadata=geom_data.custom_metadata,
+            custom_metadata=getattr(geom_data, "custom_metadata", None),
         )
 
     def _build_node_property_tensor(

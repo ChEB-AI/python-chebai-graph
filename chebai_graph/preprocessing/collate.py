@@ -23,7 +23,12 @@ class GraphCollator(RaggedCollator):
         for row in data:
             # Dataset samples may be cached and reused across epochs. Collation
             # removes temporary attributes below, so never mutate the source graph.
-            features = row["features"].clone()
+            if isinstance(row["features"], tuple):
+                # If tuple, then metadata is in second element. Move it to the first element for consistency.
+                row["features"][0]["custom_metadata"] = row["features"][1]
+                features = row["features"][0].clone()
+            else:
+                features = row["features"].clone()
             if "y" in features:
                 del features.y
             merged_data.append(features)
