@@ -30,9 +30,10 @@ class AtomNodeLevel(AllNodeTypeProperty):
         Args:
             encoder (PropertyEncoder | None): Property encoder to use. Defaults to OneHotEncoder.
         """
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | dict) -> str | int | bool:
@@ -56,9 +57,10 @@ class AtomFunctionalGroup(FGNodeTypeProperty):
         Args:
             encoder (PropertyEncoder | None): Property encoder to use. Defaults to OneHotEncoder.
         """
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | dict) -> str | int | bool:
@@ -82,9 +84,10 @@ class AtomRingSize(FGNodeTypeProperty):
         Args:
             encoder (PropertyEncoder | None): Property encoder to use. Defaults to OneHotEncoder.
         """
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom | dict) -> int:
@@ -337,9 +340,10 @@ class BondLevel(AugmentedBondProperty):
         Args:
             encoder (PropertyEncoder | None): Optional encoder to use. Defaults to OneHotEncoder.
         """
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_bond_value(self, bond: Chem.rdchem.Bond | dict) -> str:

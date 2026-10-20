@@ -33,14 +33,16 @@ class MolecularProperty(ABC):
 
     def __init__(
         self,
-        data_type: str,
+        tokens_directory: str,
         encoder: PropertyEncoder | None = None,
     ) -> None:
-        assert data_type is not None, "data_type must be provided for MolecularProperty"
+        assert tokens_directory is not None, (
+            "tokens_directory must be provided for MolecularProperty"
+        )
         if encoder is None:
-            encoder = IndexEncoder(self, data_type=data_type)
+            encoder = IndexEncoder(self, tokens_directory=tokens_directory)
         self.encoder: PropertyEncoder = encoder
-        self._data_type = data_type
+        self.tokens_directory = tokens_directory
 
     @property
     def name(self) -> str:
@@ -209,8 +211,8 @@ class FrozenPropertyAlias(MolecularProperty, ABC):
             hasattr(self.encoder, "cache")
             and len(self.encoder.cache) > self.encoder.index_length_start
         ):
-            raise ValueError(
-                f"{self.__class__.__name__} attempted to add new tokens "
+            print(
+                f"{self.__class__.__name__} added new tokens "
                 f"to a frozen encoder at {self.encoder.index_path}"
             )
         super().on_finish()

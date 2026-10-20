@@ -1,4 +1,4 @@
-class_path: chebai_graph.preprocessing.datasets.ClinTox_WFGE_WGN_AsPerNodeType
+class_path: chebai_graph.preprocessing.datasets.ClinTox_GNWA_FGWA_WFGE_AsPerNodeType
 init_args:
   properties:
       # All Node type properties
