@@ -77,7 +77,8 @@ class GraphModelBase(torch.nn.Module, ABC):
         self.hidden_channels = int(config["hidden_channels"])
         self.out_channels = int(config["out_channels"])
         self.edge_dim = int(config["edge_dim"])  # number of bond properties
-        self.dropout = float(config["dropout"])
+        self.dropout = float(config.get("dropout", 0.0))
+        print("----------Dropout set to: ", self.dropout)
 
 
 class GraphNetWrapper(GraphBaseNet, ABC):
@@ -113,7 +114,7 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         if self.use_batch_norm:
             self.batch_norm = torch.nn.BatchNorm1d(self.lin_input_dim)
 
-        lin_hidden_dim = kwargs.get("lin_hidden_dim", gnn_out_dim)
+        lin_hidden_dim = kwargs.get("lin_hidden_dim", gnn_out_dim // 2)
         self.lin_sequential: torch.nn.Sequential = self._get_linear_module_list(
             n_linear_layers=n_linear_layers,
             in_dim=self.lin_input_dim,
