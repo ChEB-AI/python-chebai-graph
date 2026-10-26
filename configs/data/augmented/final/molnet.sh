@@ -20,7 +20,8 @@
 #   - wandb credentials in ~/.netrc (or run with a local logger).
 # ============================================================
 
-set -euo pipefail
+set -Eeuo pipefail
+trap 'status=$?; echo "ERROR: command failed with status ${status} at line ${BASH_LINENO[0]}: ${BASH_COMMAND}" >&2; exit "$status"' ERR
 
 # ============================================================
 # Local paths

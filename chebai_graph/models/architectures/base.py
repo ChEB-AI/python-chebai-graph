@@ -101,6 +101,7 @@ class GraphNetWrapper(GraphBaseNet, ABC):
             n_linear_layers (int): Number of linear layers.
             **kwargs: Additional arguments.
         """
+        lin_hidden_dim = kwargs.pop("lin_hidden_dim", None)
         super().__init__(**kwargs)
         self.gnn = self._get_gnn(config)
         if pretrained_checkpoint is not None:
@@ -113,8 +114,9 @@ class GraphNetWrapper(GraphBaseNet, ABC):
         self.use_batch_norm = use_batch_norm
         if self.use_batch_norm:
             self.batch_norm = torch.nn.BatchNorm1d(self.lin_input_dim)
+        if lin_hidden_dim is None:
+            lin_hidden_dim = gnn_out_dim // 2
 
-        lin_hidden_dim = kwargs.get("lin_hidden_dim", gnn_out_dim // 2)
         self.lin_sequential: torch.nn.Sequential = self._get_linear_module_list(
             n_linear_layers=n_linear_layers,
             in_dim=self.lin_input_dim,
