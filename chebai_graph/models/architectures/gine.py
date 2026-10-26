@@ -1,7 +1,7 @@
 from typing import Any, Final
 
 from torch import Tensor
-from torch.nn import ELU
+from torch.nn import ELU, ReLU
 from torch_geometric import nn as tgnn
 from torch_geometric.data import Data as GraphData
 from torch_geometric.nn.conv import MessagePassing
@@ -65,6 +65,55 @@ class GINEModel(BasicGNN):
         return tgnn.GINEConv(mlp, **kwargs)
 
 
+class HiMolGINEModel(BasicGNN):
+    """
+    A GIN-based GNN model based on PyG's BasicGNN, using GINEConv layers so that
+    edge (bond) features are incorporated into the message-passing step.
+
+    See:
+
+    Attributes:
+        supports_edge_weight (bool): Indicates edge weights are not supported.
+        supports_edge_attr (bool): Indicates edge attributes are supported.
+        supports_norm_batch (bool): Indicates if batch normalization is supported.
+    """
+
+    supports_edge_weight: Final[bool] = False
+    supports_edge_attr: Final[bool] = True
+    supports_norm_batch: Final[bool]
+
+    def init_conv(
+        self, in_channels: int | tuple[int, int], out_channels: int, **kwargs: Any
+    ) -> MessagePassing:
+        """
+        Initializes a GINEConv layer.
+
+        The inner network is a 2-layer MLP (Linear -> act -> Linear, no
+        activation on the last layer), matching both
+        `torch_geometric.nn.models.GIN.init_conv` and the GIN paper's
+        message-transform MLP. `edge_dim` (passed via **kwargs) lets
+        GINEConv linearly project bond features onto the node feature
+        space before adding them into the neighbor messages.
+
+        Args:
+            in_channels (int or Tuple[int, int]): Number of input channels.
+            out_channels (int): Number of output channels.
+            **kwargs: Additional keyword arguments for the convolution layer
+                (e.g. `edge_dim`, `train_eps`).
+
+        Returns:
+            MessagePassing: A GINEConv layer instance.
+        """
+        mlp = MLP(
+            [in_channels, 2 * out_channels, out_channels],
+            act=self.act,
+            act_first=self.act_first,
+            norm=self.norm,
+            norm_kwargs=self.norm_kwargs,
+        )
+        return tgnn.GINEConv(mlp, **kwargs)
+
+
 class GINEConvNetBase(GraphModelBase):
     """
     Base model class for applying GINEConv layers to graph-structured data.
@@ -85,20 +134,33 @@ class GINEConvNetBase(GraphModelBase):
     """
 
     def __init__(self, config: dict[str, Any], **kwargs: Any):
+        use_himol_model = bool(config.pop("use_himol_model", False))
+
         super().__init__(config=config, **kwargs)
         self.activation = ELU()  # Instantiate ELU once for reuse.
         self.train_eps = bool(config.get("train_eps", True))
-
-        self.gine: BasicGNN = GINEModel(
-            in_channels=self.in_channels,
-            hidden_channels=self.hidden_channels,
-            out_channels=self.out_channels,
-            num_layers=self.num_layers,
-            dropout=self.dropout,
-            edge_dim=self.edge_dim,
-            train_eps=self.train_eps,
-            act=self.activation,
-        )
+        if use_himol_model:
+            self.gine: BasicGNN = HiMolGINEModel(
+                in_channels=self.in_channels,
+                hidden_channels=self.hidden_channels,
+                out_channels=self.out_channels,
+                num_layers=self.num_layers,
+                dropout=self.dropout,
+                edge_dim=self.edge_dim,
+                train_eps=self.train_eps,
+                act=ReLU(),
+            )
+        else:
+            self.gine: BasicGNN = GINEModel(
+                in_channels=self.in_channels,
+                hidden_channels=self.hidden_channels,
+                out_channels=self.out_channels,
+                num_layers=self.num_layers,
+                dropout=self.dropout,
+                edge_dim=self.edge_dim,
+                train_eps=self.train_eps,
+                act=self.activation,
+            )
 
     def forward(self, batch: dict[str, Any]) -> Tensor:
         """

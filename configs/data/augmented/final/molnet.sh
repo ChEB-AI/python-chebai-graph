@@ -154,9 +154,9 @@ for SEED in "${SEEDS[@]}"; do
         python -m chebai fit \
             --trainer="$TRAINER" \
             --trainer.logger=configs/training/wandb_logger.yml \
-            "--trainer.logger.init_args.tags=[\"augmented_paper\", \"classif-head\", \"aug-ablation\",\"$DATASET_LOWER\"]" \
+            "--trainer.logger.init_args.tags=[\"augmented_paper\",\"$DATASET_LOWER\"]" \
             "${CALLBACK_ARGS[@]}" \
-            --model="$CHEBAI_GRAPH_DIR/configs/model/augmented/pooling/no_pooling/gat.yml" \
+            --model="$CHEBAI_GRAPH_DIR/configs/model/augmented/pooling/amg_pool/gat.yml" \
             --model.train_metrics="$METRICS" \
             --model.test_metrics="$METRICS" \
             --model.val_metrics="$METRICS" \
@@ -171,9 +171,10 @@ for SEED in "${SEEDS[@]}"; do
             --model.optimizer_kwargs.lr_gnn="$LR_GNN" \
             --model.optimizer_kwargs.lr_linear="$LR_LINEAR" \
             --seed_everything="$SEED" \
-            --model.pretrained_checkpoint=/home/aditya/python-chebai-graph/msp_best_epoch=92_train_loss=0.0009.ckpt \
             --data.init_args.tokens_directory=_shared \
-            --model.init_args.n_linear_layers=2 \
+            # --model.pretrained_checkpoint=/home/aditya/python-chebai-graph/msp_best_epoch=92_train_loss=0.0009.ckpt \
+
+
 
         CHECKPOINT_PATH=$(
             find "$CHEBAI_DIR/logs" -type f \
@@ -195,7 +196,7 @@ for SEED in "${SEEDS[@]}"; do
             --trainer.devices=1 \
             --trainer.num_nodes=1 \
             --ckpt_path="$CHECKPOINT_PATH" \
-            --model="$CHEBAI_GRAPH_DIR/configs/model/augmented/pooling/no_pooling/gat.yml" \
+            --model="$CHEBAI_GRAPH_DIR/configs/model/augmented/pooling/amg_pool/gat.yml" \
             --model.test_metrics="$METRICS" \
             --data="$CHEBAI_GRAPH_DIR/configs/data/augmented/final/${DATASET}_final_augmented.yml" \
             --data.init_args.batch_size=32 \
@@ -204,7 +205,6 @@ for SEED in "${SEEDS[@]}"; do
             --model.criterion=configs/loss/bce_unweighted.yml \
             --data.init_args.splits_file_path="data/${DATASET}:MNClassification/${DATASET}/processed/splits.csv" \
             --data.init_args.tokens_directory=_shared \
-            --model.init_args.n_linear_layers=2 \
 
         TEST_METRICS_FILE=$(
             find "$CHEBAI_DIR/logs/$TEST_NAME" -type f \
