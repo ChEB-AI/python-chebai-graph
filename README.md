@@ -174,14 +174,35 @@ sbatch configs/data/augmented/pretraining/zinc_msp_pretraining.sh
 ```
 
 ## Augmented Graphs
-_See thesis related to this work [here](https://www.uni-osnabrueck.de/fileadmin/informatik/Arbeitsgruppen/Hybride_KI/mt_aditya_khedekar.pdf)_.
+
 
 Graph Neural Networks (GNNs) often fail to explicitly leverage the chemically meaningful substructures present within molecules (i.e. **functional groups (FGs)**).  To make this implicit information explicitly accessible to GNNs, we augment molecular graphs with **artificial nodes** that represent these substructures. The resulting graph are referred to as **augmented graphs**.
 > Note: Rings are also treated as functional groups in our work.
 
-In these augmented graphs, each functional group node is connected to the atoms that constitute the group. Additionally, two functional group nodes are connected if any atom belonging to one group shares a bond with an atom from the other group. We further introduce a **graph node**, an extra node connected to all functional group nodes.
+In these augmented graphs, each functional group node is connected to the atoms
+that constitute the group. Additionally, two functional group nodes are
+connected if any atom belonging to one group shares a bond with an atom from
+the other group. We also introduce a **graph node**, which is connected to all
+atom nodes. Rings are treated as functional groups.
 
-Among all the connection schemes we evaluated, this configuration delivered the strongest performance. We denote it using the abbreviation **WFG_WFGE_WGN** in our work and is shown in below figure.
+### Best configuration: `GNWA_FGWA_WFGE`
+
+Among the connection schemes evaluated, **GNWA_FGWA_WFGE** delivered the
+strongest performance. The name describes the complete augmented topology:
+
+- **GNWA** (*Graph Node With Atom connections*): the graph node is connected
+  to every atom node.
+- **FGWA** (*Functional Group Nodes With Atom connections*): every functional
+  group node is connected to the atoms that belong to that group.
+- **WFGE** (*With Functional Group Edges*): functional group nodes are
+  connected when their member atoms are connected by a molecular bond.
+
+This configuration is used by the final ChEBI50 and MoleculeNet experiments.
+Its ChEBI50 data definition is
+[`chebi50_final_augmented.yml`](configs/data/augmented/final/chebi50_final_augmented.yml),
+and its atom-motif-graph pooling model is
+[`amg_pool/gat.yml`](configs/model/augmented/pooling/amg_pool/gat.yml).
+The topology is illustrated below.
 
 <img width="1220" height="668" alt="mol_to_aug_mol" src="https://github.com/user-attachments/assets/0aba6b80-765b-45a6-913a-7d628f14a5db" />
 
@@ -191,7 +212,7 @@ Among all the connection schemes we evaluated, this configuration delivered the 
 Below is the command for the model and data configuration that achieved the best classification performance using augmented graphs.
 
 ```bash
-python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.logger=configs/training/wandb_logger.yml --model=../python-chebai-graph/configs/model/gat_aug_amgpool.yml --model.train_metrics=configs/metrics/micro-macro-f1.yml --model.test_metrics=configs/metrics/micro-macro-f1.yml --model.val_metrics=configs/metrics/micro-macro-f1.yml --data=../python-chebai-graph/configs/data/chebi50_aug_prop_as_per_node.yml --data.init_args.batch_size=128 --trainer.accumulate_grad_batches=4 --data.init_args.num_workers=10 --model.pass_loss_kwargs=false --data.init_args.chebi_version=241 --trainer.min_epochs=200 --trainer.max_epochs=200 --model.criterion=configs/loss/bce_weighted.yml --trainer.logger.init_args.name=gatv2_amg_s0
+python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.logger=configs/training/wandb_logger.yml --model=../python-chebai-graph/configs/model/augmented/pooling/amg_pool/gat.yml --model.train_metrics=configs/metrics/micro-macro-f1.yml --model.test_metrics=configs/metrics/micro-macro-f1.yml --model.val_metrics=configs/metrics/micro-macro-f1.yml --data=../python-chebai-graph/configs/data/augmented/properties/gnwa_fgwa_wfge/chebi50_all_props.yml --data.init_args.batch_size=64 --trainer.accumulate_grad_batches=1 --data.init_args.num_workers=10 --model.pass_loss_kwargs=false --data.init_args.chebi_version=252 --trainer.min_epochs=200 --trainer.max_epochs=200 --model.criterion=configs/loss/bce_unweighted.yml --trainer.logger.init_args.name=gnwa_fgwa_wfge_final_42 --model.init_args.optimizer_kwargs.lr=0.002 --seed_everything=42 --data.init_args.splits_file_path=data/chebi_v252/ChEBI50/processed/splits.csv --trainer.logger.init_args.tags=["augmented_paper","final:gnwa_fgwa_wfge"]
 ```
 
 ### Model Hyperparameters
