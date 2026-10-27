@@ -147,6 +147,14 @@ uses dataset-specific dropout and learning rates. Run it with:
 bash configs/data/augmented/final/molnet.sh
 ```
 
+For comparisons with published MoleculeNet results, use scaffold splits for
+BBBP and BACE and random splits for Tox21, ToxCast, SIDER, and ClinTox. The
+reported benchmark metric is the mean test ROC-AUC over three independent
+runs; the runner also records the F1 metrics selected for each dataset. The
+MoleculeNet experiments can be run with or without initializing the model from
+the ZINC15 MSP checkpoint, allowing the contribution of pretraining to be
+measured separately.
+
 ### Final ChEBI50 training
 
 [`final-chebi.sh`](configs/data/augmented/final/final-chebi.sh) is a Slurm
@@ -185,6 +193,12 @@ connected if any atom belonging to one group shares a bond with an atom from
 the other group. We also introduce a **graph node**, which is connected to all
 atom nodes. Rings are treated as functional groups.
 
+Functional-group nodes encode both the presence and the identity of the
+detected group, rather than representing an unlabeled fragment. The graph node
+acts as a global or master node: it provides a shortcut for information
+exchange between distant parts of a molecule and collects a whole-molecule
+representation.
+
 ### Best configuration: `GNWA_FGWA_WFGE`
 
 Among the connection schemes evaluated, **GNWA_FGWA_WFGE** delivered the
@@ -203,6 +217,13 @@ Its ChEBI50 data definition is
 and its atom-motif-graph pooling model is
 [`amg_pool/gat.yml`](configs/model/augmented/pooling/amg_pool/gat.yml).
 The topology is illustrated below.
+
+The final augmented representation initializes atoms, bonds, functional-group
+nodes, and the graph node with chemically meaningful, node-type-specific
+properties. This is different from the isolated topology ablations, where
+artificial nodes and added edges use zero initialization so that the effect of
+connectivity can be measured independently of feature initialization and
+type-specific pooling.
 
 <img width="1220" height="668" alt="mol_to_aug_mol" src="https://github.com/user-attachments/assets/0aba6b80-765b-45a6-913a-7d628f14a5db" />
 
@@ -261,6 +282,12 @@ size. These values can be overridden, for example:
 Set `v2=False` to use the original `GATConv`; the default `v2=True` uses
 `GATv2Conv`, which provides dynamic rather than static attention. For details,
 see the [GATv2 paper](https://arxiv.org/abs/2105.14491).
+
+The augmentation and property initialization do not add trainable parameters
+to the core GNN. Type-specific pooling can increase the size of the
+classification head, but the main performance gain is intended to come from
+the augmented molecular representation and its chemically meaningful
+features.
 
 #### **ResGated Architecture**
 
