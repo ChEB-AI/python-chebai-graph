@@ -196,45 +196,75 @@ python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.lo
 
 ### Model Hyperparameters
 
+The model paths below are relative to the `python-chebai` working directory
+used by the training commands. In this repository they correspond to the
+following configuration files:
+
 #### **GAT Architecture**
 
-To use a GAT-based model, choose **one** of the following configs:
+Choose one of the following GAT configurations:
 
-- **Standard Pooling**: `--model=../python-chebai-graph/configs/model/gat.yml`
-   > Standard pooling sums the learned representations from all the nodes to produce a single representation which is used for classification.
+- **Standard pooling**:
+  [`configs/model/baselines/gat.yml`](configs/model/baselines/gat.yml)
+  (`--model=../python-chebai-graph/configs/model/baselines/gat.yml`).
+  `GATGraphPred` pools all node representations into one graph
+  representation. This configuration is used for the ablation baselines.
+- **Atom-augmented pooling**:
+  [`configs/model/augmented/pooling/aa_pool/gat.yml`](configs/model/augmented/pooling/aa_pool/gat.yml).
+  `GATAAPoolGraphPred` aggregates atom-node representations separately from
+  artificial-node representations, then concatenates the two pooled vectors.
+- **Atom-motif-graph pooling**:
+  [`configs/model/augmented/pooling/amg_pool/gat.yml`](configs/model/augmented/pooling/amg_pool/gat.yml).
+  `GATAMGPoolGraphPred` separately aggregates atom nodes, functional-group
+  nodes, and the graph node before classification. This is the configuration
+  used by the final augmented experiments.
+- **Augmented graphs without separate pooling**:
+  [`configs/model/augmented/pooling/no_pooling/gat.yml`](configs/model/augmented/pooling/no_pooling/gat.yml).
+  This uses `GATGraphPred` with augmented node and edge features while pooling
+  all nodes together.
 
-- **Atom-Augmented Node Pooling**: `--model=../python-chebai-graph/configs/model/gat_aug_aagpool.yml`
-   > With this pooling stratergy, the learned representations are first separated into **two distinct sets**: those from atom nodes and those from all artificial nodes (both functional groups and the graph node). The representations within each set are aggregated separately (using summation) to yield two distinct single vectors. These two resulting vectors are then concatenated before being passed to the classification layer.
+The augmented GAT configurations use 203 node features and 12 edge features;
+the baseline configuration uses 161 node features and 8 edge features. All
+current GAT configurations default to four message-passing layers, 256 hidden
+channels, 512 output channels, eight attention heads, and GATv2
+(`v2: True`). The number of heads must divide the output or hidden channel
+size. These values can be overridden, for example:
 
-- **Atom–Motif–Graph Node Pooling**: `--model=../python-chebai-graph/configs/model/gat_aug_amgpool.yml`
-   >  This approach employs a finer granularity of separation, distinguishing learned representations into **three distinct sets**: atom nodes, Functional Group (FG) nodes, and the single graph node. Summation is performed separately on the atom node set and the FG node set, yielding two vectors. These two vectors are then concatenated along with the single vector corresponding to the graph node before the final linear layer.
+```bash
+--model.config.num_layers=5
+--model.config.heads=4
+--model.config.v2=False
+--model.config.dropout=0.1
+```
 
-#### GAT-specific hyperparameters
-
-- **Number of message-passing layers**: `--model.config.num_layers=5`        (default: 4)
-- **Attention heads**: `--model.config.heads=4`             (default: 8)
-  > **Note**: The number of heads should be divisible by the output channels (or hidden channels if output channels are not specified).
-
-- **To Use different GAT versions**:
-    - **Use GAT**: `--model.config.v2=False`
-
-    - **Use GATv2**: `--model.config.v2=True`             (__default__)
-      > **Note**: GATv2 addresses the limitation of static attention in GAT by introducing a dynamic attention mechanism. For further details, please refer to the [original GATv2 paper](https://arxiv.org/abs/2105.14491).
+Set `v2=False` to use the original `GATConv`; the default `v2=True` uses
+`GATv2Conv`, which provides dynamic rather than static attention. For details,
+see the [GATv2 paper](https://arxiv.org/abs/2105.14491).
 
 #### **ResGated Architecture**
 
-To use a ResGated GNN model, choose **one** of the following configs:
+Choose one of the following ResGated configurations:
 
-- **Atom–Motif–Graph Node Pooling**: `--model=../python-chebai-graph/configs/model/res_aug_amgpool.yml`
-- **Atom-Augmented Node Pooling**: `--model=../python-chebai-graph/configs/model/res_aug_aagpool.yml`
-- **Standard Pooling**: `--model=../python-chebai-graph/configs/model/resgated.yml`
+- **Atom-motif-graph pooling**:
+  [`configs/model/res_aug_amgpool.yml`](configs/model/res_aug_amgpool.yml).
+- **Atom-augmented pooling**:
+  [`configs/model/res_aug_aapool.yml`](configs/model/res_aug_aapool.yml).
 
-#### **Common Hyperparameters**
+Both augmented ResGated configurations use 203 node features, 12 edge
+features, four message-passing layers, 256 hidden channels, and 512 output
+channels. The ResGated convolution does not expose GAT attention-head or
+`v2` settings.
 
-These can be used for both GAT and ResGated architectures:
+#### **Shared hyperparameters**
 
-- **Dropout**: `--model.config.dropout=0.1`         (default: 0)
-- **Number of final linear layers**: `--model.n_linear_layers=2`         (default: 1)
+These settings are available for both GAT and ResGated model configurations:
+
+- **Dropout**: `--model.config.dropout=0.1` (default: `0`)
+- **Number of final linear layers**: `--model.n_linear_layers=2`
+  (default: `1`)
+
+The complete defaults for each architecture are defined directly in the
+linked YAML files above.
 
 ## Random Node Initialization
 
