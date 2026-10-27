@@ -76,6 +76,103 @@ The list can be found in the `configs/data/chebi50_graph_properties.yml` file.
 python -m chebai fit --trainer=configs/training/default_trainer.yml --trainer.logger=configs/training/csv_logger.yml --model=../python-chebai-graph/configs/model/gnn_res_gated.yml --model.train_metrics=configs/metrics/micro-macro-f1.yml --model.test_metrics=configs/metrics/micro-macro-f1.yml --model.val_metrics=configs/metrics/micro-macro-f1.yml --data=../python-chebai-graph/configs/data/chebi50_graph_properties.yml --data.init_args.batch_size=128 --trainer.accumulate_grad_batches=4 --data.init_args.num_workers=10 --model.pass_loss_kwargs=false --data.init_args.chebi_version=241 --trainer.min_epochs=200 --trainer.max_epochs=200 --model.criterion=configs/loss/bce_weighted.yml
 ```
 
+## Experiment Scripts
+
+The scripts below reproduce the augmented-graph experiments introduced in this
+work. They expect both repositories to be checked out as described in
+[Recommended Folder Structure](#recommended-folder-structure), and they run
+`python -m chebai` from the `python-chebai` checkout. Update the paths,
+environment activation, and logging configuration in the scripts for a
+different machine.
+
+### Augmentation ablations
+
+Each ablation script evaluates the same ten graph-construction variants:
+`baseline`, `FGN`, `FGN+E`, `FGN+WGN`, `FGN+E+WGN`, `WGN`,
+`gn_wall_fgwa_nfge`, `gn_wall_fgwa_wfge`, `gnwa_fgwa_nfge`, and
+`gnwa_fgwa_wfge`. The experiments use seeds `0`, `42`, and `12345`, so each
+dataset runs 30 configurations in total. The variants compare whether
+functional-group nodes (FGN), functional-group edges (FGE), and the graph node
+(WGN) are included, and whether their connections use the corresponding
+weighted or unweighted schemes.
+
+- [`aug-ablation-chebi.sh`](configs/data/augmented/aug-ablation/aug-ablation-chebi.sh)
+  is a Slurm job-array runner for ChEBI50. It schedules the 10 configurations
+  across the three seeds, trains the baseline GAT, and uses the ChEBI v252
+  split.
+- [`aug-ablation-tox21.sh`](configs/data/augmented/aug-ablation/aug-ablation-tox21.sh)
+  runs the same 30-experiment matrix for Tox21 serially on one local GPU. It
+  reports micro/macro F1 and ROC-AUC using the Tox21 split.
+- [`aug-ablation-toxcast.sh`](configs/data/augmented/aug-ablation/aug-ablation-toxcast.sh)
+  runs the corresponding ToxCast matrix serially on one local GPU. It uses
+  ToxCast-specific input dimensions and learning rates and reports micro/macro
+  F1 and ROC-AUC.
+
+Run a local ablation script from this repository with, for example:
+
+```bash
+bash configs/data/augmented/aug-ablation/aug-ablation-tox21.sh
+```
+
+The ChEBI script is intended for Slurm and should be submitted with
+`sbatch`. The Tox21 and ToxCast scripts run every seed and configuration in
+sequence, rather than requiring Slurm.
+
+### MoleculeNet datasets
+
+[MoleculeNet](https://moleculenet.org/) is a collection of standard molecular
+machine-learning benchmarks. These datasets cover binary classification tasks
+with different label counts, class imbalance, and chemical domains, making
+them useful for testing whether an architecture generalizes beyond ChEBI50.
+The augmented-graph runner currently evaluates six MoleculeNet datasets:
+**BBBP**, **BACE**, **SIDER**, **ClinTox**, **Tox21**, and **ToxCast**. Their
+dataset configurations are in
+`configs/data/augmented/final/<dataset>_final_augmented.yml`.
+
+[`molnet.sh`](configs/data/augmented/final/molnet.sh) runs each of the six
+datasets for seeds `0`, `42`, and `12345` on one local GPU. For each dataset
+and seed it:
+
+1. trains the augmented atom-motif-graph pooling GAT;
+2. selects the best validation checkpoint using ROC-AUC;
+3. evaluates that checkpoint on the test split; and
+4. writes per-run metrics and checkpoint paths to
+   `logs/molnet_test_results.tsv`, followed by mean and sample standard
+   deviation summaries.
+
+The script selects binary or multilabel trainers and metrics per dataset and
+uses dataset-specific dropout and learning rates. Run it with:
+
+```bash
+bash configs/data/augmented/final/molnet.sh
+```
+
+### Final ChEBI50 training
+
+[`final-chebi.sh`](configs/data/augmented/final/final-chebi.sh) is a Slurm
+job-array script that trains the final augmented-graph GAT on ChEBI50 v252 for
+the three seeds. It uses the `gnwa_fgwa_wfge` configuration, the
+atom-motif-graph pooling architecture, weighted binary cross-entropy, and the
+standard micro/macro F1 metrics. Submit it with:
+
+```bash
+sbatch configs/data/augmented/final/final-chebi.sh
+```
+
+### ZINC15 pretraining
+
+[`zinc_msp_pretraining.sh`](configs/data/augmented/pretraining/zinc_msp_pretraining.sh)
+trains the augmented GAT with the masked-subgraph prediction (MSP)
+pretraining objective on ZINC15. It uses the dedicated ZINC pretrainer,
+`gat_msp.yml`, and the augmented ZINC15 data configuration. Validation batches
+are disabled because this is a pretraining run; the resulting checkpoint can
+then be used to initialize downstream augmented-graph experiments. The script
+requests three GPUs on Slurm and is submitted with:
+
+```bash
+sbatch configs/data/augmented/pretraining/zinc_msp_pretraining.sh
+```
+
 ## Augmented Graphs
 _See thesis related to this work [here](https://www.uni-osnabrueck.de/fileadmin/informatik/Arbeitsgruppen/Hybride_KI/mt_aditya_khedekar.pdf)_.
 
