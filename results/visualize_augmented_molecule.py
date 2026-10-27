@@ -1,11 +1,4 @@
 try:
-    from plotly import graph_objects as go
-except ImportError as e:
-    raise ImportError(
-        "Plotly is required for 3D plotting. Install it with `pip install plotly`."
-    ) from e
-
-try:
     import matplotlib
 
     assert matplotlib.__version__ >= "3.10.9", "Matplotlib >= 3.10.9 required"

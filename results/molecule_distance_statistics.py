@@ -3,11 +3,6 @@
 
 from __future__ import annotations
 
-from rdkit import RDLogger
-
-# Cached molecules may have been serialized with an older RDKit release.
-RDLogger.DisableLog("rdApp.warning")
-
 import argparse
 import json
 import statistics
@@ -16,8 +11,11 @@ from pathlib import Path
 from typing import Any
 
 import torch
-from rdkit import Chem
+from rdkit import Chem, RDLogger
 from rdkit.Chem import Draw, Mol, rdmolops
+
+# Cached molecules may have been serialized with an older RDKit release.
+RDLogger.DisableLog("rdApp.warning")
 
 
 def extract_molecule(sample: Any) -> Mol:
