@@ -225,7 +225,7 @@ artificial nodes and added edges use zero initialization so that the effect of
 connectivity can be measured independently of feature initialization and
 type-specific pooling.
 
-<img width="1220" height="668" alt="mol_to_aug_mol" src="https://github.com/user-attachments/assets/0aba6b80-765b-45a6-913a-7d628f14a5db" />
+<img width="3488" height="1760" alt="mol graph drawio" src="https://github.com/user-attachments/assets/279dbd39-6656-45be-a66b-aa76ec0febdc" />
 
 </br>
 </br>
