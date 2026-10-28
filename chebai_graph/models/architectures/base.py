@@ -78,6 +78,7 @@ class GraphModelBase(torch.nn.Module, ABC):
         self.out_channels = int(config["out_channels"])
         self.edge_dim = int(config["edge_dim"])  # number of bond properties
         self.dropout = float(config.get("dropout", 0.0))
+        self.norm = config.get("norm", None)
         print("----------Dropout set to: ", self.dropout)
 
 

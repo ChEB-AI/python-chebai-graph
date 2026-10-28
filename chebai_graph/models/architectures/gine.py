@@ -148,6 +148,7 @@ class GINEConvNetBase(GraphModelBase):
                 dropout=self.dropout,
                 edge_dim=self.edge_dim,
                 train_eps=self.train_eps,
+                norm=self.norm,
                 act=ReLU(),
             )
         else:
@@ -160,6 +161,7 @@ class GINEConvNetBase(GraphModelBase):
                 edge_dim=self.edge_dim,
                 train_eps=self.train_eps,
                 act=self.activation,
+                norm=self.norm,
             )
 
     def forward(self, batch: dict[str, Any]) -> Tensor:

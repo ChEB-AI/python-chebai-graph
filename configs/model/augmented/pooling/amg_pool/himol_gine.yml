@@ -10,5 +10,6 @@ init_args:
     edge_dim: 12 # number of bond properties
     train_eps: true
     use_himol_model: true
+    norm: batch_norm
   n_linear_layers: 2
   lin_hidden_dim: 256
