@@ -20,9 +20,10 @@ class AtomType(AtomProperty):
     """
 
     def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> int:
@@ -46,9 +47,10 @@ class NumAtomBonds(AtomProperty):
     """
 
     def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> int:
@@ -72,9 +74,10 @@ class AtomCharge(AtomProperty):
     """
 
     def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> int:
@@ -98,9 +101,10 @@ class AtomChirality(AtomProperty):
     """
 
     def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> Chem.rdchem.ChiralType:
@@ -124,9 +128,10 @@ class AtomHybridization(AtomProperty):
     """
 
     def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> Chem.rdchem.HybridizationType:
@@ -150,9 +155,10 @@ class AtomNumHs(AtomProperty):
     """
 
     def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_atom_value(self, atom: Chem.rdchem.Atom) -> int:
@@ -222,9 +228,10 @@ class BondType(BondProperty):
     """
 
     def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_bond_value(self, bond: Chem.rdchem.Bond) -> Chem.rdchem.BondType:
@@ -271,9 +278,10 @@ class MoleculeNumRings(MoleculeProperty):
     """
 
     def __init__(self, encoder: PropertyEncoder | None = None, **kwargs) -> None:
-        data_type = kwargs.get("data_type")
+        tokens_directory = kwargs.get("tokens_directory")
         super().__init__(
-            encoder=encoder or OneHotEncoder(self, data_type=data_type), **kwargs
+            encoder=encoder or OneHotEncoder(self, tokens_directory=tokens_directory),
+            **kwargs,
         )
 
     def get_property_value(self, mol: Chem.rdchem.Mol) -> list[int]:

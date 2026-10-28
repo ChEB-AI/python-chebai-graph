@@ -10,6 +10,7 @@ from .augmented import (
     ResGatedAMGPoolGraphPred,
 )
 from .dynamic_gni import ResGatedDynamicGNIGraphPred
+from .pretraining import GATMSPretraining
 
 __all__ = [
     "ResGatedGraphPred",
@@ -22,4 +23,5 @@ __all__ = [
     "GINEGraphPred",
     "GINEAAPoolGraphPred",
     "GINEAMGPoolGraphPred",
+    "GATMSPretraining",
 ]

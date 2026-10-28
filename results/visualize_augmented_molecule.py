@@ -1,9 +1,19 @@
+try:
+    import matplotlib
+
+    assert matplotlib.__version__ >= "3.10.9", "Matplotlib >= 3.10.9 required"
+except (ImportError, AssertionError) as e:
+    raise ImportError(
+        "Matplotlib is required for 2D plotting. Install it with `pip install matplotlib`."
+    ) from e
+
 import io
 
-import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from chebi_utils.read_molecule import smiles_or_inchi_to_mol
 from jsonargparse import CLI
 from PIL import Image
 from rdkit.Chem import AllChem, BondType, Mol, rdDepictor
@@ -22,8 +32,6 @@ from chebai_graph.preprocessing.reader import (
     GN_WithAtoms_FG_WithAtoms_FGE,
     GN_WithAtoms_FG_WithAtoms_NoFGE,
 )
-
-matplotlib.use("TkAgg")
 
 EDGE_COLOR_MAP = {
     k.WITHIN_ATOMS_EDGE: "#1f77b4",
@@ -241,13 +249,16 @@ def _draw_simple(G: nx.Graph) -> None:
     plt.show()
 
 
-def _draw_3d(G: nx.Graph, mol: Mol) -> None:
+def _draw_3d(
+    G: nx.Graph, mol: Mol, output_html: str = "augmented_molecule_3d.html"
+) -> None:
     """
     Visualize the graph in 3D using Plotly.
 
     Args:
         G (nx.Graph): Augmented molecular graph.
         mol (Chem.Mol): RDKit molecule object for 3D coordinates.
+        output_html (str): Path where the interactive Plotly figure is saved.
 
     Raises:
         ImportError: If Plotly is not installed.
@@ -312,7 +323,7 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
                 ]
             )
         graph_pos = {
-            graph_node: (graph_pos_arr[:, 0].mean(), graph_pos_arr[:, 1].mean(), 4)
+            graph_node: (graph_pos_arr[:, 0].mean(), graph_pos_arr[:, 1].mean(), -2)
         }
 
     pos = {**atom_pos, **fg_pos, **graph_pos}
@@ -343,6 +354,7 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
             z=zs,
             mode="lines",
             line=dict(color=EDGE_COLOR_MAP[edge_type], width=4),
+            opacity=0.5,
             name=edge_type,
             hoverinfo="none",
         )
@@ -360,15 +372,25 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
         x=pos_x,
         y=pos_y,
         z=pos_z,
-        mode="markers+text",
+        mode="markers",
         marker=dict(size=8, color=node_colors, opacity=0.9),
-        text=node_names,
-        textposition="top center",
         hovertext=node_ids,
         hoverinfo="text",
     )
 
-    fig = go.Figure(data=edge_traces + [node_trace])
+    label_trace = go.Scatter3d(
+        x=pos_x,
+        y=pos_y,
+        z=pos_z,
+        mode="text",
+        text=node_names,
+        textposition="top center",
+        textfont=dict(color="black", size=12),
+        hoverinfo="none",
+        showlegend=False,
+    )
+
+    fig = go.Figure(data=edge_traces + [node_trace, label_trace])
     fig.update_layout(
         title="3D Augmented Molecule Graph",
         showlegend=True,
@@ -379,6 +401,7 @@ def _draw_3d(G: nx.Graph, mol: Mol) -> None:
         ),
         margin=dict(l=0, r=0, b=0, t=40),
     )
+    # fig.write_html(output_html)
     fig.show()
 
 
@@ -387,6 +410,7 @@ def plot_augmented_graph(
     augmented_molecule: dict,
     mol: Mol,
     plot_type: str,
+    output_html: str = "augmented_molecule_3d.html",
 ) -> None:
     """
     Main plotting function to visualize the augmented graph.
@@ -396,6 +420,7 @@ def plot_augmented_graph(
         augmented_molecule (dict): Augmented Molecule.
         mol (Chem.Mol): RDKit molecule object.
         plot_type (str): One of ["simple", "h", "3d"].
+        output_html (str): Path where the 3D Plotly figure is saved.
     """
     G = _create_graph(
         edge_index, augmented_molecule["nodes"], augmented_molecule["edges"]
@@ -406,7 +431,7 @@ def plot_augmented_graph(
     elif plot_type == "simple":
         _draw_simple(G)
     elif plot_type == "3d":
-        _draw_3d(G, mol)
+        _draw_3d(G, mol, output_html)
     else:
         raise ValueError(f"Unknown plot type: {plot_type}")
 
@@ -471,6 +496,7 @@ class Main:
         smiles: str = "OC(=O)c1ccccc1O",
         plot_type: str = "simple",
         reader: str = "w_fge_w_gn",
+        output_html: str = "augmented_molecule_3d.html",
     ) -> None:
         """
         Plot an augmented molecular graph from SMILES.
@@ -491,9 +517,10 @@ class Main:
                 - 'gnwa_fgwa_wfge': Graph node connected to atoms and FG nodes connected to atoms, with FG edges.
                 - 'gn_wall_fgwa_nfge': Graph node connected to all atoms and FG nodes, no FG edges.
                 - 'gn_wall_fgwa_wfge': Graph node connected to all atoms and FG nodes, with FG edges.
+            output_html (str): Output path for the interactive 3D HTML figure.
         """
         fg_reader = READER[reader]()
-        mol = fg_reader._smiles_to_mol(smiles)
+        mol = smiles_or_inchi_to_mol(smiles)
         if mol is None:
             raise ValueError(f"Invalid SMILES: {smiles}")
 
@@ -502,7 +529,9 @@ class Main:
             return
 
         edge_index, augmented_molecule = fg_reader._create_augmented_graph(mol)
-        plot_augmented_graph(edge_index, augmented_molecule, mol, plot_type)
+        plot_augmented_graph(
+            edge_index, augmented_molecule, mol, plot_type, output_html
+        )
 
 
 if __name__ == "__main__":

@@ -174,3 +174,9 @@ electra_pretrained.ckpt
 *.out
 *.sh
 *.ckpt
+*.csv
+
+!configs/data/augmented/aug-ablation/*.sh
+!.vscode/launch.json
+!configs/data/augmented/final/*.sh
+!configs/data/augmented/pretraining/*.sh

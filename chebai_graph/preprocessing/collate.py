@@ -15,22 +15,46 @@ class GraphCollator(RaggedCollator):
         # Unpack labels and optional identifiers
         y, idents = zip(*((d["labels"], d.get("ident")) for d in data))
 
-        # Replace labels with `y` inside graph features and collect them
+        valid_label_mask = self._get_valid_label_mask(y)
+
+        # Keep labels in XYGraphData.y instead of graph attributes. Mixed labelled
+        # and unlabelled batches otherwise make PyG collate a partial `y` key.
         merged_data = []
         for row in data:
-            row["features"].y = row["labels"]
-            merged_data.append(row["features"])
+            # Dataset samples may be cached and reused across epochs. Collation
+            # removes temporary attributes below, so never mutate the source graph.
+            if isinstance(row["features"], tuple):
+                # If tuple, then metadata is in second element. Move it to the first element for consistency.
+                row["features"][0]["custom_metadata"] = row["features"][1]
+                features = row["features"][0].clone()
+            else:
+                features = row["features"].clone()
+            if "y" in features:
+                del features.y
+            merged_data.append(features)
 
+        custom_metadata = []
         # Add empty edge_attr for graphs with no edges to prevent PyG errors
         for mdata in merged_data:
+            graph_metadata = []
             for store in mdata.stores:
                 if "edge_attr" not in store:
                     store["edge_attr"] = torch.tensor([])
+                if "custom_metadata" in store:
+                    graph_metadata.append(store.pop("custom_metadata"))
+                else:
+                    pass
+            custom_metadata.append(graph_metadata)
 
         # Ensure all attributes are float tensors to prevent torch.cat dtype issues
         for attr in merged_data[0].keys():
             for data in merged_data:
                 for store in data.stores:
+                    if attr not in store:
+                        continue
+                    if store[attr] is None:
+                        del store[attr]
+                        continue
                     # Im not sure why the following conversion is needed, but it solves this error:
                     # packages/torch_geometric/data/collate.py", line 177, in _collate
                     #     value = torch.cat(values, dim=cat_dim or 0, out=out)
@@ -69,10 +93,12 @@ class GraphCollator(RaggedCollator):
         x[0].x = x[0].x.to(dtype=torch.int64)
         # x is a Tuple[BaseData, Mapping, Mapping]
 
+        loss_kwargs["valid_label_mask"] = valid_label_mask
         return XYGraphData(
             x,
             y,
             idents=idents,
             model_kwargs={},
             loss_kwargs=loss_kwargs,
+            custom_metadata=custom_metadata,
         )
