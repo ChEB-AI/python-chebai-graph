@@ -65,6 +65,7 @@ class ResGatedGraphConvNetBase(GraphModelBase):
             num_layers=self.num_layers,
             edge_dim=self.edge_dim,
             act=self.activation,
+            norm=self.norm,
         )
 
     def forward(self, batch: dict[str, Any]) -> Tensor:

@@ -42,6 +42,7 @@ class GATGraphConvNetBase(GraphModelBase):
             heads=self.heads,
             v2=self.v2,
             act=self.activation,
+            norm=self.norm,
             **local_kwargs,
         )
 
