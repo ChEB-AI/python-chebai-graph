@@ -80,6 +80,7 @@ class GraphModelBase(torch.nn.Module, ABC):
         self.dropout = float(config.get("dropout", 0.0))
         self.norm = config.get("norm", None)
         print("----------Dropout set to: ", self.dropout)
+        print("----------GNN Norm set to: ", self.norm)
 
 
 class GraphNetWrapper(GraphBaseNet, ABC):

@@ -103,24 +103,22 @@ class AMGPool(GraphNetWrapper, ABC):
         """
         return gnn_out_dim + gnn_out_dim + gnn_out_dim
 
-    def forward(self, batch: dict) -> torch.Tensor:
+    def pool_representations(
+        self, batch: dict
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Forward pass for pooling node embeddings.
+        Return atom-, functional-group-, and graph-level pooled embeddings.
 
         Steps:
         1. Identify graph, atom, and functional group nodes.
         2. Aggregate embeddings for each node type separately.
-        3. Concatenate:
-            - Atom nodes vector
-            - Functional group nodes vector
-            - Graph node vector
-        4. Pass the concatenated vector through the linear sequential block.
 
         Args:
             batch (dict): Batch containing graph data and features.
 
         Returns:
-            torch.Tensor: Output tensor after pooling and linear transformation.
+            tuple[torch.Tensor, torch.Tensor, torch.Tensor]: Pooled embeddings
+                in atom, functional-group, and graph order.
         """
         graph_data = batch["features"][0]
         assert isinstance(graph_data, GraphData)
@@ -145,7 +143,12 @@ class AMGPool(GraphNetWrapper, ABC):
         atoms_vec = scatter_add(atoms_embeddings, atoms_batch, dim=0)
         fg_nodes_vec = scatter_add(fg_nodes_embeddings, fg_nodes_batch, dim=0)
 
-        # Concatenate all
-        graph_vector = torch.cat([atoms_vec, fg_nodes_vec, graph_node_vec], dim=1)
+        return atoms_vec, fg_nodes_vec, graph_node_vec
+
+    def forward(self, batch: dict) -> torch.Tensor:
+        """Pool the three representation levels and apply the classifier."""
+        representations = self.pool_representations(batch)
+        # Keep this order aligned with the classifier input layout.
+        graph_vector = torch.cat(representations, dim=1)
 
         return self.lin_sequential(graph_vector)
